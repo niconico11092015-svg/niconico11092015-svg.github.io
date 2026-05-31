@@ -232,7 +232,7 @@ body {
 
 .menu-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 24px;
 }
@@ -631,6 +631,10 @@ body {
         <div class="mc-ico">🔧</div>
         <div class="mc-label">Órdenes Trabajo</div>
       </button>
+      <button class="menu-card" onclick="irA('horas')">
+        <div class="mc-ico">⏱</div>
+        <div class="mc-label">Banco de Horas</div>
+      </button>
     </div>
   </div>
 </div>
@@ -712,6 +716,17 @@ body {
   <div class="content" id="detalle-content"></div>
 </div>
 
+<!-- ══════════ BANCO DE HORAS ══════════ -->
+<div id="screen-horas" class="screen">
+  <div class="topbar">
+    <div class="topbar-icon">⏱</div>
+    <div><h1>Banco de Horas</h1></div>
+  </div>
+  <div class="content" id="horas-content">
+    <!-- Se genera por JS -->
+  </div>
+</div>
+
 <!-- ══════════ NAVBAR ══════════ -->
 <nav class="navbar" id="navbar">
   <button class="nav-btn active" id="nav-home" onclick="irA('home')">
@@ -725,6 +740,9 @@ body {
   </button>
   <button class="nav-btn" id="nav-ordenes" onclick="irA('ordenes')">
     <span class="nav-ico">🔧</span>Órdenes
+  </button>
+  <button class="nav-btn" id="nav-horas" onclick="irA('horas')">
+    <span class="nav-ico">⏱</span>Horas
   </button>
 </nav>
 
@@ -776,6 +794,7 @@ function irA(pantalla) {
   pantallaActual = pantalla;
   if (['presupuestos','cuentas','ordenes'].includes(pantalla)) renderLista(pantalla);
   if (pantalla === 'home') actualizarStats();
+  if (pantalla === 'horas') renderHoras();
 }
 
 function mostrarForm() {
@@ -935,6 +954,7 @@ function formPresupuesto(num) {
       <label>Estado</label>
       <select id="fp-estado">
         <option>Pendiente</option>
+        <option>Enviado</option>
         <option>Aprobado</option>
         <option>Rechazado</option>
         <option>En progreso</option>
@@ -1106,8 +1126,9 @@ function formOrden(num) {
         <select id="ot-estado">
           <option>Pendiente</option>
           <option>En progreso</option>
-          <option>Completado</option>
+          <option>Terminado</option>
           <option>Entregado</option>
+          <option>Cancelado</option>
         </select>
       </div>
     </div>
@@ -1455,6 +1476,7 @@ function verDetalle(tipo, id) {
 
   html += `<div class="btn-row">
     <button class="btn btn-danger" onclick="eliminarItem('${tipo}', ${id})">🗑 Eliminar</button>
+    <button class="btn btn-secondary" onclick="editarEstado('${tipo}', ${id})">✏️ Estado</button>
     <button class="btn btn-pdf" onclick="imprimirItem('${tipo}', ${id})">🖨 PDF</button>
   </div>`;
 
@@ -1472,6 +1494,322 @@ function eliminarItem(tipo, id) {
 
 function imprimirItem(tipo, id) {
   window.print();
+}
+
+function editarEstado(tipo, id) {
+  const items = DB.get(tipo);
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  const estadosPresup = ['Pendiente','Enviado','Aprobado','Rechazado','En progreso','Completado'];
+  const estadosOT = ['Pendiente','En progreso','Terminado','Entregado','Cancelado'];
+  const estadosCC = ['Pendiente','Al día','Pagado','En mora'];
+
+  const estados = tipo === 'presupuestos' ? estadosPresup : tipo === 'ordenes' ? estadosOT : estadosCC;
+
+  const botones = estados.map(e =>
+    `<button class="btn ${e === item.estado ? 'btn-primary' : 'btn-secondary'}" 
+     style="margin-bottom:8px;width:100%" 
+     onclick="cambiarEstado('${tipo}',${id},'${e}')">${e}</button>`
+  ).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-estado';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `<div style="background:var(--blanco);border-radius:16px;padding:24px;width:100%;max-width:340px">
+    <h3 style="font-family:Playfair Display,serif;color:var(--marron);margin-bottom:16px">Cambiar estado</h3>
+    <p style="font-size:12px;color:var(--gris);margin-bottom:16px">Estado actual: <strong>${item.estado || 'Pendiente'}</strong></p>
+    ${botones}
+    <button class="btn btn-secondary" style="width:100%;margin-top:4px" onclick="document.getElementById('modal-estado').remove()">Cancelar</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function cambiarEstado(tipo, id, nuevoEstado) {
+  const items = DB.get(tipo);
+  const idx = items.findIndex(i => i.id === id);
+  if (idx >= 0) {
+    items[idx].estado = nuevoEstado;
+    DB.set(tipo, items);
+  }
+  const modal = document.getElementById('modal-estado');
+  if (modal) modal.remove();
+  verDetalle(tipo, id);
+  actualizarStats();
+}
+
+// ══════════════════════════════════════════
+// BANCO DE HORAS
+// ══════════════════════════════════════════
+const HORA_INICIO = '09:00';
+const HORA_FIN = '17:00';
+const HORAS_DIA = 8;
+const DIAS_SEMANA = ['Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+let horasWeekOffset = 0;
+let horasEmpleado = '';
+let horasDiaActivo = null;
+
+function timeToMins(t) {
+  if (!t) return null;
+  const [h,m] = t.split(':').map(Number);
+  return h*60+m;
+}
+
+function minsToHHMM(mins) {
+  const sign = mins < 0 ? '-' : '+';
+  const abs = Math.abs(mins);
+  const h = Math.floor(abs/60);
+  const m = abs%60;
+  return `${sign}${h}h ${String(m).padStart(2,'0')}m`;
+}
+
+function calcBalanceDia(entry) {
+  if (!entry) return 0;
+  if (entry.ausente) return -HORAS_DIA*60;
+  let worked = 0;
+  const inp = timeToMins(entry.entrada);
+  const outp = timeToMins(entry.salida);
+  if (inp!==null && outp!==null && outp>inp) worked += outp-inp;
+  const exIn = timeToMins(entry.extraInicio);
+  const exOut = timeToMins(entry.extraFin);
+  if (exIn!==null && exOut!==null && exOut>exIn) worked += exOut-exIn;
+  return worked - HORAS_DIA*60;
+}
+
+function getWeekDates(offset) {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day===0?-6:1);
+  d.setDate(diff + offset*7);
+  return DIAS_SEMANA.map((_,i) => {
+    const dd = new Date(d);
+    dd.setDate(d.getDate()+i);
+    return dd;
+  });
+}
+
+function fmtD(date) {
+  return date.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+}
+
+function getEmpleados() {
+  return DB.get('empleados_horas') || [];
+}
+
+function getHorasData(empleado, weekKey) {
+  const key = `horas_${empleado}_${weekKey}`;
+  return DB.get(key) || DIAS_SEMANA.map(() => ({entrada:'',salida:'',extraInicio:'',extraFin:'',ausente:false,nota:''}));
+}
+
+function saveHorasData(empleado, weekKey, data) {
+  const key = `horas_${empleado}_${weekKey}`;
+  DB.set(key, data);
+}
+
+function renderHoras() {
+  const empleados = getEmpleados();
+  if (!horasEmpleado && empleados.length > 0) horasEmpleado = empleados[0];
+
+  const weekDates = getWeekDates(horasWeekOffset);
+  const weekKey = weekDates[0].toISOString().slice(0,10);
+  const weekData = horasEmpleado ? getHorasData(horasEmpleado, weekKey) : DIAS_SEMANA.map(() => ({entrada:'',salida:'',extraInicio:'',extraFin:'',ausente:false,nota:''}));
+
+  const weekBalance = weekData.reduce((acc,d) => acc + calcBalanceDia(d), 0);
+
+  // Total balance across all weeks for this employee
+  let totalBalance = 0;
+  if (horasEmpleado) {
+    const allKeys = Object.keys(localStorage).filter(k => k.startsWith(`mc_horas_${horasEmpleado}_`));
+    allKeys.forEach(k => {
+      try {
+        const data = JSON.parse(localStorage.getItem(k) || '[]');
+        data.forEach(d => { totalBalance += calcBalanceDia(d); });
+      } catch(e) {}
+    });
+  }
+
+  let html = `
+  <div style="background:var(--marron);border-radius:14px;padding:16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-family:'Playfair Display',serif;color:#fff;font-size:16px">Operario</div>
+      <button onclick="agregarEmpleado()" style="background:var(--naranja);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">+ Agregar</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${empleados.length === 0 ? '<p style="color:rgba(255,255,255,0.4);font-size:13px">No hay operarios. Agregá uno.</p>' :
+        empleados.map(e => `<button onclick="selEmpleado('${e}')" style="padding:6px 14px;border-radius:20px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:${e===horasEmpleado?'var(--naranja)':'rgba(255,255,255,0.15)'};color:#fff">${e}</button>`).join('')}
+    </div>
+  </div>`;
+
+  if (!horasEmpleado) {
+    html += `<div class="empty-state"><div class="e-ico">⏱</div><p>Agregá un operario para empezar.</p></div>`;
+    document.getElementById('horas-content').innerHTML = html;
+    return;
+  }
+
+  html += `
+  <div style="background:var(--blanco);border-radius:14px;padding:14px;box-shadow:var(--sombra);margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <button onclick="horasWeekOffset--;renderHoras()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">←</button>
+      <div style="text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--marron)">${fmtD(weekDates[0])} — ${fmtD(weekDates[5])}</div>
+        ${horasWeekOffset===0?'<div style="font-size:11px;color:var(--naranja)">semana actual</div>':''}
+      </div>
+      <button onclick="horasWeekOffset++;renderHoras()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">→</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    ${DIAS_SEMANA.map((dia,i) => {
+      const d = weekData[i];
+      const bal = calcBalanceDia(d);
+      const hasData = d.entrada || d.ausente;
+      const isActive = horasDiaActivo === i;
+      return `<div onclick="toggleDiaActivo(${i})" style="background:${isActive?'var(--crema2)':d.ausente?'#fff0f0':'var(--blanco)'};border:2px solid ${isActive?'var(--naranja)':d.ausente?'#ffcccc':'var(--crema3)'};border-radius:12px;padding:10px;cursor:pointer">
+        <div style="font-weight:700;font-size:13px;color:var(--marron)">${dia}</div>
+        <div style="font-size:11px;color:var(--gris)">${fmtD(weekDates[i])}</div>
+        ${d.ausente ? '<div style="font-size:11px;color:var(--rojo);margin-top:4px">⛔ Ausente</div>' :
+          d.entrada ? `<div style="font-size:11px;color:var(--gris);margin-top:4px">${d.entrada}→${d.salida||'?'}</div>` :
+          '<div style="font-size:11px;color:#ccc;margin-top:4px">Sin registrar</div>'}
+        ${hasData ? `<div style="font-size:11px;font-weight:700;margin-top:3px;color:${bal>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(bal)}</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // Panel del día activo
+  if (horasDiaActivo !== null) {
+    const d = weekData[horasDiaActivo];
+    html += `
+    <div style="background:var(--blanco);border-radius:14px;padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
+      <div style="font-family:'Playfair Display',serif;font-size:15px;color:var(--marron);margin-bottom:14px">${DIAS_SEMANA[horasDiaActivo]} ${fmtD(weekDates[horasDiaActivo])} — Editar</div>
+      
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:600;color:var(--marron2)">Ausente</span>
+        <button onclick="updateHorasDia(${horasDiaActivo},'ausente',${!d.ausente},'${weekKey}')" 
+          style="width:44px;height:24px;border-radius:12px;border:none;background:${d.ausente?'var(--rojo)':'#ddd'};position:relative;cursor:pointer">
+          <div style="position:absolute;top:3px;left:${d.ausente?'23px':'3px'};width:18px;height:18px;border-radius:50%;background:white;transition:left 0.2s"></div>
+        </button>
+        ${d.ausente?'<span style="font-size:11px;color:var(--rojo)">Descuenta 8hs</span>':''}
+      </div>
+
+      ${!d.ausente ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px">Entrada</label>
+          <input type="time" value="${d.entrada}" onchange="updateHorasDia(${horasDiaActivo},'entrada',this.value,'${weekKey}')" 
+            style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:DM Sans,sans-serif;color:var(--marron);background:var(--crema);outline:none">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px">Salida</label>
+          <input type="time" value="${d.salida}" onchange="updateHorasDia(${horasDiaActivo},'salida',this.value,'${weekKey}')" 
+            style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:DM Sans,sans-serif;color:var(--marron);background:var(--crema);outline:none">
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--crema2);padding-top:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--naranja);margin-bottom:8px">⏱ Horas extra</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px">Inicio extra</label>
+            <input type="time" value="${d.extraInicio}" onchange="updateHorasDia(${horasDiaActivo},'extraInicio',this.value,'${weekKey}')" 
+              style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:DM Sans,sans-serif;color:var(--marron);background:var(--crema);outline:none">
+          </div>
+          <div>
+            <label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px">Fin extra</label>
+            <input type="time" value="${d.extraFin}" onchange="updateHorasDia(${horasDiaActivo},'extraFin',this.value,'${weekKey}')" 
+              style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:DM Sans,sans-serif;color:var(--marron);background:var(--crema);outline:none">
+          </div>
+        </div>
+      </div>` : ''}
+
+      <div>
+        <label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:4px">Nota</label>
+        <textarea onchange="updateHorasDia(${horasDiaActivo},'nota',this.value,'${weekKey}')" 
+          placeholder="Observaciones..." 
+          style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:DM Sans,sans-serif;color:var(--marron);background:var(--crema);outline:none;resize:none;height:60px">${d.nota}</textarea>
+      </div>
+
+      ${(d.entrada||d.ausente)?`
+      <div style="background:var(--crema2);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+        <span style="font-size:13px;color:var(--gris)">Balance del día</span>
+        <span style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:${calcBalanceDia(d)>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(calcBalanceDia(d))}</span>
+      </div>`:''}
+    </div>`;
+  }
+
+  // Resumen semanal
+  html += `
+  <div style="background:var(--blanco);border-radius:14px;padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
+    <div style="font-family:'Playfair Display',serif;font-size:14px;color:var(--marron);margin-bottom:12px">Resumen semanal</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="border-bottom:1px solid var(--crema2)">
+        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Día</th>
+        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Entrada</th>
+        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Salida</th>
+        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Extra</th>
+        <th style="text-align:right;padding:6px 4px;color:var(--gris);font-size:10px">Balance</th>
+      </tr></thead>
+      <tbody>
+        ${DIAS_SEMANA.map((dia,i) => {
+          const d = weekData[i];
+          const bal = calcBalanceDia(d);
+          const exIn = timeToMins(d.extraInicio);
+          const exOut = timeToMins(d.extraFin);
+          const exMins = (exIn!==null&&exOut!==null) ? exOut-exIn : 0;
+          return `<tr style="border-bottom:1px solid var(--crema2)">
+            <td style="padding:7px 4px;font-weight:600">${dia}</td>
+            <td style="padding:7px 4px;color:${d.ausente?'var(--rojo)':'var(--gris)'}">${d.ausente?'Ausente':d.entrada||'—'}</td>
+            <td style="padding:7px 4px;color:var(--gris)">${d.ausente?'':d.salida||'—'}</td>
+            <td style="padding:7px 4px;color:var(--naranja)">${exMins>0?`+${Math.floor(exMins/60)}h${exMins%60>0?exMins%60+'m':''}` :'—'}</td>
+            <td style="padding:7px 4px;text-align:right;font-weight:700;color:${bal>=0?'var(--verde2)':'var(--rojo)'}">${(d.entrada||d.ausente)?minsToHHMM(bal):'—'}</td>
+          </tr>`;
+        }).join('')}
+        <tr style="border-top:2px solid var(--crema3)">
+          <td colspan="4" style="padding:10px 4px;font-weight:700;color:var(--marron)">TOTAL SEMANA</td>
+          <td style="padding:10px 4px;text-align:right;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:${weekBalance>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(weekBalance)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="background:${totalBalance>=0?'var(--verde2)':'var(--rojo)'};border-radius:14px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Balance total acumulado</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px">${horasEmpleado}</div>
+    </div>
+    <div style="font-family:'Playfair Display',serif;font-size:26px;color:#fff;font-weight:700">${minsToHHMM(totalBalance)}</div>
+  </div>`;
+
+  document.getElementById('horas-content').innerHTML = html;
+}
+
+function toggleDiaActivo(i) {
+  horasDiaActivo = horasDiaActivo === i ? null : i;
+  renderHoras();
+}
+
+function selEmpleado(nombre) {
+  horasEmpleado = nombre;
+  horasDiaActivo = null;
+  renderHoras();
+}
+
+function agregarEmpleado() {
+  const nombre = prompt('Nombre del operario:');
+  if (!nombre || !nombre.trim()) return;
+  const empleados = getEmpleados();
+  if (!empleados.includes(nombre.trim())) {
+    empleados.push(nombre.trim());
+    DB.set('empleados_horas', empleados);
+    horasEmpleado = nombre.trim();
+  }
+  renderHoras();
+}
+
+function updateHorasDia(idx, field, value, weekKey) {
+  const data = getHorasData(horasEmpleado, weekKey);
+  data[idx] = { ...data[idx], [field]: value };
+  saveHorasData(horasEmpleado, weekKey, data);
+  renderHoras();
 }
 
 // ══════════════════════════════════════════
