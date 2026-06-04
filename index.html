@@ -9,13 +9,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --marron:#4A2C0A;--marron2:#6B3F18;--naranja:#C4621A;--naranja2:#E8832A;
-  --crema:#FDF6EE;--crema2:#F5E8D5;--crema3:#EDD8BC;
-  --verde:#2A5C32;--verde2:#3A7A45;--verde-cl:#EAF3EC;
-  --rojo:#9B1C1C;--rojo-cl:#FEF2F2;--azul:#1A3A5C;--azul-cl:#EEF4FB;
-  --amarillo:#92620A;--amarillo-cl:#FEF9E7;
-  --blanco:#FFF;--gris:#6B7280;--gris-cl:#F9F7F4;
-  --sombra:0 2px 16px rgba(74,44,10,.10);--radio:14px;--radio2:10px;
+--marron:#4A2C0A;--marron2:#6B3F18;--naranja:#C4621A;--naranja2:#E8832A;
+--crema:#FDF6EE;--crema2:#F5E8D5;--crema3:#EDD8BC;
+--verde:#2A5C32;--verde2:#3A7A45;--verde-cl:#EAF3EC;
+--rojo:#9B1C1C;--rojo-cl:#FEF2F2;--azul:#1A3A5C;--azul-cl:#EEF4FB;
+--amarillo:#92620A;--amarillo-cl:#FEF9E7;
+--blanco:#FFF;--gris:#6B7280;--gris-cl:#F9F7F4;
+--sombra:0 2px 16px rgba(74,44,10,.10);--radio:14px;--radio2:10px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marron);min-height:100vh;overscroll-behavior:none;}
@@ -140,16 +140,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 .dh-total{font-size:18px;font-weight:700;color:var(--marron);}
 .img-preview{width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-top:8px;}
 .img-upload-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--crema2);border:1.5px dashed var(--crema3);border-radius:10px;padding:16px;cursor:pointer;font-size:13px;color:var(--gris);margin-top:8px;}
+/* Caja condición de pago */
+.cond-pago-box{background:var(--azul-cl);border:1.5px solid #b8d0e8;border-radius:10px;padding:14px;margin-top:10px;}
+.cond-pago-box .cp-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--azul);margin-bottom:10px;}
+.cuotas-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;}
+.cuota-item{background:#fff;border-radius:8px;padding:10px 8px;text-align:center;border:1.5px solid #b8d0e8;}
+.cuota-item .ci-num{font-size:10px;font-weight:600;color:var(--gris);text-transform:uppercase;}
+.cuota-item .ci-val{font-size:15px;font-weight:700;color:var(--azul);margin:3px 0;}
+.cuota-item .ci-sub{font-size:10px;color:var(--gris);}
 /* MODAL */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:var(--blanco);border-radius:16px;padding:24px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto;}
 .modal-box h3{font-family:'Playfair Display',serif;color:var(--marron);margin-bottom:16px;}
-/* PRINT */
+/* PRINT — CORREGIDO */
 @media print{
-  .navbar,.fab,.topbar-back,.btn-row,.add-row-btn,.del-btn,.nav-btn,.modal-overlay{display:none!important;}
-  body{background:white;}
-  .screen{display:none!important;}
-  #print-area{display:block!important;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  body > *{display:none!important;}
+  #print-area{display:block!important;position:fixed;top:0;left:0;width:100%;height:auto;}
 }
 #print-area{display:none;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
@@ -165,98 +172,114 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 
 <!-- HOME -->
 <div id="screen-home" class="screen active">
-  <div class="home-header">
-    <div class="home-logo">MC</div>
-    <h1>La Mueblería Conca</h1>
-    <p>Concarán, San Luis · Panel de gestión</p>
-  </div>
-  <div class="home-content">
-    <div class="stats-grid">
-      <div class="stat-card presup"><div class="s-num" id="stat-presup">0</div><div class="s-label">Presupuestos</div></div>
-      <div class="stat-card cc"><div class="s-num" id="stat-cc">0</div><div class="s-label">Ctas. Corrientes</div></div>
-      <div class="stat-card ot"><div class="s-num" id="stat-ot">0</div><div class="s-label">Órdenes Trabajo</div></div>
-      <div class="stat-card saldo"><div class="s-num" id="stat-saldo">$ 0</div><div class="s-label">⚠ Saldo total a cobrar</div></div>
-    </div>
-    <p class="section-title">Accesos rápidos</p>
-    <div class="menu-grid">
-      <button class="menu-card" onclick="irA('presupuestos')"><div class="mc-ico">📋</div><div class="mc-label">Presupuestos</div></button>
-      <button class="menu-card" onclick="irA('cuentas')"><div class="mc-ico">💰</div><div class="mc-label">Ctas. Corrientes</div></button>
-      <button class="menu-card" onclick="irA('ordenes')"><div class="mc-ico">🔧</div><div class="mc-label">Órdenes Trabajo</div></button>
-      <button class="menu-card" onclick="irA('horas')"><div class="mc-ico">⏱</div><div class="mc-label">Banco de Horas</div></button>
-    </div>
-  </div>
+<div class="home-header">
+<div class="home-logo">MC</div>
+<h1>La Mueblería Conca</h1>
+<p>Concarán, San Luis · Panel de gestión</p>
+</div>
+<div class="home-content">
+<div class="stats-grid">
+<div class="stat-card presup"><div class="s-num" id="stat-presup">0</div><div class="s-label">Presupuestos</div></div>
+<div class="stat-card cc"><div class="s-num" id="stat-cc">0</div><div class="s-label">Ctas. Corrientes</div></div>
+<div class="stat-card ot"><div class="s-num" id="stat-ot">0</div><div class="s-label">Órdenes Trabajo</div></div>
+<div class="stat-card saldo"><div class="s-num" id="stat-saldo">$ 0</div><div class="s-label">⚠ Saldo total a cobrar</div></div>
+</div>
+<p class="section-title">Accesos rápidos</p>
+<div class="menu-grid">
+<button class="menu-card" onclick="irA('presupuestos')"><div class="mc-ico">📋</div><div class="mc-label">Presupuestos</div></button>
+<button class="menu-card" onclick="irA('cuentas')"><div class="mc-ico">💰</div><div class="mc-label">Ctas. Corrientes</div></button>
+<button class="menu-card" onclick="irA('ordenes')"><div class="mc-ico">🔧</div><div class="mc-label">Órdenes Trabajo</div></button>
+<button class="menu-card" onclick="irA('horas')"><div class="mc-ico">⏱</div><div class="mc-label">Banco de Horas</div></button>
+<button class="menu-card" onclick="irA('pedidos')" style="grid-column:1/-1"><div class="mc-ico">📦</div><div class="mc-label">Pedidos a Proveedores</div></button>
+</div>
+</div>
 </div>
 
 <!-- PRESUPUESTOS -->
 <div id="screen-presupuestos" class="screen">
-  <div class="topbar"><div class="topbar-icon">📋</div><div><h1>Presupuestos</h1></div></div>
-  <div class="content">
-    <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-presup" oninput="renderLista('presupuestos')"></div>
-    <div class="lista" id="lista-presupuestos"></div>
-  </div>
-  <button class="fab" onclick="abrirForm('presupuestos',null)">＋</button>
+<div class="topbar"><div class="topbar-icon">📋</div><div><h1>Presupuestos</h1></div></div>
+<div class="content">
+<div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-presup" oninput="renderLista('presupuestos')"></div>
+<div class="lista" id="lista-presupuestos"></div>
+</div>
+<button class="fab" onclick="abrirForm('presupuestos',null)">＋</button>
 </div>
 
 <!-- CUENTAS -->
 <div id="screen-cuentas" class="screen">
-  <div class="topbar"><div class="topbar-icon">💰</div><div><h1>Cuentas Corrientes</h1></div></div>
-  <div class="content">
-    <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-cc" oninput="renderLista('cuentas')"></div>
-    <div class="lista" id="lista-cuentas"></div>
-  </div>
-  <button class="fab" onclick="abrirForm('cuentas',null)">＋</button>
+<div class="topbar"><div class="topbar-icon">💰</div><div><h1>Cuentas Corrientes</h1></div></div>
+<div class="content">
+<div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-cc" oninput="renderLista('cuentas')"></div>
+<div class="lista" id="lista-cuentas"></div>
+</div>
+<button class="fab" onclick="abrirForm('cuentas',null)">＋</button>
 </div>
 
 <!-- ORDENES -->
 <div id="screen-ordenes" class="screen">
-  <div class="topbar"><div class="topbar-icon">🔧</div><div><h1>Órdenes de Trabajo</h1></div></div>
-  <div class="content">
-    <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-ot" oninput="renderLista('ordenes')"></div>
-    <div class="lista" id="lista-ordenes"></div>
-  </div>
-  <button class="fab" onclick="abrirForm('ordenes',null)">＋</button>
+<div class="topbar"><div class="topbar-icon">🔧</div><div><h1>Órdenes de Trabajo</h1></div></div>
+<div class="content">
+<div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-ot" oninput="renderLista('ordenes')"></div>
+<div class="lista" id="lista-ordenes"></div>
+</div>
+<button class="fab" onclick="abrirForm('ordenes',null)">＋</button>
 </div>
 
 <!-- HORAS -->
 <div id="screen-horas" class="screen">
-  <div class="topbar"><div class="topbar-icon">⏱</div><div><h1>Banco de Horas</h1></div></div>
-  <div class="content" id="horas-content"></div>
+<div class="topbar"><div class="topbar-icon">⏱</div><div><h1>Banco de Horas</h1></div></div>
+<div class="content" id="horas-content"></div>
 </div>
 
 <!-- FORM -->
 <div id="screen-form" class="screen">
-  <div class="topbar">
-    <button class="topbar-back" onclick="volverDeForm()">←</button>
-    <div><h1 id="form-title">Nuevo</h1><p id="form-subtitle"></p></div>
-  </div>
-  <div class="content" id="form-content"></div>
+<div class="topbar">
+<button class="topbar-back" onclick="volverDeForm()">←</button>
+<div><h1 id="form-title">Nuevo</h1><p id="form-subtitle"></p></div>
+</div>
+<div class="content" id="form-content"></div>
 </div>
 
 <!-- DETALLE -->
 <div id="screen-detalle" class="screen">
-  <div class="topbar">
-    <button class="topbar-back" onclick="volverDeDetalle()">←</button>
-    <div><h1 id="detalle-titulo">Detalle</h1></div>
-  </div>
-  <div class="content" id="detalle-content"></div>
+<div class="topbar">
+<button class="topbar-back" onclick="volverDeDetalle()">←</button>
+<div><h1 id="detalle-titulo">Detalle</h1></div>
+</div>
+<div class="content" id="detalle-content"></div>
+</div>
+
+<!-- PEDIDOS -->
+<div id="screen-pedidos" class="screen">
+<div class="topbar"><div class="topbar-icon">📦</div><div><h1>Pedidos a Proveedores</h1></div></div>
+<div class="content" id="pedidos-content"></div>
+<button class="fab" onclick="abrirFormPedido()">＋</button>
 </div>
 
 <!-- NAVBAR -->
 <nav class="navbar" id="navbar">
-  <button class="nav-btn active" id="nav-home" onclick="irA('home')"><span class="nav-ico">🏠</span>Inicio</button>
-  <button class="nav-btn" id="nav-presupuestos" onclick="irA('presupuestos')"><span class="nav-ico">📋</span>Presup.</button>
-  <button class="nav-btn" id="nav-cuentas" onclick="irA('cuentas')"><span class="nav-ico">💰</span>Cuentas</button>
-  <button class="nav-btn" id="nav-ordenes" onclick="irA('ordenes')"><span class="nav-ico">🔧</span>Órdenes</button>
-  <button class="nav-btn" id="nav-horas" onclick="irA('horas')"><span class="nav-ico">⏱</span>Horas</button>
+<button class="nav-btn active" id="nav-home" onclick="irA('home')"><span class="nav-ico">🏠</span>Inicio</button>
+<button class="nav-btn" id="nav-presupuestos" onclick="irA('presupuestos')"><span class="nav-ico">📋</span>Presup.</button>
+<button class="nav-btn" id="nav-cuentas" onclick="irA('cuentas')"><span class="nav-ico">💰</span>Cuentas</button>
+<button class="nav-btn" id="nav-ordenes" onclick="irA('ordenes')"><span class="nav-ico">🔧</span>Órdenes</button>
+<button class="nav-btn" id="nav-pedidos" onclick="irA('pedidos')"><span class="nav-ico">📦</span>Pedidos</button>
 </nav>
 
 <script>
+// ══ TASAS CUENTA CORRIENTE (configurables) ══
+const TASAS_CC = {
+  buenPagador:  { label: 'Cliente fiel / buen pagador', pct: 18 },
+  conAtrasos:   { label: 'Con atrasos previos',         pct: 25 },
+  sinHistorial: { label: 'Sin historial (primera vez)', pct: 35 }
+};
+
 // ══ DB ══
 const DB={
   get(k){try{return JSON.parse(localStorage.getItem('mc_'+k)||'[]');}catch(e){return[];}},
   set(k,v){localStorage.setItem('mc_'+k,JSON.stringify(v));},
   nextNum(k){const i=this.get(k);return i.length?Math.max(...i.map(x=>x.num||0))+1:1;}
 };
+
 function fmt(n){return '$ '+Math.round(n||0).toLocaleString('es-AR');}
 function fmtF(f){if(!f)return'';const[y,m,d]=f.split('-');return`${d}/${m}/${y}`;}
 function hoy(){return new Date().toISOString().split('T')[0];}
@@ -283,6 +306,7 @@ function irA(p){
   if(['presupuestos','cuentas','ordenes'].includes(p))renderLista(p);
   if(p==='home')actualizarStats();
   if(p==='horas')renderHoras();
+  if(p==='pedidos')renderPedidos();
 }
 function mostrarForm(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -312,10 +336,8 @@ function actualizarStats(){
 
 // ══ SEMÁFORO ══
 function calcSemaforo(item,tipo){
-  // Prioridad base
   const prioMap={'Urgente':3,'Alta':2,'Normal':1,'Baja':0};
   const prio=prioMap[item.prioridad]||0;
-  // Fecha entrega
   let diasRestantes=999;
   const fechaEntrega=item.entrega||item.fechaEntrega;
   if(fechaEntrega){
@@ -323,10 +345,8 @@ function calcSemaforo(item,tipo){
     const entMs=new Date(fechaEntrega).setHours(0,0,0,0);
     diasRestantes=Math.floor((entMs-hoyMs)/(1000*60*60*24));
   }
-  // Estado ya terminado
   const estadosOk=['Completado','Pagado','Entregado','Terminado'];
   if(estadosOk.includes(item.estado))return'verde';
-  // Combinar
   if(prio>=3||diasRestantes<0)return'rojo';
   if(prio>=2||diasRestantes<=3)return'amarillo';
   if(diasRestantes<=7)return'amarillo';
@@ -341,6 +361,7 @@ function badgeClass(estado){
   if(estado==='Enviado')return'badge-env';
   return'badge-pend';
 }
+
 function renderLista(tipo){
   const items=DB.get(tipo);
   const busqId=tipo==='cuentas'?'buscar-cc':tipo==='presupuestos'?'buscar-presup':'buscar-ot';
@@ -352,11 +373,11 @@ function renderLista(tipo){
     return;
   }
   cont.innerHTML=filtrados.map(item=>{
-    let total=0,saldoPend=0;
+    let total=0;
     if(tipo==='cuentas'){
       const tc=(item.compras||[]).reduce((a,c)=>a+((parseFloat(c.cant)||0)*(parseFloat(c.precio)||0)),0);
       const tp=(item.pagos||[]).reduce((a,p)=>a+(parseFloat(p.monto)||0),0);
-      saldoPend=tc-tp; total=saldoPend;
+      total=tc-tp;
     } else if(tipo==='presupuestos'){
       total=item.total||0;
     } else {
@@ -365,15 +386,15 @@ function renderLista(tipo){
     const codigo=`${pre(tipo)}-${String(item.num).padStart(3,'0')}`;
     const sem=calcSemaforo(item,tipo);
     return `<div class="item-card ${tipo==='presupuestos'?'presup':tipo==='cuentas'?'cc':'ot'}" onclick="verDetalle('${tipo}',${item.id})">
-      <div class="semaforo-dot sem-${sem}"></div>
-      <div class="item-top"><span class="item-codigo">${codigo}</span><span class="item-fecha">${fmtF(item.fecha)}</span></div>
-      <div class="item-nombre">${item.apellido||''} ${item.nombre||''}</div>
-      <div class="item-desc">${item.desc||'—'}</div>
-      <div class="item-footer">
-        <span class="item-total">${fmt(total)}</span>
-        <span class="item-badge ${badgeClass(item.estado)}">${item.estado||'Pendiente'}</span>
-      </div>
-    </div>`;
+<div class="semaforo-dot sem-${sem}"></div>
+<div class="item-top"><span class="item-codigo">${codigo}</span><span class="item-fecha">${fmtF(item.fecha)}</span></div>
+<div class="item-nombre">${item.apellido||''} ${item.nombre||''}</div>
+<div class="item-desc">${item.desc||'—'}</div>
+<div class="item-footer">
+<span class="item-total">${fmt(total)}</span>
+<span class="item-badge ${badgeClass(item.estado)}">${item.estado||'Pendiente'}</span>
+</div>
+</div>`;
   }).join('');
 }
 
@@ -393,7 +414,6 @@ function abrirForm(tipo, id){
   if(tipo==='presupuestos')cont.innerHTML=buildFormPresup(num,item);
   else if(tipo==='cuentas')cont.innerHTML=buildFormCC(num,item);
   else cont.innerHTML=buildFormOT(num,item);
-  // Cargar items existentes
   if(esEdicion && item){
     if(tipo==='presupuestos'&&item.items){item.items.forEach(it=>agregarFilaPresup(it));}
     if(tipo==='cuentas'){
@@ -405,139 +425,208 @@ function abrirForm(tipo, id){
     if(tipo==='presupuestos')agregarFilaPresup();
     if(tipo==='cuentas'){agregarFilaCompra();agregarFilaPago();}
   }
+  // Inicializar condición de pago en presupuestos
+  if(tipo==='presupuestos'){
+    actualizarCondPago();
+  }
   mostrarForm();
   setTimeout(()=>actualizarNombreArchivo(),100);
 }
 
 function buildFormPresup(num,item){
   const v=(f,d='')=>item?item[f]||d:d;
+  const condPago=item?item.condPago||'contado':'contado';
+  const perfilCC=item?item.perfilCC||'sinHistorial':'sinHistorial';
   return`<div class="form-card"><h3>📋 Datos del cliente</h3>
-    <div class="form-grid">
-      <div class="form-row readonly"><label>N° Presupuesto</label><input type="text" value="${String(num).padStart(3,'0')}" readonly id="fp-num"></div>
-      <div class="form-row"><label>Fecha</label><input type="date" id="fp-fecha" value="${v('fecha',hoy())}"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Apellido</label><input type="text" id="fp-apellido" value="${v('apellido')}" placeholder="Pérez" oninput="actualizarNombreArchivo()"></div>
-      <div class="form-row"><label>Nombre</label><input type="text" id="fp-nombre" value="${v('nombre')}" placeholder="Juan" oninput="actualizarNombreArchivo()"></div>
-    </div>
-    <div class="form-row"><label>Descripción del pedido</label><input type="text" id="fp-desc" value="${v('desc')}" placeholder="Ej: Mesa de comedor 1.40m" oninput="actualizarNombreArchivo()"></div>
-    <div class="form-row"><label>Teléfono</label><input type="tel" id="fp-tel" value="${v('tel')}" placeholder="+54 266..."></div>
-    <div class="nombre-archivo" id="fp-nombre-archivo"><span>Nombre del archivo:</span>PRE-${String(num).padStart(3,'0')}</div>
-  </div>
-  <div class="form-card"><h3>📦 Ítems del presupuesto</h3>
-    <div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P. Unit</span><span>Total</span><span></span></div>
-    <div id="fp-items"></div>
-    <div class="tabla-total"><span>TOTAL</span><span class="tv" id="fp-total">$ 0</span></div>
-    <button class="add-row-btn" onclick="agregarFilaPresup()">＋ Agregar ítem</button>
-  </div>
-  <div class="form-card"><h3>📝 Estado</h3>
-    <div class="form-grid">
-      <div class="form-row"><label>Estado</label>
-        <select id="fp-estado">
-          ${['Pendiente','Enviado','Aprobado','Rechazado','En progreso','Completado'].map(e=>`<option${v('estado')==e?' selected':''}>${e}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-row"><label>Prioridad</label>
-        <select id="fp-prioridad">
-          ${['Normal','Alta','Urgente','Baja'].map(e=>`<option${v('prioridad')==e?' selected':''}>${e}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="form-row"><label>Observaciones</label><textarea id="fp-obs" placeholder="Notas...">${v('obs')}</textarea></div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
-    <button class="btn btn-primary" onclick="guardarPresup(${num})">Guardar</button>
-  </div>`;
+<div class="form-grid">
+<div class="form-row readonly"><label>N° Presupuesto</label><input type="text" value="${String(num).padStart(3,'0')}" readonly id="fp-num"></div>
+<div class="form-row"><label>Fecha</label><input type="date" id="fp-fecha" value="${v('fecha',hoy())}"></div>
+</div>
+<div class="form-grid">
+<div class="form-row"><label>Apellido</label><input type="text" id="fp-apellido" value="${v('apellido')}" placeholder="Pérez" oninput="actualizarNombreArchivo()"></div>
+<div class="form-row"><label>Nombre</label><input type="text" id="fp-nombre" value="${v('nombre')}" placeholder="Juan" oninput="actualizarNombreArchivo()"></div>
+</div>
+<div class="form-row"><label>Descripción del pedido</label><input type="text" id="fp-desc" value="${v('desc')}" placeholder="Ej: Mesa de comedor 1.40m" oninput="actualizarNombreArchivo()"></div>
+<div class="form-row"><label>Teléfono</label><input type="tel" id="fp-tel" value="${v('tel')}" placeholder="+54 266..."></div>
+<div class="nombre-archivo" id="fp-nombre-archivo"><span>Nombre del archivo:</span>PRE-${String(num).padStart(3,'0')}</div>
+</div>
+<div class="form-card"><h3>📦 Ítems del presupuesto</h3>
+<div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P. Unit</span><span>Total</span><span></span></div>
+<div id="fp-items"></div>
+<div class="tabla-total"><span>TOTAL</span><span class="tv" id="fp-total">$ 0</span></div>
+<button class="add-row-btn" onclick="agregarFilaPresup()">＋ Agregar ítem</button>
+</div>
+<div class="form-card"><h3>💳 Condición de pago</h3>
+<div class="form-row">
+<label>Forma de pago</label>
+<select id="fp-condpago" onchange="actualizarCondPago()">
+<option value="contado"${condPago==='contado'?' selected':''}>Contado</option>
+<option value="cc"${condPago==='cc'?' selected':''}>Cuenta corriente (3 cuotas)</option>
+</select>
+</div>
+<div id="fp-cc-opciones" style="display:${condPago==='cc'?'block':'none'}">
+<div class="form-row">
+<label>Perfil crediticio</label>
+<select id="fp-perfil" onchange="actualizarCondPago()">
+<option value="buenPagador"${perfilCC==='buenPagador'?' selected':''}>Cliente fiel / buen pagador (${TASAS_CC.buenPagador.pct}%)</option>
+<option value="conAtrasos"${perfilCC==='conAtrasos'?' selected':''}>Con atrasos previos (${TASAS_CC.conAtrasos.pct}%)</option>
+<option value="sinHistorial"${perfilCC==='sinHistorial'?' selected':''}>Sin historial — primera vez (${TASAS_CC.sinHistorial.pct}%)</option>
+</select>
+</div>
+<div id="fp-cuotas-detalle"></div>
+</div>
+</div>
+<div class="form-card"><h3>📝 Estado</h3>
+<div class="form-grid">
+<div class="form-row"><label>Estado</label>
+<select id="fp-estado">
+${['Pendiente','Enviado','Aprobado','Rechazado','En progreso','Completado'].map(e=>`<option${v('estado')==e?' selected':''}>${e}</option>`).join('')}
+</select>
+</div>
+<div class="form-row"><label>Prioridad</label>
+<select id="fp-prioridad">
+${['Normal','Alta','Urgente','Baja'].map(e=>`<option${v('prioridad')==e?' selected':''}>${e}</option>`).join('')}
+</select>
+</div>
+</div>
+<div class="form-row"><label>Observaciones</label><textarea id="fp-obs" placeholder="Notas...">${v('obs')}</textarea></div>
+</div>
+<div class="btn-row">
+<button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
+<button class="btn btn-primary" onclick="guardarPresup(${num})">Guardar</button>
+</div>`;
+}
+
+function actualizarCondPago(){
+  const sel=document.getElementById('fp-condpago');
+  const opts=document.getElementById('fp-cc-opciones');
+  const det=document.getElementById('fp-cuotas-detalle');
+  if(!sel)return;
+  if(sel.value==='cc'){
+    if(opts)opts.style.display='block';
+    const perfilSel=document.getElementById('fp-perfil');
+    const perfil=perfilSel?perfilSel.value:'sinHistorial';
+    const tasa=TASAS_CC[perfil]||TASAS_CC.sinHistorial;
+    // Obtener total actual
+    let total=0;
+    document.querySelectorAll('#fp-items .tabla-fila').forEach(r=>{
+      const c=parseFloat(r.querySelector('.fpi-cant')?.value)||0;
+      const p=parseFloat(r.querySelector('.fpi-precio')?.value)||0;
+      total+=c*p;
+    });
+    const totalConInteres=total*(1+tasa.pct/100);
+    const cuota=totalConInteres/3;
+    if(det){
+      det.innerHTML=`<div class="cond-pago-box">
+<div class="cp-titulo">💳 Financiación en 3 cuotas · ${tasa.pct}% total</div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+<span style="color:var(--gris)">Total sin interés:</span><span style="font-weight:600">${fmt(total)}</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px">
+<span style="color:var(--gris)">Interés (${tasa.pct}%):</span><span style="font-weight:600;color:var(--azul)">${fmt(totalConInteres-total)}</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:10px;padding-top:8px;border-top:1px solid #b8d0e8">
+<span>Total a pagar:</span><span style="color:var(--azul)">${fmt(totalConInteres)}</span>
+</div>
+<div class="cuotas-grid">
+<div class="cuota-item"><div class="ci-num">Cuota 1</div><div class="ci-val">${fmt(cuota)}</div><div class="ci-sub">mes 1</div></div>
+<div class="cuota-item"><div class="ci-num">Cuota 2</div><div class="ci-val">${fmt(cuota)}</div><div class="ci-sub">mes 2</div></div>
+<div class="cuota-item"><div class="ci-num">Cuota 3</div><div class="ci-val">${fmt(cuota)}</div><div class="ci-sub">mes 3</div></div>
+</div>
+</div>`;
+    }
+  } else {
+    if(opts)opts.style.display='none';
+  }
 }
 
 function buildFormCC(num,item){
   const v=(f,d='')=>item?item[f]||d:d;
   return`<div class="form-card"><h3>💰 Datos del cliente</h3>
-    <div class="form-grid">
-      <div class="form-row readonly"><label>N° Cuenta</label><input type="text" value="${String(num).padStart(3,'0')}" readonly></div>
-      <div class="form-row"><label>Fecha apertura</label><input type="date" id="cc-fecha" value="${v('fecha',hoy())}"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Apellido</label><input type="text" id="cc-apellido" value="${v('apellido')}" placeholder="Pérez" oninput="actualizarNombreArchivo()"></div>
-      <div class="form-row"><label>Nombre</label><input type="text" id="cc-nombre" value="${v('nombre')}" placeholder="Juan" oninput="actualizarNombreArchivo()"></div>
-    </div>
-    <div class="form-row"><label>Descripción</label><input type="text" id="cc-desc" value="${v('desc')}" placeholder="Ej: Juego de dormitorio" oninput="actualizarNombreArchivo()"></div>
-    <div class="form-row"><label>Teléfono</label><input type="tel" id="cc-tel" value="${v('tel')}" placeholder="+54 266..."></div>
-    <div class="nombre-archivo" id="cc-nombre-archivo"><span>Nombre del archivo:</span>CC-${String(num).padStart(3,'0')}</div>
-  </div>
-  <div class="form-card"><h3>📦 Compras</h3>
-    <div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P. Unit</span><span>Total</span><span></span></div>
-    <div id="cc-compras"></div>
-    <div class="tabla-total"><span>TOTAL COMPRAS</span><span class="tv" id="cc-total-compras">$ 0</span></div>
-    <button class="add-row-btn" onclick="agregarFilaCompra()">＋ Agregar compra</button>
-  </div>
-  <div class="form-card"><h3>💳 Pagos</h3>
-    <div class="tabla-header pagos"><span>Fecha</span><span>Forma de pago</span><span>N° Recibo</span><span>Monto</span><span></span></div>
-    <div id="cc-pagos"></div>
-    <div class="tabla-total"><span>TOTAL PAGADO</span><span class="tv" id="cc-total-pagado">$ 0</span></div>
-    <button class="add-row-btn" onclick="agregarFilaPago()">＋ Agregar pago</button>
-  </div>
-  <div class="saldo-final" id="cc-saldo-box"><div class="sf-label">⚠ Saldo pendiente</div><div class="sf-val" id="cc-saldo">$ 0</div></div>
-  <div class="form-card"><h3>📝 Estado</h3>
-    <div class="form-row"><label>Estado</label>
-      <select id="cc-estado">${['Pendiente','Al día','Pagado','En mora'].map(e=>`<option${v('estado')==e?' selected':''}>${e}</option>`).join('')}</select>
-    </div>
-    <div class="form-row"><label>Notas</label><textarea id="cc-obs" placeholder="Notas...">${v('obs')}</textarea></div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
-    <button class="btn btn-primary" onclick="guardarCC(${num})">Guardar</button>
-  </div>`;
+<div class="form-grid">
+<div class="form-row readonly"><label>N° Cuenta</label><input type="text" value="${String(num).padStart(3,'0')}" readonly></div>
+<div class="form-row"><label>Fecha apertura</label><input type="date" id="cc-fecha" value="${v('fecha',hoy())}"></div>
+</div>
+<div class="form-grid">
+<div class="form-row"><label>Apellido</label><input type="text" id="cc-apellido" value="${v('apellido')}" placeholder="Pérez" oninput="actualizarNombreArchivo()"></div>
+<div class="form-row"><label>Nombre</label><input type="text" id="cc-nombre" value="${v('nombre')}" placeholder="Juan" oninput="actualizarNombreArchivo()"></div>
+</div>
+<div class="form-row"><label>Descripción</label><input type="text" id="cc-desc" value="${v('desc')}" placeholder="Ej: Juego de dormitorio" oninput="actualizarNombreArchivo()"></div>
+<div class="form-row"><label>Teléfono</label><input type="tel" id="cc-tel" value="${v('tel')}" placeholder="+54 266..."></div>
+<div class="nombre-archivo" id="cc-nombre-archivo"><span>Nombre del archivo:</span>CC-${String(num).padStart(3,'0')}</div>
+</div>
+<div class="form-card"><h3>📦 Compras</h3>
+<div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P. Unit</span><span>Total</span><span></span></div>
+<div id="cc-compras"></div>
+<div class="tabla-total"><span>TOTAL COMPRAS</span><span class="tv" id="cc-total-compras">$ 0</span></div>
+<button class="add-row-btn" onclick="agregarFilaCompra()">＋ Agregar compra</button>
+</div>
+<div class="form-card"><h3>💳 Pagos</h3>
+<div class="tabla-header pagos"><span>Fecha</span><span>Forma de pago</span><span>N° Recibo</span><span>Monto</span><span></span></div>
+<div id="cc-pagos"></div>
+<div class="tabla-total"><span>TOTAL PAGADO</span><span class="tv" id="cc-total-pagado">$ 0</span></div>
+<button class="add-row-btn" onclick="agregarFilaPago()">＋ Agregar pago</button>
+</div>
+<div class="saldo-final" id="cc-saldo-box"><div class="sf-label">⚠ Saldo pendiente</div><div class="sf-val" id="cc-saldo">$ 0</div></div>
+<div class="form-card"><h3>📝 Estado</h3>
+<div class="form-row"><label>Estado</label>
+<select id="cc-estado">${['Pendiente','Al día','Pagado','En mora'].map(e=>`<option${v('estado')==e?' selected':''}>${e}</option>`).join('')}</select>
+</div>
+<div class="form-row"><label>Notas</label><textarea id="cc-obs" placeholder="Notas...">${v('obs')}</textarea></div>
+</div>
+<div class="btn-row">
+<button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
+<button class="btn btn-primary" onclick="guardarCC(${num})">Guardar</button>
+</div>`;
 }
 
 function buildFormOT(num,item){
   const v=(f,d='')=>item?item[f]||d:d;
   return`<div class="form-card"><h3>🔧 Datos del cliente</h3>
-    <div class="form-grid">
-      <div class="form-row readonly"><label>N° Orden</label><input type="text" value="${String(num).padStart(3,'0')}" readonly></div>
-      <div class="form-row"><label>Fecha inicio</label><input type="date" id="ot-fecha" value="${v('fecha',hoy())}"></div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Apellido</label><input type="text" id="ot-apellido" value="${v('apellido')}" placeholder="Pérez" oninput="actualizarNombreArchivo()"></div>
-      <div class="form-row"><label>Nombre</label><input type="text" id="ot-nombre" value="${v('nombre')}" placeholder="Juan" oninput="actualizarNombreArchivo()"></div>
-    </div>
-    <div class="form-row"><label>Trabajo / descripción</label><input type="text" id="ot-desc" value="${v('desc')}" placeholder="Ej: Mueble para baño" oninput="actualizarNombreArchivo()"></div>
-    <div class="nombre-archivo" id="ot-nombre-archivo"><span>Nombre del archivo:</span>OT-${String(num).padStart(3,'0')}</div>
-  </div>
-  <div class="form-card"><h3>📐 Detalles de producción</h3>
-    <div class="form-grid">
-      <div class="form-row"><label>Operario</label><input type="text" id="ot-operario" value="${v('operario')}" placeholder="Nombre..."></div>
-      <div class="form-row"><label>Fecha entrega</label><input type="date" id="ot-entrega" value="${v('entrega')}"></div>
-    </div>
-    <div class="form-row"><label>Medidas / Dimensiones</label><input type="text" id="ot-medidas" value="${v('medidas')}" placeholder="Ej: 1.80 x 0.45 x 2.10 m"></div>
-    <div class="form-row"><label>Materiales</label><textarea id="ot-materiales" placeholder="Listado de materiales...">${v('materiales')}</textarea></div>
-    <div class="form-row"><label>Instrucciones especiales</label><textarea id="ot-instrucciones" placeholder="Detalles de producción, terminaciones, etc.">${v('instrucciones')}</textarea></div>
-    <div class="form-grid">
-      <div class="form-row"><label>Costo estimado ($)</label><input type="number" id="ot-costo" value="${v('costo')}" placeholder="0"></div>
-      <div class="form-row"><label>Prioridad</label>
-        <select id="ot-prioridad">${['Normal','Alta','Urgente','Baja'].map(e=>`<option${v('prioridad')==e?' selected':''}>${e}</option>`).join('')}</select>
-      </div>
-    </div>
-    <div class="form-grid">
-      <div class="form-row"><label>Estado</label>
-        <select id="ot-estado">${['Pendiente','En progreso','Terminado','Entregado','Cancelado'].map(e=>`<option${v('estado')==e?' selected':''}>${e}</option>`).join('')}</select>
-      </div>
-      <div class="form-row"><label>N° Presupuesto origen</label><input type="text" id="ot-presup-origen" value="${v('presupOrigen')}" placeholder="PRE-001..."></div>
-    </div>
-    <div class="form-row"><label>Notas adicionales</label><textarea id="ot-notas" placeholder="Observaciones...">${v('notas')}</textarea></div>
-  </div>
-  <div class="form-card"><h3>📷 Imagen / Plano</h3>
-    <input type="file" id="ot-img-input" accept="image/*" capture="environment" style="display:none" onchange="cargarImagen(this)">
-    <img id="img-preview" style="display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:8px">
-    <div class="img-upload-btn" onclick="document.getElementById('ot-img-input').click()">
-      📷 Sacar foto o elegir de galería
-    </div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
-    <button class="btn btn-primary" onclick="guardarOT(${num})">Guardar</button>
-  </div>`;
+<div class="form-grid">
+<div class="form-row readonly"><label>N° Orden</label><input type="text" value="${String(num).padStart(3,'0')}" readonly></div>
+<div class="form-row"><label>Fecha inicio</label><input type="date" id="ot-fecha" value="${v('fecha',hoy())}"></div>
+</div>
+<div class="form-grid">
+<div class="form-row"><label>Apellido</label><input type="text" id="ot-apellido" value="${v('apellido')}" placeholder="Pérez" oninput="actualizarNombreArchivo()"></div>
+<div class="form-row"><label>Nombre</label><input type="text" id="ot-nombre" value="${v('nombre')}" placeholder="Juan" oninput="actualizarNombreArchivo()"></div>
+</div>
+<div class="form-row"><label>Trabajo / descripción</label><input type="text" id="ot-desc" value="${v('desc')}" placeholder="Ej: Mueble para baño" oninput="actualizarNombreArchivo()"></div>
+<div class="nombre-archivo" id="ot-nombre-archivo"><span>Nombre del archivo:</span>OT-${String(num).padStart(3,'0')}</div>
+</div>
+<div class="form-card"><h3>📐 Detalles de producción</h3>
+<div class="form-grid">
+<div class="form-row"><label>Operario</label><input type="text" id="ot-operario" value="${v('operario')}" placeholder="Nombre..."></div>
+<div class="form-row"><label>Fecha entrega</label><input type="date" id="ot-entrega" value="${v('entrega')}"></div>
+</div>
+<div class="form-row"><label>Medidas / Dimensiones</label><input type="text" id="ot-medidas" value="${v('medidas')}" placeholder="Ej: 1.80 x 0.45 x 2.10 m"></div>
+<div class="form-row"><label>Materiales</label><textarea id="ot-materiales" placeholder="Listado de materiales...">${v('materiales')}</textarea></div>
+<div class="form-row"><label>Instrucciones especiales</label><textarea id="ot-instrucciones" placeholder="Detalles de producción, terminaciones, etc.">${v('instrucciones')}</textarea></div>
+<div class="form-grid">
+<div class="form-row"><label>Costo estimado ($)</label><input type="number" id="ot-costo" value="${v('costo')}" placeholder="0"></div>
+<div class="form-row"><label>Prioridad</label>
+<select id="ot-prioridad">${['Normal','Alta','Urgente','Baja'].map(e=>`<option${v('prioridad')==e?' selected':''}>${e}</option>`).join('')}</select>
+</div>
+</div>
+<div class="form-grid">
+<div class="form-row"><label>Estado</label>
+<select id="ot-estado">${['Pendiente','En progreso','Terminado','Entregado','Cancelado'].map(e=>`<option${v('estado')==e?' selected':''}>${e}</option>`).join('')}</select>
+</div>
+<div class="form-row"><label>N° Presupuesto origen</label><input type="text" id="ot-presup-origen" value="${v('presupOrigen')}" placeholder="PRE-001..."></div>
+</div>
+<div class="form-row"><label>Notas adicionales</label><textarea id="ot-notas" placeholder="Observaciones...">${v('notas')}</textarea></div>
+</div>
+<div class="form-card"><h3>📷 Imagen / Plano</h3>
+<input type="file" id="ot-img-input" accept="image/*" capture="environment" style="display:none" onchange="cargarImagen(this)">
+<img id="img-preview" style="display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:8px">
+<div class="img-upload-btn" onclick="document.getElementById('ot-img-input').click()">
+📷 Sacar foto o elegir de galería
+</div>
+</div>
+<div class="btn-row">
+<button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
+<button class="btn btn-primary" onclick="guardarOT(${num})">Guardar</button>
+</div>`;
 }
 
 function cargarImagen(input){
@@ -565,6 +654,7 @@ function actualizarNombreArchivo(){
 
 // ══ FILAS DINÁMICAS ══
 let fiIdx=0,fcIdx=0,fpIdx=0;
+
 function agregarFilaPresup(data){
   const i=fiIdx++;
   const cont=document.getElementById('fp-items');
@@ -573,14 +663,15 @@ function agregarFilaPresup(data){
   const div=document.createElement('div');
   div.className='tabla-fila compras'; div.id=`fpi-${i}`;
   div.innerHTML=`<input type="date" class="fpi-fecha" value="${d.fecha||hoy()}">
-    <input type="text" class="fpi-desc" placeholder="Descripción..." value="${d.desc||''}">
-    <input type="number" class="fpi-cant" placeholder="1" value="${d.cant||''}" oninput="calcPresup()">
-    <input type="number" class="fpi-precio" placeholder="0" value="${d.precio||''}" oninput="calcPresup()">
-    <span class="total-cell fpi-total">${d.cant&&d.precio?fmt(d.cant*d.precio):'—'}</span>
-    <button class="del-btn" onclick="document.getElementById('fpi-${i}').remove();calcPresup()">✕</button>`;
+<input type="text" class="fpi-desc" placeholder="Descripción..." value="${d.desc||''}">
+<input type="number" class="fpi-cant" placeholder="1" value="${d.cant||''}" oninput="calcPresup()">
+<input type="number" class="fpi-precio" placeholder="0" value="${d.precio||''}" oninput="calcPresup()">
+<span class="total-cell fpi-total">${d.cant&&d.precio?fmt(d.cant*d.precio):'—'}</span>
+<button class="del-btn" onclick="document.getElementById('fpi-${i}').remove();calcPresup()">✕</button>`;
   cont.appendChild(div);
   calcPresup();
 }
+
 function calcPresup(){
   let t=0;
   document.querySelectorAll('#fp-items .tabla-fila').forEach(r=>{
@@ -589,7 +680,10 @@ function calcPresup(){
     const tot=c*p; r.querySelector('.fpi-total').textContent=tot>0?fmt(tot):'—'; t+=tot;
   });
   const el=document.getElementById('fp-total'); if(el)el.textContent=fmt(t);
+  // Actualizar cálculo de cuotas si está activo
+  if(document.getElementById('fp-condpago')?.value==='cc') actualizarCondPago();
 }
+
 function agregarFilaCompra(data){
   const i=fcIdx++;
   const cont=document.getElementById('cc-compras'); if(!cont)return;
@@ -597,13 +691,14 @@ function agregarFilaCompra(data){
   const div=document.createElement('div');
   div.className='tabla-fila compras'; div.id=`fcc-${i}`;
   div.innerHTML=`<input type="date" class="fcc-fecha" value="${d.fecha||hoy()}">
-    <input type="text" class="fcc-desc" placeholder="Producto..." value="${d.desc||''}">
-    <input type="number" class="fcc-cant" placeholder="1" value="${d.cant||''}" oninput="calcCC()">
-    <input type="number" class="fcc-precio" placeholder="0" value="${d.precio||''}" oninput="calcCC()">
-    <span class="total-cell fcc-total">${d.cant&&d.precio?fmt(d.cant*d.precio):'—'}</span>
-    <button class="del-btn" onclick="document.getElementById('fcc-${i}').remove();calcCC()">✕</button>`;
+<input type="text" class="fcc-desc" placeholder="Producto..." value="${d.desc||''}">
+<input type="number" class="fcc-cant" placeholder="1" value="${d.cant||''}" oninput="calcCC()">
+<input type="number" class="fcc-precio" placeholder="0" value="${d.precio||''}" oninput="calcCC()">
+<span class="total-cell fcc-total">${d.cant&&d.precio?fmt(d.cant*d.precio):'—'}</span>
+<button class="del-btn" onclick="document.getElementById('fcc-${i}').remove();calcCC()">✕</button>`;
   cont.appendChild(div); calcCC();
 }
+
 function agregarFilaPago(data){
   const i=fpIdx++;
   const cont=document.getElementById('cc-pagos'); if(!cont)return;
@@ -611,12 +706,13 @@ function agregarFilaPago(data){
   const div=document.createElement('div');
   div.className='tabla-fila pagos'; div.id=`fcp-${i}`;
   div.innerHTML=`<input type="date" class="fcp-fecha" value="${d.fecha||hoy()}">
-    <input type="text" class="fcp-forma" placeholder="Efectivo / Transf..." value="${d.forma||''}">
-    <input type="text" class="fcp-recibo" placeholder="001" value="${d.recibo||''}">
-    <input type="number" class="fcp-monto" placeholder="0" value="${d.monto||''}" oninput="calcCC()">
-    <button class="del-btn" onclick="document.getElementById('fcp-${i}').remove();calcCC()">✕</button>`;
+<input type="text" class="fcp-forma" placeholder="Efectivo / Transf..." value="${d.forma||''}">
+<input type="text" class="fcp-recibo" placeholder="001" value="${d.recibo||''}">
+<input type="number" class="fcp-monto" placeholder="0" value="${d.monto||''}" oninput="calcCC()">
+<button class="del-btn" onclick="document.getElementById('fcp-${i}').remove();calcCC()">✕</button>`;
   cont.appendChild(div); calcCC();
 }
+
 function calcCC(){
   let tc=0;
   document.querySelectorAll('#cc-compras .tabla-fila').forEach(r=>{
@@ -644,13 +740,14 @@ function guardarPresup(num){
   const no=document.getElementById('fp-nombre')?.value||'';
   const de=document.getElementById('fp-desc')?.value||'';
   const estado=document.getElementById('fp-estado')?.value||'Pendiente';
-  const obj={id:formId||Date.now(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',nombreArchivo:nomArchivo('presupuestos',num,ap,no,de)};
+  const condPago=document.getElementById('fp-condpago')?.value||'contado';
+  const perfilCC=document.getElementById('fp-perfil')?.value||'sinHistorial';
+  const obj={id:formId||Date.now(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',condPago,perfilCC,nombreArchivo:nomArchivo('presupuestos',num,ap,no,de)};
   const lista=DB.get('presupuestos');
   if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0)lista[idx]=obj;else lista.push(obj);}
   else lista.push(obj);
   DB.set('presupuestos',lista);
   fiIdx=0;
-  // Si aprobado, ofrecer crear OT
   if(estado==='Aprobado'){
     if(confirm('✅ Presupuesto Aprobado\n¿Crear Orden de Trabajo automáticamente?')){
       crearOTdesdePresup(obj);
@@ -666,7 +763,6 @@ function crearOTdesdePresup(presup){
   const obj={id:Date.now(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:presup.total||0,prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:'',presupOrigen:presup.nombreArchivo,nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:''};
   const lista=DB.get('ordenes'); lista.push(obj); DB.set('ordenes',lista);
   volverDeForm(); actualizarStats();
-  // Abrir la OT para completar detalles
   setTimeout(()=>{irA('ordenes');setTimeout(()=>verDetalle('ordenes',obj.id),300);},300);
 }
 
@@ -704,6 +800,7 @@ function guardarOT(num){
 
 // ══ DETALLE ══
 let detalleActual={tipo:'',id:0};
+
 function verDetalle(tipo,id){
   detalleActual={tipo,id};
   const item=DB.get(tipo).find(i=>i.id===id);
@@ -711,29 +808,61 @@ function verDetalle(tipo,id){
   document.getElementById('detalle-titulo').textContent=`${pre(tipo)}-${String(item.num).padStart(3,'0')}`;
   const sem=calcSemaforo(item,tipo);
   let html=`<div class="detalle-header">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div class="dh-codigo">${item.nombreArchivo||''}</div>
-      <div class="semaforo-dot sem-${sem}" style="position:static;width:14px;height:14px;flex-shrink:0;margin-top:2px"></div>
-    </div>
-    <div class="dh-nombre">${item.apellido||''} ${item.nombre||''}</div>
-    <div class="dh-desc">${item.desc||''}</div>
-    <div class="dh-footer">
-      <span class="dh-fecha">📅 ${fmtF(item.fecha)}</span>
-      <span class="item-badge ${badgeClass(item.estado)}">${item.estado||'Pendiente'}</span>
-    </div>
-    ${item.tel?`<div style="margin-top:8px;font-size:13px;color:var(--gris)">📱 ${item.tel}</div>`:''}
-  </div>`;
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div class="dh-codigo">${item.nombreArchivo||''}</div>
+<div class="semaforo-dot sem-${sem}" style="position:static;width:14px;height:14px;flex-shrink:0;margin-top:2px"></div>
+</div>
+<div class="dh-nombre">${item.apellido||''} ${item.nombre||''}</div>
+<div class="dh-desc">${item.desc||''}</div>
+<div class="dh-footer">
+<span class="dh-fecha">📅 ${fmtF(item.fecha)}</span>
+<span class="item-badge ${badgeClass(item.estado)}">${item.estado||'Pendiente'}</span>
+</div>
+${item.tel?`<div style="margin-top:8px;font-size:13px;color:var(--gris)">📱 ${item.tel}</div>`:''}
+</div>`;
 
   if(tipo==='presupuestos'&&item.items?.length){
     html+=`<div class="form-card"><h3>📦 Ítems</h3>
-      <div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P.Unit</span><span>Total</span><span></span></div>`;
+<div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P.Unit</span><span>Total</span><span></span></div>`;
     item.items.forEach(it=>{
       html+=`<div class="tabla-fila compras" style="pointer-events:none">
-        <span style="font-size:11px">${fmtF(it.fecha)}</span><span style="font-size:12px">${it.desc}</span>
-        <span style="font-size:12px;text-align:right">${it.cant}</span><span style="font-size:12px;text-align:right">${fmt(it.precio)}</span>
-        <span class="total-cell">${fmt(it.cant*it.precio)}</span><span></span></div>`;
+<span style="font-size:11px">${fmtF(it.fecha)}</span><span style="font-size:12px">${it.desc}</span>
+<span style="font-size:12px;text-align:right">${it.cant}</span><span style="font-size:12px;text-align:right">${fmt(it.precio)}</span>
+<span class="total-cell">${fmt(it.cant*it.precio)}</span><span></span></div>`;
     });
     html+=`<div class="tabla-total"><span>TOTAL</span><span class="tv">${fmt(item.total)}</span></div></div>`;
+
+    // Condición de pago en detalle
+    if(item.condPago){
+      if(item.condPago==='contado'){
+        html+=`<div class="form-card"><h3>💳 Condición de pago</h3>
+<div style="display:flex;align-items:center;gap:8px;font-size:14px"><span style="font-size:20px">💵</span><strong>Contado</strong></div>
+</div>`;
+      } else if(item.condPago==='cc'){
+        const tasa=TASAS_CC[item.perfilCC||'sinHistorial']||TASAS_CC.sinHistorial;
+        const totalConInteres=item.total*(1+tasa.pct/100);
+        const cuota=totalConInteres/3;
+        html+=`<div class="form-card"><h3>💳 Condición de pago</h3>
+<div class="cond-pago-box">
+<div class="cp-titulo">Cuenta corriente · ${tasa.label} · ${tasa.pct}% total</div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+<span style="color:var(--gris)">Total sin interés:</span><span style="font-weight:600">${fmt(item.total)}</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px">
+<span style="color:var(--gris)">Interés (${tasa.pct}%):</span><span style="font-weight:600;color:var(--azul)">${fmt(totalConInteres-item.total)}</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:10px;padding-top:8px;border-top:1px solid #b8d0e8">
+<span>Total a pagar:</span><span style="color:var(--azul)">${fmt(totalConInteres)}</span>
+</div>
+<div class="cuotas-grid">
+<div class="cuota-item"><div class="ci-num">Cuota 1</div><div class="ci-val">${fmt(cuota)}</div><div class="ci-sub">mes 1</div></div>
+<div class="cuota-item"><div class="ci-num">Cuota 2</div><div class="ci-val">${fmt(cuota)}</div><div class="ci-sub">mes 2</div></div>
+<div class="cuota-item"><div class="ci-num">Cuota 3</div><div class="ci-val">${fmt(cuota)}</div><div class="ci-sub">mes 3</div></div>
+</div>
+</div></div>`;
+      }
+    }
+
     if(item.prioridad)html+=`<div class="form-card"><h3>📋 Info</h3><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:13px;color:var(--gris)">Prioridad: <strong>${item.prioridad}</strong></span></div>${item.obs?`<p style="font-size:13px;color:var(--gris);margin-top:8px">${item.obs}</p>`:''}</div>`;
   }
 
@@ -743,18 +872,18 @@ function verDetalle(tipo,id){
     const saldo=tc-tp;
     if(item.compras?.length){
       html+=`<div class="form-card"><h3>📦 Compras</h3>
-        <div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P.Unit</span><span>Total</span><span></span></div>`;
+<div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P.Unit</span><span>Total</span><span></span></div>`;
       item.compras.forEach(c=>{html+=`<div class="tabla-fila compras" style="pointer-events:none"><span style="font-size:11px">${fmtF(c.fecha)}</span><span style="font-size:12px">${c.desc}</span><span style="font-size:12px;text-align:right">${c.cant}</span><span style="font-size:12px;text-align:right">${fmt(c.precio)}</span><span class="total-cell">${fmt(c.cant*c.precio)}</span><span></span></div>`;});
       html+=`<div class="tabla-total"><span>TOTAL COMPRAS</span><span class="tv">${fmt(tc)}</span></div></div>`;
     }
     if(item.pagos?.length){
       html+=`<div class="form-card"><h3>💳 Pagos</h3>
-        <div class="tabla-header pagos"><span>Fecha</span><span>Forma</span><span>Recibo</span><span>Monto</span><span></span></div>`;
+<div class="tabla-header pagos"><span>Fecha</span><span>Forma</span><span>Recibo</span><span>Monto</span><span></span></div>`;
       item.pagos.forEach(p=>{html+=`<div class="tabla-fila pagos" style="pointer-events:none"><span style="font-size:11px">${fmtF(p.fecha)}</span><span style="font-size:12px">${p.forma}</span><span style="font-size:12px;text-align:right">${p.recibo}</span><span class="total-cell">${fmt(p.monto)}</span><span></span></div>`;});
       html+=`<div class="tabla-total"><span>TOTAL PAGADO</span><span class="tv">${fmt(tp)}</span></div></div>`;
     }
     html+=`<div class="resumen-box"><div class="res-row compras"><span class="rl">Total compras</span><span class="rv">${fmt(tc)}</span></div><div class="res-row pagado"><span class="rl">Total pagado</span><span class="rv">${fmt(tp)}</span></div></div>
-    <div class="saldo-final" style="background:${saldo<=0?'var(--verde2)':'var(--rojo)'}"><div class="sf-label">${saldo<=0?'✅ Saldado':'⚠ Saldo pendiente'}</div><div class="sf-val">${fmt(Math.abs(saldo))}</div></div>`;
+<div class="saldo-final" style="background:${saldo<=0?'var(--verde2)':'var(--rojo)'}"><div class="sf-label">${saldo<=0?'✅ Saldado':'⚠ Saldo pendiente'}</div><div class="sf-val">${fmt(Math.abs(saldo))}</div></div>`;
   }
 
   if(tipo==='ordenes'){
@@ -773,11 +902,10 @@ function verDetalle(tipo,id){
   }
 
   html+=`<div class="btn-row">
-    <button class="btn btn-danger" onclick="eliminarItem('${tipo}',${id})">🗑</button>
-    <button class="btn btn-secondary" onclick="abrirForm('${tipo}',${id})">✏️ Editar</button>
-    <button class="btn btn-pdf" onclick="imprimirItem('${tipo}',${id})">🖨 PDF</button>
-  </div>`;
-
+<button class="btn btn-danger" onclick="eliminarItem('${tipo}',${id})">🗑</button>
+<button class="btn btn-secondary" onclick="abrirForm('${tipo}',${id})">✏️ Editar</button>
+<button class="btn btn-pdf" onclick="imprimirItem('${tipo}',${id})">🖨 PDF</button>
+</div>`;
   document.getElementById('detalle-content').innerHTML=html;
   mostrarDetalle();
 }
@@ -788,49 +916,77 @@ function eliminarItem(tipo,id){
   DB.set(tipo,lista); volverDeDetalle(); actualizarStats();
 }
 
-// ══ PDF INDIVIDUAL ══
+// ══ PDF INDIVIDUAL — CORREGIDO ══
 function imprimirItem(tipo,id){
   const item=DB.get(tipo).find(i=>i.id===id);
   if(!item)return;
   const pa=document.getElementById('print-area');
+
   let html=`<style>
-    body{font-family:Arial,sans-serif;color:#2a1a0a;margin:0;padding:0;}
-    .ph{background:#4A2C0A;padding:24px 32px;display:flex;align-items:center;gap:16px;}
-    .ph-logo{width:48px;height:48px;background:#C4621A;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:#fff;}
-    .ph h1{color:#fff;font-size:22px;margin:0;font-family:'Times New Roman',serif;}
-    .ph p{color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 0;}
-    .badge{background:#F5E8D5;padding:8px 16px;border-radius:4px;text-align:center;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#C4621A;margin-left:auto;}
-    .section{padding:20px 32px;}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-bottom:16px;}
-    .field label{font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:.8px;color:#888;display:block;margin-bottom:3px;}
-    .field span{font-size:14px;color:#2a1a0a;}
-    table{width:100%;border-collapse:collapse;margin-bottom:8px;}
-    thead th{background:#4A2C0A;color:#fff;padding:8px 10px;font-size:11px;text-align:left;}
-    tbody tr:nth-child(even){background:#FDF6EE;}
-    tbody td{padding:7px 10px;font-size:12px;border-bottom:1px solid #F0E0C8;}
-    .total-bar{background:#4A2C0A;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;font-weight:bold;font-size:14px;}
-    .saldo-bar{background:#9B1C1C;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;font-weight:bold;font-size:18px;border-radius:6px;margin:12px 0;}
-    .footer{background:#F5E8D5;padding:12px 32px;text-align:center;font-size:11px;color:#888;border-top:2px solid #EDD8BC;}
-    img.plano{max-width:100%;border-radius:8px;}
-  </style>
-  <div class="ph">
-    <div class="ph-logo">MC</div>
-    <div><h1>La Mueblería Conca</h1><p>Concarán, San Luis, Argentina · @lamuebleriaconca</p></div>
-    <div class="badge">${pre(tipo)}<br>${String(item.num).padStart(3,'0')}</div>
-  </div>
-  <div class="section">
-    <div class="grid">
-      <div class="field"><label>Cliente</label><span>${item.apellido||''} ${item.nombre||''}</span></div>
-      <div class="field"><label>Fecha</label><span>${fmtF(item.fecha)}</span></div>
-      ${item.tel?`<div class="field"><label>Teléfono</label><span>${item.tel}</span></div>`:''}
-      ${item.desc?`<div class="field"><label>Descripción</label><span>${item.desc}</span></div>`:''}
-      <div class="field"><label>Estado</label><span>${item.estado||'Pendiente'}</span></div>
-    </div>`;
+body{font-family:Arial,sans-serif;color:#2a1a0a;margin:0;padding:0;}
+.ph{background:#4A2C0A;padding:24px 32px;display:flex;align-items:center;gap:16px;}
+.ph-logo{width:48px;height:48px;background:#C4621A;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:#fff;}
+.ph h1{color:#fff;font-size:22px;margin:0;font-family:'Times New Roman',serif;}
+.ph p{color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 0;}
+.badge{background:#F5E8D5;padding:8px 16px;border-radius:4px;text-align:center;font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#C4621A;margin-left:auto;}
+.section{padding:20px 32px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-bottom:16px;}
+.field label{font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:.8px;color:#888;display:block;margin-bottom:3px;}
+.field span{font-size:14px;color:#2a1a0a;}
+table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+thead th{background:#4A2C0A;color:#fff;padding:8px 10px;font-size:11px;text-align:left;}
+tbody tr:nth-child(even){background:#FDF6EE;}
+tbody td{padding:7px 10px;font-size:12px;border-bottom:1px solid #F0E0C8;}
+.total-bar{background:#4A2C0A;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;font-weight:bold;font-size:14px;}
+.saldo-bar{background:#9B1C1C;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;font-weight:bold;font-size:18px;border-radius:6px;margin:12px 0;}
+.cond-box{background:#EEF4FB;border:1px solid #b8d0e8;border-radius:8px;padding:14px;margin:12px 0;}
+.cond-box h4{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.8px;color:#1A3A5C;margin:0 0 10px;}
+.cuotas-fila{display:flex;gap:8px;margin-top:8px;}
+.cuota-box{flex:1;background:#fff;border:1px solid #b8d0e8;border-radius:6px;padding:8px;text-align:center;}
+.cuota-box .cl{font-size:10px;color:#666;}
+.cuota-box .cv{font-size:14px;font-weight:bold;color:#1A3A5C;}
+.footer{background:#F5E8D5;padding:12px 32px;text-align:center;font-size:11px;color:#888;border-top:2px solid #EDD8BC;}
+img.plano{max-width:100%;border-radius:8px;}
+</style>
+<div class="ph">
+<div class="ph-logo">MC</div>
+<div><h1>La Mueblería Conca</h1><p>Concarán, San Luis, Argentina · @lamuebleriaconca</p></div>
+<div class="badge">${pre(tipo)}<br>${String(item.num).padStart(3,'0')}</div>
+</div>
+<div class="section">
+<div class="grid">
+<div class="field"><label>Cliente</label><span>${item.apellido||''} ${item.nombre||''}</span></div>
+<div class="field"><label>Fecha</label><span>${fmtF(item.fecha)}</span></div>
+${item.tel?`<div class="field"><label>Teléfono</label><span>${item.tel}</span></div>`:''}
+${item.desc?`<div class="field"><label>Descripción</label><span>${item.desc}</span></div>`:''}
+<div class="field"><label>Estado</label><span>${item.estado||'Pendiente'}</span></div>
+</div>`;
 
   if(tipo==='presupuestos'&&item.items?.length){
     html+=`<table><thead><tr><th>Fecha</th><th>Descripción</th><th>Cant</th><th>P. Unit</th><th>Total</th></tr></thead><tbody>`;
     item.items.forEach(it=>{html+=`<tr><td>${fmtF(it.fecha)}</td><td>${it.desc}</td><td style="text-align:right">${it.cant}</td><td style="text-align:right">${fmt(it.precio)}</td><td style="text-align:right;font-weight:bold">${fmt(it.cant*it.precio)}</td></tr>`;});
     html+=`</tbody></table><div class="total-bar"><span>TOTAL PRESUPUESTO</span><span>${fmt(item.total)}</span></div>`;
+
+    // Condición de pago en PDF
+    if(item.condPago==='contado'){
+      html+=`<div class="cond-box"><h4>💳 Condición de pago</h4><p style="font-size:13px;font-weight:bold">💵 Contado</p></div>`;
+    } else if(item.condPago==='cc'){
+      const tasa=TASAS_CC[item.perfilCC||'sinHistorial']||TASAS_CC.sinHistorial;
+      const totalConInteres=item.total*(1+tasa.pct/100);
+      const cuota=totalConInteres/3;
+      html+=`<div class="cond-box">
+<h4>💳 Cuenta Corriente — ${tasa.label} — ${tasa.pct}% interés total</h4>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Total sin interés:</span><span style="font-weight:bold">${fmt(item.total)}</span></div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px"><span>Interés (${tasa.pct}%):</span><span style="font-weight:bold;color:#1A3A5C">${fmt(totalConInteres-item.total)}</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;padding-top:8px;border-top:1px solid #b8d0e8;margin-bottom:10px"><span>Total a pagar:</span><span style="color:#1A3A5C">${fmt(totalConInteres)}</span></div>
+<div class="cuotas-fila">
+<div class="cuota-box"><div class="cl">Cuota 1 — mes 1</div><div class="cv">${fmt(cuota)}</div></div>
+<div class="cuota-box"><div class="cl">Cuota 2 — mes 2</div><div class="cv">${fmt(cuota)}</div></div>
+<div class="cuota-box"><div class="cl">Cuota 3 — mes 3</div><div class="cv">${fmt(cuota)}</div></div>
+</div>
+</div>`;
+    }
+
     if(item.obs)html+=`<p style="font-size:12px;color:#888;margin-top:12px">${item.obs}</p>`;
   }
 
@@ -867,15 +1023,21 @@ function imprimirItem(tipo,id){
   }
 
   html+=`</div><div class="footer">La Mueblería Conca · Concarán, San Luis, Argentina · @lamuebleriaconca</div>`;
+
   pa.innerHTML=html;
-  window.print();
-  setTimeout(()=>{pa.innerHTML='';},1000);
+  // Forzar visibilidad antes de imprimir
+  pa.style.display='block';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{pa.innerHTML='';pa.style.display='';},500);
+  },150);
 }
 
 // ══ BANCO DE HORAS ══
 const HORAS_DIA=8;
 const DIAS_SEMANA=['Lun','Mar','Mié','Jue','Vie','Sáb'];
 let horasWeekOffset=0,horasEmpleado='',horasDiaActivo=null;
+
 function timeToMins(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
 function minsToHHMM(mins){const sign=mins<0?'-':'+';const abs=Math.abs(mins);const h=Math.floor(abs/60);const m=abs%60;return`${sign}${h}h ${String(m).padStart(2,'0')}m`;}
 function calcBalanceDia(d){if(!d)return 0;if(d.ausente)return-HORAS_DIA*60;let w=0;const i=timeToMins(d.entrada),o=timeToMins(d.salida);if(i!==null&&o!==null&&o>i)w+=o-i;const ei=timeToMins(d.extraInicio),eo=timeToMins(d.extraFin);if(ei!==null&&eo!==null&&eo>ei)w+=eo-ei;return w-HORAS_DIA*60;}
@@ -884,6 +1046,7 @@ function fmtD(date){return date.toLocaleDateString('es-AR',{day:'2-digit',month:
 function getEmpleados(){return DB.get('empleados_horas')||[];}
 function getHorasData(emp,wk){return DB.get(`horas_${emp}_${wk}`)||DIAS_SEMANA.map(()=>({entrada:'',salida:'',extraInicio:'',extraFin:'',ausente:false,nota:''}));}
 function saveHorasData(emp,wk,data){DB.set(`horas_${emp}_${wk}`,data);}
+
 function renderHoras(){
   const empleados=getEmpleados();
   if(!horasEmpleado&&empleados.length>0)horasEmpleado=empleados[0];
@@ -893,75 +1056,341 @@ function renderHoras(){
   const weekBalance=weekData.reduce((acc,d)=>acc+calcBalanceDia(d),0);
   let totalBalance=0;
   if(horasEmpleado){Object.keys(localStorage).filter(k=>k.startsWith(`mc_horas_${horasEmpleado}_`)).forEach(k=>{try{const data=JSON.parse(localStorage.getItem(k)||'[]');data.forEach(d=>{totalBalance+=calcBalanceDia(d);});}catch(e){}});}
+
   let html=`<div style="background:var(--marron);border-radius:14px;padding:16px;margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-family:'Playfair Display',serif;color:#fff;font-size:16px">Operarios</div>
-      <button onclick="agregarEmpleado()" style="background:var(--naranja);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">+ Agregar</button>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${empleados.length===0?'<p style="color:rgba(255,255,255,.4);font-size:13px">No hay operarios.</p>':empleados.map(e=>`<button onclick="selEmpleado('${e}')" style="padding:6px 14px;border-radius:20px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:${e===horasEmpleado?'var(--naranja)':'rgba(255,255,255,.15)'};color:#fff">${e}</button>`).join('')}
-    </div></div>`;
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div style="font-family:'Playfair Display',serif;color:#fff;font-size:16px">Operarios</div>
+<button onclick="agregarEmpleado()" style="background:var(--naranja);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">+ Agregar</button>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+${empleados.length===0?'<p style="color:rgba(255,255,255,.4);font-size:13px">No hay operarios.</p>':empleados.map(e=>`<button onclick="selEmpleado('${e}')" style="padding:6px 14px;border-radius:20px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:${e===horasEmpleado?'var(--naranja)':'rgba(255,255,255,.15)'};color:#fff">${e}</button>`).join('')}
+</div></div>`;
+
   if(!horasEmpleado){html+=`<div class="empty-state"><div class="e-ico">⏱</div><p>Agregá un operario para empezar.</p></div>`;document.getElementById('horas-content').innerHTML=html;return;}
+
   html+=`<div style="background:var(--blanco);border-radius:14px;padding:14px;box-shadow:var(--sombra);margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <button onclick="horasWeekOffset--;renderHoras()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">←</button>
-      <div style="text-align:center"><div style="font-size:13px;font-weight:600;color:var(--marron)">${fmtD(weekDates[0])} — ${fmtD(weekDates[5])}</div>${horasWeekOffset===0?'<div style="font-size:11px;color:var(--naranja)">semana actual</div>':''}</div>
-      <button onclick="horasWeekOffset++;renderHoras()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">→</button>
-    </div></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-    ${DIAS_SEMANA.map((dia,i)=>{const d=weekData[i];const bal=calcBalanceDia(d);const isActive=horasDiaActivo===i;return`<div onclick="toggleDiaActivo(${i})" style="background:${isActive?'var(--crema2)':d.ausente?'#fff0f0':'var(--blanco)'};border:2px solid ${isActive?'var(--naranja)':d.ausente?'#ffcccc':'var(--crema3)'};border-radius:12px;padding:10px;cursor:pointer">
-      <div style="font-weight:700;font-size:13px;color:var(--marron)">${dia}</div>
-      <div style="font-size:11px;color:var(--gris)">${fmtD(weekDates[i])}</div>
-      ${d.ausente?'<div style="font-size:11px;color:var(--rojo);margin-top:4px">⛔ Ausente</div>':d.entrada?`<div style="font-size:11px;color:var(--gris);margin-top:4px">${d.entrada}→${d.salida||'?'}</div>`:'<div style="font-size:11px;color:#ccc;margin-top:4px">Sin registrar</div>'}
-      ${(d.entrada||d.ausente)?`<div style="font-size:11px;font-weight:700;margin-top:3px;color:${bal>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(bal)}</div>`:''}
-    </div>`;}).join('')}
-  </div>`;
+<div style="display:flex;justify-content:space-between;align-items:center">
+<button onclick="horasWeekOffset--;renderHoras()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">←</button>
+<div style="text-align:center"><div style="font-size:13px;font-weight:600;color:var(--marron)">${fmtD(weekDates[0])} — ${fmtD(weekDates[5])}</div>${horasWeekOffset===0?'<div style="font-size:11px;color:var(--naranja)">semana actual</div>':''}</div>
+<button onclick="horasWeekOffset++;renderHoras()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">→</button>
+</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+${DIAS_SEMANA.map((dia,i)=>{const d=weekData[i];const bal=calcBalanceDia(d);const isActive=horasDiaActivo===i;return`<div onclick="toggleDiaActivo(${i})" style="background:${isActive?'var(--crema2)':d.ausente?'#fff0f0':'var(--blanco)'};border:2px solid ${isActive?'var(--naranja)':d.ausente?'#ffcccc':'var(--crema3)'};border-radius:12px;padding:10px;cursor:pointer">
+<div style="font-weight:700;font-size:13px;color:var(--marron)">${dia}</div>
+<div style="font-size:11px;color:var(--gris)">${fmtD(weekDates[i])}</div>
+${d.ausente?'<div style="font-size:11px;color:var(--rojo);margin-top:4px">⛔ Ausente</div>':d.entrada?`<div style="font-size:11px;color:var(--gris);margin-top:4px">${d.entrada}→${d.salida||'?'}</div>`:'<div style="font-size:11px;color:#ccc;margin-top:4px">Sin registrar</div>'}
+${(d.entrada||d.ausente)?`<div style="font-size:11px;font-weight:700;margin-top:3px;color:${bal>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(bal)}</div>`:''}
+</div>`;}).join('')}
+</div>`;
+
   if(horasDiaActivo!==null){
     const d=weekData[horasDiaActivo];
     html+=`<div style="background:var(--blanco);border-radius:14px;padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
-      <div style="font-family:'Playfair Display',serif;font-size:15px;color:var(--marron);margin-bottom:14px">${DIAS_SEMANA[horasDiaActivo]} ${fmtD(weekDates[horasDiaActivo])}</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <span style="font-size:12px;font-weight:600;color:var(--marron2)">Ausente</span>
-        <button onclick="updateHorasDia(${horasDiaActivo},'ausente',${!d.ausente},'${weekKey}')" style="width:44px;height:24px;border-radius:12px;border:none;background:${d.ausente?'var(--rojo)':'#ddd'};position:relative;cursor:pointer">
-          <div style="position:absolute;top:3px;left:${d.ausente?'23px':'3px'};width:18px;height:18px;border-radius:50%;background:white"></div>
-        </button>
-      </div>
-      ${!d.ausente?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-        <div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Entrada</label>
-          <input type="time" value="${d.entrada}" onchange="updateHorasDia(${horasDiaActivo},'entrada',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--marron);background:var(--crema);outline:none"></div>
-        <div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Salida</label>
-          <input type="time" value="${d.salida}" onchange="updateHorasDia(${horasDiaActivo},'salida',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--marron);background:var(--crema);outline:none"></div>
-        <div><label style="font-size:10px;font-weight:600;color:var(--naranja);text-transform:uppercase;display:block;margin-bottom:4px">Inicio extra</label>
-          <input type="time" value="${d.extraInicio}" onchange="updateHorasDia(${horasDiaActivo},'extraInicio',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--marron);background:var(--crema);outline:none"></div>
-        <div><label style="font-size:10px;font-weight:600;color:var(--naranja);text-transform:uppercase;display:block;margin-bottom:4px">Fin extra</label>
-          <input type="time" value="${d.extraFin}" onchange="updateHorasDia(${horasDiaActivo},'extraFin',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--marron);background:var(--crema);outline:none"></div>
-      </div>`:''}
-      <textarea onchange="updateHorasDia(${horasDiaActivo},'nota',this.value,'${weekKey}')" placeholder="Nota del día..." style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--marron);background:var(--crema);outline:none;resize:none;height:56px">${d.nota}</textarea>
-      ${(d.entrada||d.ausente)?`<div style="background:var(--crema2);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:10px"><span style="font-size:13px;color:var(--gris)">Balance del día</span><span style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:${calcBalanceDia(d)>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(calcBalanceDia(d))}</span></div>`:''}
-    </div>`;
+<div style="font-family:'Playfair Display',serif;font-size:15px;color:var(--marron);margin-bottom:14px">${DIAS_SEMANA[horasDiaActivo]} ${fmtD(weekDates[horasDiaActivo])}</div>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+<span style="font-size:12px;font-weight:600;color:var(--marron2)">Ausente</span>
+<button onclick="updateHorasDia(${horasDiaActivo},'ausente',${!d.ausente},'${weekKey}')" style="width:44px;height:24px;border-radius:12px;border:none;background:${d.ausente?'var(--rojo)':'#ddd'};position:relative;cursor:pointer">
+<div style="position:absolute;top:3px;left:${d.ausente?'23px':'3px'};width:18px;height:18px;border-radius:50%;background:white"></div>
+</button>
+</div>
+${!d.ausente?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+<div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Entrada</label>
+<input type="time" value="${d.entrada}" onchange="updateHorasDia(${horasDiaActivo},'entrada',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--crema);color:var(--marron);outline:none"></div>
+<div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Salida</label>
+<input type="time" value="${d.salida}" onchange="updateHorasDia(${horasDiaActivo},'salida',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--crema);color:var(--marron);outline:none"></div>
+</div>
+<div style="font-size:11px;font-weight:700;color:var(--marron2);text-transform:uppercase;margin-bottom:8px">Horas extra (opcional)</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+<div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Inicio extra</label>
+<input type="time" value="${d.extraInicio}" onchange="updateHorasDia(${horasDiaActivo},'extraInicio',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--crema);color:var(--marron);outline:none"></div>
+<div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Fin extra</label>
+<input type="time" value="${d.extraFin}" onchange="updateHorasDia(${horasDiaActivo},'extraFin',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--crema);color:var(--marron);outline:none"></div>
+</div>
+<div><label style="font-size:10px;font-weight:600;color:var(--marron2);text-transform:uppercase;display:block;margin-bottom:4px">Nota</label>
+<input type="text" value="${d.nota||''}" placeholder="Ej: salió antes por..." onchange="updateHorasDia(${horasDiaActivo},'nota',this.value,'${weekKey}')" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif;background:var(--crema);color:var(--marron);outline:none"></div>`:''}
+</div>`;
   }
-  html+=`<div style="background:var(--blanco);border-radius:14px;padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
-    <div style="font-family:'Playfair Display',serif;font-size:14px;color:var(--marron);margin-bottom:12px">Resumen semanal</div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr style="border-bottom:1px solid var(--crema2)">
-        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Día</th>
-        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Entrada</th>
-        <th style="text-align:left;padding:6px 4px;color:var(--gris);font-size:10px">Salida</th>
-        <th style="text-align:right;padding:6px 4px;color:var(--gris);font-size:10px">Balance</th>
-      </tr></thead><tbody>
-      ${DIAS_SEMANA.map((dia,i)=>{const d=weekData[i];const bal=calcBalanceDia(d);return`<tr style="border-bottom:1px solid var(--crema2)"><td style="padding:7px 4px;font-weight:600">${dia}</td><td style="padding:7px 4px;color:${d.ausente?'var(--rojo)':'var(--gris)'}">${d.ausente?'Ausente':d.entrada||'—'}</td><td style="padding:7px 4px;color:var(--gris)">${d.ausente?'':d.salida||'—'}</td><td style="padding:7px 4px;text-align:right;font-weight:700;color:${bal>=0?'var(--verde2)':'var(--rojo)'}">${(d.entrada||d.ausente)?minsToHHMM(bal):'—'}</td></tr>`;}).join('')}
-      <tr style="border-top:2px solid var(--crema3)"><td colspan="3" style="padding:10px 4px;font-weight:700">TOTAL SEMANA</td><td style="padding:10px 4px;text-align:right;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:${weekBalance>=0?'var(--verde2)':'var(--rojo)'}">${minsToHHMM(weekBalance)}</td></tr>
-      </tbody></table></div>
-  <div style="background:${totalBalance>=0?'var(--verde2)':'var(--rojo)'};border-radius:14px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <div><div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600;text-transform:uppercase">Balance total acumulado</div><div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">${horasEmpleado}</div></div>
-    <div style="font-family:'Playfair Display',serif;font-size:26px;color:#fff;font-weight:700">${minsToHHMM(totalBalance)}</div>
-  </div>`;
+
+  const balColor=weekBalance>=0?'var(--verde2)':'var(--rojo)';
+  const totColor=totalBalance>=0?'var(--verde2)':'var(--rojo)';
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+<div style="background:var(--blanco);border-radius:12px;padding:14px;box-shadow:var(--sombra);text-align:center">
+<div style="font-size:10px;text-transform:uppercase;font-weight:600;color:var(--gris);margin-bottom:4px">Balance semana</div>
+<div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:${balColor}">${minsToHHMM(weekBalance)}</div>
+</div>
+<div style="background:var(--blanco);border-radius:12px;padding:14px;box-shadow:var(--sombra);text-align:center">
+<div style="font-size:10px;text-transform:uppercase;font-weight:600;color:var(--gris);margin-bottom:4px">Balance total</div>
+<div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:${totColor}">${minsToHHMM(totalBalance)}</div>
+</div>
+</div>`;
+
   document.getElementById('horas-content').innerHTML=html;
 }
-function toggleDiaActivo(i){horasDiaActivo=horasDiaActivo===i?null:i;renderHoras();}
-function selEmpleado(n){horasEmpleado=n;horasDiaActivo=null;renderHoras();}
-function agregarEmpleado(){const n=prompt('Nombre del operario:');if(!n||!n.trim())return;const e=getEmpleados();if(!e.includes(n.trim())){e.push(n.trim());DB.set('empleados_horas',e);horasEmpleado=n.trim();}renderHoras();}
-function updateHorasDia(idx,field,value,weekKey){const data=getHorasData(horasEmpleado,weekKey);data[idx]={...data[idx],[field]:value};saveHorasData(horasEmpleado,weekKey,data);renderHoras();}
+
+function toggleDiaActivo(i){
+  horasDiaActivo=horasDiaActivo===i?null:i;
+  renderHoras();
+}
+
+function updateHorasDia(diaIdx,campo,valor,weekKey){
+  const data=getHorasData(horasEmpleado,weekKey);
+  if(campo==='ausente'){data[diaIdx][campo]=valor;}
+  else{data[diaIdx][campo]=valor;}
+  saveHorasData(horasEmpleado,weekKey,data);
+  renderHoras();
+}
+
+function agregarEmpleado(){
+  const nombre=prompt('Nombre del operario:');
+  if(!nombre||!nombre.trim())return;
+  const lista=getEmpleados();
+  if(lista.includes(nombre.trim())){alert('Ya existe ese operario.');return;}
+  lista.push(nombre.trim());
+  DB.set('empleados_horas',lista);
+  horasEmpleado=nombre.trim();
+  renderHoras();
+}
+
+function selEmpleado(nombre){
+  horasEmpleado=nombre;
+  horasDiaActivo=null;
+  renderHoras();
+}
+
+// ══ PEDIDOS A PROVEEDORES ══
+const PROVEEDORES_DEFAULT = [
+  'Tomás Ribeiro',
+  'Maderas JIM',
+  'Maderera Nico',
+  'Herrajes Nuevo Oeste',
+  'Casa Ruiz',
+  '', '', '', '', ''  // 5 espacios en blanco para agregar manualmente
+];
+
+function getProveedores(){
+  const saved = DB.get('proveedores');
+  if(saved && saved.length > 0) return saved;
+  // Primera vez: cargar los default (solo los que tienen nombre)
+  const iniciales = PROVEEDORES_DEFAULT.filter(p=>p.trim()!=='');
+  DB.set('proveedores', iniciales);
+  return iniciales;
+}
+
+let pedidoProveedorActivo = '';
+
+function renderPedidos(){
+  const proveedores = getProveedores();
+  if(!pedidoProveedorActivo && proveedores.length>0) pedidoProveedorActivo = proveedores[0];
+
+  let html = `<div style="background:var(--marron);border-radius:14px;padding:16px;margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div style="font-family:'Playfair Display',serif;color:#fff;font-size:16px">Proveedores</div>
+<button onclick="agregarProveedor()" style="background:var(--naranja);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">+ Agregar</button>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+${proveedores.map(p=>`<button onclick="selProveedor('${p.replace(/'/g,"\\'")}'); " style="padding:6px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${p===pedidoProveedorActivo?'var(--naranja)':'rgba(255,255,255,.18)'};color:#fff;margin-bottom:4px">${p}</button>`).join('')}
+</div></div>`;
+
+  if(!pedidoProveedorActivo){ html+=`<div class="empty-state"><div class="e-ico">📦</div><p>Agregá un proveedor para empezar.</p></div>`; document.getElementById('pedidos-content').innerHTML=html; return; }
+
+  const pedidos = getPedidosProveedor(pedidoProveedorActivo);
+  const pendientes = pedidos.filter(p=>!p.entregado);
+  const entregados = pedidos.filter(p=>p.entregado);
+
+  html += `<div style="background:var(--blanco);border-radius:14px;padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+<div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--marron)">${pedidoProveedorActivo}</div>
+<div style="display:flex;gap:8px">
+<button onclick="imprimirPedido('${pedidoProveedorActivo.replace(/'/g,"\\'")}',false)" style="background:var(--marron);border:none;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer">🖨 PDF Pendientes</button>
+</div>
+</div>`;
+
+  if(pendientes.length===0){
+    html+=`<div style="text-align:center;padding:24px;color:var(--gris);font-size:13px">No hay ítems pendientes.<br>Tocá ＋ para agregar.</div>`;
+  } else {
+    html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--marron2);margin-bottom:8px">Pendientes (${pendientes.length})</div>`;
+    html+=renderListaPedidos(pendientes, pedidoProveedorActivo);
+  }
+
+  if(entregados.length>0){
+    html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gris);margin:14px 0 8px">Entregados (${entregados.length})</div>`;
+    html+=renderListaPedidos(entregados, pedidoProveedorActivo);
+  }
+
+  html+=`</div>`;
+
+  document.getElementById('pedidos-content').innerHTML=html;
+}
+
+function renderListaPedidos(items, proveedor){
+  return items.map(item=>{
+    const entregadoStyle = item.entregado ? 'opacity:.55;' : '';
+    return `<div style="${entregadoStyle}background:var(--crema);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid ${item.entregado?'var(--verde2)':'var(--naranja)'}">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+<div style="flex:1">
+<div style="font-size:11px;color:var(--gris);margin-bottom:3px">📅 ${fmtF(item.fecha)}</div>
+<div style="font-weight:600;font-size:14px;color:var(--marron)">${item.desc}</div>
+<div style="display:flex;gap:12px;margin-top:4px;font-size:12px;color:var(--gris)">
+<span>Cant: <strong>${item.cant}</strong></span>
+${item.precio?`<span>Precio: <strong>${fmt(item.precio)}</strong></span>`:''}
+</div>
+${item.nota?`<div style="font-size:12px;color:var(--gris);margin-top:4px;font-style:italic">${item.nota}</div>`:''}
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+<button onclick="toggleEntregado('${proveedor.replace(/'/g,"\\'")}',${item.id})" style="background:${item.entregado?'var(--verde-cl)':'var(--crema2)'};border:1px solid ${item.entregado?'var(--verde2)':'var(--crema3)'};color:${item.entregado?'var(--verde)':'var(--marron2)'};border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer">${item.entregado?'✅ Listo':'Pendiente'}</button>
+<button onclick="eliminarItemPedido('${proveedor.replace(/'/g,"\\'")}',${item.id})" style="background:none;border:none;color:#ddd;font-size:14px;cursor:pointer">✕</button>
+</div>
+</div>
+</div>`;
+  }).join('');
+}
+
+function getPedidosProveedor(proveedor){
+  return DB.get('pedidos_'+btoa(unescape(encodeURIComponent(proveedor))).replace(/=/g,''))||[];
+}
+
+function savePedidosProveedor(proveedor, lista){
+  DB.set('pedidos_'+btoa(unescape(encodeURIComponent(proveedor))).replace(/=/g,''), lista);
+}
+
+function abrirFormPedido(){
+  // Modal inline
+  const proveedores = getProveedores();
+  const modal = document.createElement('div');
+  modal.className='modal-overlay'; modal.id='modal-pedido';
+  modal.onclick = (e)=>{ if(e.target===modal) cerrarModalPedido(); };
+  modal.innerHTML=`<div class="modal-box" onclick="event.stopPropagation()">
+<h3>📦 Nuevo ítem — ${pedidoProveedorActivo}</h3>
+<div class="form-row"><label>Fecha</label><input type="date" id="mp-fecha" value="${hoy()}"></div>
+<div class="form-row"><label>Descripción del material</label><input type="text" id="mp-desc" placeholder="Ej: Melamina Roble Claro 18mm"></div>
+<div class="form-grid">
+<div class="form-row"><label>Cantidad</label><input type="text" id="mp-cant" placeholder="Ej: 3 planchas"></div>
+<div class="form-row"><label>Precio (opcional)</label><input type="number" id="mp-precio" placeholder="0"></div>
+</div>
+<div class="form-row"><label>Nota (opcional)</label><input type="text" id="mp-nota" placeholder="Medidas, color, marca..."></div>
+<div class="btn-row" style="margin-top:16px">
+<button class="btn btn-secondary" onclick="cerrarModalPedido()">Cancelar</button>
+<button class="btn btn-primary" onclick="guardarItemPedido()">Agregar</button>
+</div>
+</div>`;
+  document.body.appendChild(modal);
+}
+
+function cerrarModalPedido(){
+  document.getElementById('modal-pedido')?.remove();
+}
+
+function guardarItemPedido(){
+  const desc = document.getElementById('mp-desc')?.value?.trim();
+  if(!desc){alert('Escribí la descripción del material.');return;}
+  const item = {
+    id: Date.now(),
+    fecha: document.getElementById('mp-fecha')?.value||hoy(),
+    desc,
+    cant: document.getElementById('mp-cant')?.value?.trim()||'1',
+    precio: parseFloat(document.getElementById('mp-precio')?.value)||0,
+    nota: document.getElementById('mp-nota')?.value?.trim()||'',
+    entregado: false
+  };
+  const lista = getPedidosProveedor(pedidoProveedorActivo);
+  lista.unshift(item);
+  savePedidosProveedor(pedidoProveedorActivo, lista);
+  cerrarModalPedido();
+  renderPedidos();
+}
+
+function toggleEntregado(proveedor, id){
+  const lista = getPedidosProveedor(proveedor);
+  const idx = lista.findIndex(i=>i.id===id);
+  if(idx>=0) lista[idx].entregado=!lista[idx].entregado;
+  savePedidosProveedor(proveedor, lista);
+  renderPedidos();
+}
+
+function eliminarItemPedido(proveedor, id){
+  if(!confirm('¿Eliminar este ítem?'))return;
+  const lista = getPedidosProveedor(proveedor).filter(i=>i.id!==id);
+  savePedidosProveedor(proveedor, lista);
+  renderPedidos();
+}
+
+function selProveedor(nombre){
+  pedidoProveedorActivo=nombre;
+  renderPedidos();
+}
+
+function agregarProveedor(){
+  const nombre=prompt('Nombre del proveedor:');
+  if(!nombre||!nombre.trim())return;
+  const lista=getProveedores();
+  if(lista.includes(nombre.trim())){alert('Ya existe ese proveedor.');return;}
+  lista.push(nombre.trim());
+  DB.set('proveedores',lista);
+  pedidoProveedorActivo=nombre.trim();
+  renderPedidos();
+}
+
+function imprimirPedido(proveedor, incluirEntregados){
+  const todos = getPedidosProveedor(proveedor);
+  const items = incluirEntregados ? todos : todos.filter(i=>!i.entregado);
+  if(items.length===0){alert('No hay ítems pendientes para imprimir.');return;}
+
+  // Ordenar por fecha
+  items.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+
+  const totalEstimado = items.reduce((s,i)=>s+(i.precio||0),0);
+  const pa = document.getElementById('print-area');
+
+  let html=`<style>
+body{font-family:Arial,sans-serif;color:#2a1a0a;margin:0;padding:0;}
+.ph{background:#4A2C0A;padding:24px 32px;display:flex;align-items:center;gap:16px;}
+.ph-logo{width:48px;height:48px;background:#C4621A;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:#fff;}
+.ph h1{color:#fff;font-size:22px;margin:0;font-family:'Times New Roman',serif;}
+.ph p{color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 0;}
+.ph-right{margin-left:auto;text-align:right;}
+.ph-right .prov{color:#fff;font-size:16px;font-weight:bold;}
+.ph-right .sub{color:rgba(255,255,255,.55);font-size:11px;}
+.section{padding:20px 32px;}
+table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+thead th{background:#4A2C0A;color:#fff;padding:9px 12px;font-size:11px;text-align:left;}
+tbody tr:nth-child(even){background:#FDF6EE;}
+tbody td{padding:8px 12px;font-size:13px;border-bottom:1px solid #F0E0C8;vertical-align:top;}
+.total-bar{background:#4A2C0A;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:-1px;}
+.footer{background:#F5E8D5;padding:12px 32px;text-align:center;font-size:11px;color:#888;border-top:2px solid #EDD8BC;margin-top:20px;}
+</style>
+<div class="ph">
+<div class="ph-logo">MC</div>
+<div><h1>La Mueblería Conca</h1><p>Concarán, San Luis, Argentina · @lamuebleriaconca</p></div>
+<div class="ph-right">
+<div class="prov">📦 ${proveedor}</div>
+<div class="sub">Pedido generado: ${fmtF(hoy())} · ${items.length} ítem${items.length!==1?'s':''}</div>
+</div>
+</div>
+<div class="section">
+<table>
+<thead><tr><th>Fecha</th><th>Material / Descripción</th><th>Cantidad</th><th>Precio est.</th><th>Notas</th></tr></thead>
+<tbody>
+${items.map(i=>`<tr>
+<td style="white-space:nowrap;font-size:12px">${fmtF(i.fecha)}</td>
+<td><strong>${i.desc}</strong></td>
+<td style="text-align:center">${i.cant}</td>
+<td style="text-align:right">${i.precio?fmt(i.precio):'—'}</td>
+<td style="font-size:11px;color:#888">${i.nota||''}</td>
+</tr>`).join('')}
+</tbody>
+</table>
+${totalEstimado>0?`<div class="total-bar"><span>TOTAL ESTIMADO</span><span>${fmt(totalEstimado)}</span></div>`:''}
+<p style="font-size:11px;color:#aaa;margin-top:12px;text-align:right">Generado desde La Mueblería Conca App</p>
+</div>
+<div class="footer">La Mueblería Conca · Concarán, San Luis, Argentina · @lamuebleriaconca</div>`;
+
+  pa.innerHTML=html;
+  pa.style.display='block';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{pa.innerHTML='';pa.style.display='';},500);
+  },150);
+}
 
 // ══ INIT ══
 actualizarStats();
