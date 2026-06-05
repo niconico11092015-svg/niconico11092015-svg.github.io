@@ -644,10 +644,12 @@ function buildFormOT(num,item){
 <div class="form-row"><label>Notas adicionales</label><textarea id="ot-notas" placeholder="Observaciones...">${v('notas')}</textarea></div>
 </div>
 <div class="form-card"><h3>📷 Imagen / Plano</h3>
-<input type="file" id="ot-img-input" accept="image/*" style="display:none" onchange="cargarImagen(this)">
+<input type="file" id="ot-img-camara" accept="image/*" capture="environment" style="display:none" onchange="cargarImagen(this)">
+<input type="file" id="ot-img-galeria" accept="image/*" style="display:none" onchange="cargarImagen(this)">
 <img id="img-preview" style="display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-bottom:8px">
-<div class="img-upload-btn" onclick="document.getElementById('ot-img-input').click()">
-📷 Sacar foto o elegir de galería
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<div class="img-upload-btn" onclick="document.getElementById('ot-img-camara').click()">📷 Sacar foto</div>
+<div class="img-upload-btn" onclick="document.getElementById('ot-img-galeria').click()">🖼 Elegir de galería</div>
 </div>
 </div>
 <div class="btn-row">
