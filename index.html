@@ -148,7 +148,45 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 .cuota-item .ci-num{font-size:10px;font-weight:600;color:var(--gris);text-transform:uppercase;}
 .cuota-item .ci-val{font-size:15px;font-weight:700;color:var(--azul);margin:3px 0;}
 .cuota-item .ci-sub{font-size:10px;color:var(--gris);}
-/* MODAL */
+/* Tabs órdenes */
+.ot-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.ot-tab{flex:1;padding:8px 4px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;background:var(--blanco);color:var(--gris);box-shadow:var(--sombra);transition:all .2s;}
+.ot-tab.active{background:var(--marron);color:#fff;}
+.ot-tab .tab-num{display:block;font-size:18px;font-weight:700;line-height:1;margin-bottom:2px;}
+/* Resumen banner */
+.ot-banner{border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.ot-banner.rojo{background:var(--rojo-cl);border-left:4px solid var(--rojo);}
+.ot-banner.verde{background:var(--verde-cl);border-left:4px solid var(--verde2);}
+.ot-banner.amarillo{background:var(--amarillo-cl);border-left:4px solid var(--amarillo);}
+.ot-chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+.chip-rojo{background:var(--rojo-cl);color:var(--rojo);}
+.chip-amarillo{background:var(--amarillo-cl);color:var(--amarillo);}
+.chip-verde{background:var(--verde-cl);color:var(--verde);}
+.chip-azul{background:var(--azul-cl);color:var(--azul);}
+/* Tarjeta OT dinámica */
+.ot-card{background:var(--blanco);border-radius:var(--radio);box-shadow:var(--sombra);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:transform .15s;}
+.ot-card:active{transform:scale(.98);}
+.ot-card-header{display:flex;align-items:stretch;}
+.ot-sem{width:52px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 6px;}
+.ot-sem.sem-rojo{background:var(--rojo);}
+.ot-sem.sem-amarillo{background:#F59E0B;}
+.ot-sem.sem-verde{background:var(--verde2);}
+.ot-sem.sem-gris{background:#9CA3AF;}
+.ot-sem .dias-num{font-size:22px;font-weight:700;color:#fff;line-height:1;}
+.ot-sem .dias-label{font-size:8px;font-weight:600;color:rgba(255,255,255,.75);text-transform:uppercase;text-align:center;margin-top:2px;}
+.ot-body{flex:1;padding:12px 14px;}
+.ot-body-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
+.ot-codigo{font-size:10px;font-weight:700;color:var(--naranja);letter-spacing:.8px;text-transform:uppercase;}
+.ot-badges{display:flex;gap:4px;flex-wrap:wrap;}
+.ot-nombre{font-weight:700;font-size:15px;color:var(--marron);margin-bottom:2px;}
+.ot-desc{font-size:12px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px;}
+.ot-footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.ot-info-chip{font-size:11px;color:var(--gris);display:flex;align-items:center;gap:3px;}
+/* Cambio rápido de estado */
+.ot-estado-btn{background:var(--crema2);border:1px solid var(--crema3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--marron2);cursor:pointer;white-space:nowrap;}
+.ot-estado-btn:active{background:var(--naranja);color:#fff;border-color:var(--naranja);}
+/* Sección título */
+.ot-seccion{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--marron2);opacity:.6;margin:16px 0 8px 2px;}
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:var(--blanco);border-radius:16px;padding:24px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto;}
 .modal-box h3{font-family:'Playfair Display',serif;color:var(--marron);margin-bottom:16px;}
@@ -209,10 +247,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 <!-- ORDENES -->
 <div id="screen-ordenes" class="screen">
 <div class="topbar"><div class="topbar-icon">🔧</div><div><h1>Órdenes de Trabajo</h1></div></div>
-<div class="content">
-<div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-ot" oninput="renderLista('ordenes')"></div>
-<div class="lista" id="lista-ordenes"></div>
-</div>
+<div class="content" id="ordenes-content"></div>
 <button class="fab" onclick="abrirForm('ordenes',null)">＋</button>
 </div>
 
@@ -294,7 +329,8 @@ function irA(p){
   if(nb)nb.classList.add('active');
   document.getElementById('navbar').style.display='flex';
   pantalla=p;
-  if(['presupuestos','cuentas','ordenes'].includes(p))renderLista(p);
+  if(['presupuestos','cuentas'].includes(p))renderLista(p);
+  if(p==='ordenes')renderOrdenes();
   if(p==='home')actualizarStats();
   if(p==='horas')renderHoras();
   if(p==='pedidos')renderPedidos();
@@ -751,7 +787,7 @@ function guardarPresup(num){
 function crearOTdesdePresup(presup){
   const num=DB.nextNum('ordenes');
   const desc=presup.items&&presup.items.length>0?presup.items.map(i=>i.desc).filter(Boolean).join(', '):presup.desc;
-  const obj={id:Date.now(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:presup.total||0,prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:'',presupOrigen:presup.nombreArchivo,nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:''};
+  const obj={id:Date.now(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,tel:presup.tel||'',operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:presup.total||0,prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:'',presupOrigen:presup.nombreArchivo,presupId:presup.id,totalPresup:presup.total||0,condPago:presup.condPago||'contado',perfilCC:presup.perfilCC||'sinHistorial',nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:''};
   const lista=DB.get('ordenes'); lista.push(obj); DB.set('ordenes',lista);
   volverDeForm(); actualizarStats();
   setTimeout(()=>{irA('ordenes');setTimeout(()=>verDetalle('ordenes',obj.id),300);},300);
@@ -875,6 +911,26 @@ ${item.tel?`<div style="margin-top:8px;font-size:13px;color:var(--gris)">📱 ${
     }
     html+=`<div class="resumen-box"><div class="res-row compras"><span class="rl">Total compras</span><span class="rv">${fmt(tc)}</span></div><div class="res-row pagado"><span class="rl">Total pagado</span><span class="rv">${fmt(tp)}</span></div></div>
 <div class="saldo-final" style="background:${saldo<=0?'var(--verde2)':'var(--rojo)'}"><div class="sf-label">${saldo<=0?'✅ Saldado':'⚠ Saldo pendiente'}</div><div class="sf-val">${fmt(Math.abs(saldo))}</div></div>`;
+
+    // OT vinculada
+    const otVinculada = item.otId ? DB.get('ordenes').find(o=>o.id===item.otId) : null;
+    if(otVinculada){
+      html+=`<div class="form-card" style="border:2px solid var(--azul)">
+<h3 style="color:var(--azul)">🔧 Orden de Trabajo vinculada</h3>
+<div class="res-row"><span class="rl">N° Orden</span><span style="font-weight:700;color:var(--azul)">OT-${String(otVinculada.num).padStart(3,'0')}</span></div>
+<div class="res-row"><span class="rl">Trabajo</span><span style="font-size:13px">${otVinculada.desc||'—'}</span></div>
+<div class="res-row"><span class="rl">Estado OT</span><span class="item-badge ${badgeClass(otVinculada.estado)}">${otVinculada.estado}</span></div>
+${otVinculada.entrega?`<div class="res-row"><span class="rl">Fecha entrega</span><span style="font-weight:600">${fmtF(otVinculada.entrega)}</span></div>`:''}
+<button class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="irA('ordenes');setTimeout(()=>verDetalle('ordenes',${otVinculada.id}),300)">Ver orden de trabajo →</button>
+</div>`;
+    }
+    // Seña / saldo esperado si viene de OT
+    if(item.montoSenia||item.montoSaldo){
+      html+=`<div class="form-card"><h3>📊 Estructura de cobro</h3>
+<div class="res-row"><span class="rl">Seña pactada</span><span style="font-weight:700;color:var(--verde2)">${fmt(item.montoSenia||0)}</span></div>
+<div class="res-row"><span class="rl">Saldo al entregar</span><span style="font-weight:700;color:var(--azul)">${fmt(item.montoSaldo||0)}</span></div>
+</div>`;
+    }
   }
 
   if(tipo==='ordenes'){
@@ -886,6 +942,32 @@ ${item.tel?`<div style="margin-top:8px;font-size:13px;color:var(--gris)">📱 ${
     if(item.costo)html+=`<div class="res-row"><span class="rl">Costo estimado</span><span style="font-weight:700;color:var(--marron2)">${fmt(item.costo)}</span></div>`;
     if(item.presupOrigen)html+=`<div class="res-row"><span class="rl">Presupuesto origen</span><span style="font-size:12px;color:var(--naranja)">${item.presupOrigen}</span></div>`;
     html+=`</div>`;
+
+    // Panel de cuenta corriente vinculada
+    const ccVinculada = item.ccId ? DB.get('cuentas').find(c=>c.id===item.ccId) : null;
+    if(ccVinculada){
+      const tcCV=(ccVinculada.compras||[]).reduce((a,c)=>a+((c.cant||0)*(c.precio||0)),0);
+      const tpCV=(ccVinculada.pagos||[]).reduce((a,p)=>a+(p.monto||0),0);
+      const saldoCV=tcCV-tpCV;
+      html+=`<div class="form-card" style="border:2px solid var(--verde2)">
+<h3 style="color:var(--verde)">💰 Cuenta Corriente vinculada</h3>
+<div class="res-row"><span class="rl">N° Cuenta</span><span style="font-weight:700;color:var(--verde2)">CC-${String(ccVinculada.num).padStart(3,'0')}</span></div>
+<div class="res-row"><span class="rl">Total trabajo</span><span style="font-weight:700">${fmt(tcCV)}</span></div>
+<div class="res-row pagado"><span class="rl">Cobrado</span><span class="rv">${fmt(tpCV)}</span></div>
+<div class="res-row" style="background:${saldoCV<=0?'var(--verde-cl)':'var(--rojo-cl)'};border-radius:8px;margin-top:4px">
+<span class="rl" style="font-weight:700">${saldoCV<=0?'✅ Saldado':'⚠ Saldo pendiente'}</span>
+<span style="font-weight:800;font-size:16px;color:${saldoCV<=0?'var(--verde2)':'var(--rojo)'}">${fmt(Math.abs(saldoCV))}</span>
+</div>
+<button class="btn btn-verde" style="width:100%;margin-top:10px" onclick="irA('cuentas');setTimeout(()=>verDetalle('cuentas',${ccVinculada.id}),300)">Ver cuenta corriente completa →</button>
+</div>`;
+    } else if(item.estado==='En progreso'||item.estado==='Terminado'||item.estado==='Entregado'){
+      html+=`<div class="form-card" style="border:2px dashed var(--crema3)">
+<h3 style="color:var(--gris)">💰 Cuenta Corriente</h3>
+<p style="font-size:13px;color:var(--gris);margin-bottom:10px">No hay cuenta corriente vinculada a esta orden.</p>
+<button class="btn btn-secondary" style="width:100%" onclick="abrirModalCCdesdeOT(DB.get('ordenes').find(o=>o.id===${item.id}))">Crear cuenta corriente ahora</button>
+</div>`;
+    }
+
     if(item.materiales)html+=`<div class="form-card"><h3>🪵 Materiales</h3><p style="font-size:13px;color:var(--gris);white-space:pre-line">${item.materiales}</p></div>`;
     if(item.instrucciones)html+=`<div class="form-card"><h3>📋 Instrucciones especiales</h3><p style="font-size:13px;color:var(--gris);white-space:pre-line">${item.instrucciones}</p></div>`;
     if(item.notas)html+=`<div class="form-card"><h3>📝 Notas</h3><p style="font-size:13px;color:var(--gris)">${item.notas}</p></div>`;
@@ -1219,9 +1301,10 @@ ${proveedores.map(p=>`<button onclick="selProveedor('${p.replace(/'/g,"\\'")}');
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
 <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--marron)">${pedidoProveedorActivo}</div>
 <div style="display:flex;gap:8px">
-<button onclick="imprimirPedido('${pedidoProveedorActivo.replace(/'/g,"\\'")}',false)" style="background:var(--marron);border:none;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer">🖨 PDF Pendientes</button>
+<button onclick="imprimirPedido('${pedidoProveedorActivo.replace(/'/g,"\\'")}',false)" style="background:var(--marron);border:none;color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer">🖨 PDF</button>
 </div>
-</div>`;
+</div>
+${pendientes.length>0?`<button onclick="marcarTodoRecibido('${pedidoProveedorActivo.replace(/'/g,"\\'")}' )" style="width:100%;background:var(--verde-cl);border:1.5px solid var(--verde2);color:var(--verde);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px">✅ Marcar todo como recibido (${pendientes.length} ítem${pendientes.length>1?'s':''})</button>`:''}`;
 
   if(pendientes.length===0){
     html+=`<div style="text-align:center;padding:24px;color:var(--gris);font-size:13px">No hay ítems pendientes.<br>Tocá ＋ para agregar.</div>`;
@@ -1231,7 +1314,7 @@ ${proveedores.map(p=>`<button onclick="selProveedor('${p.replace(/'/g,"\\'")}');
   }
 
   if(entregados.length>0){
-    html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gris);margin:14px 0 8px">Entregados (${entregados.length})</div>`;
+    html+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gris);margin:14px 0 8px">Recibidos (${entregados.length})</div>`;
     html+=renderListaPedidos(entregados, pedidoProveedorActivo);
   }
 
@@ -1242,7 +1325,8 @@ ${proveedores.map(p=>`<button onclick="selProveedor('${p.replace(/'/g,"\\'")}');
 
 function renderListaPedidos(items, proveedor){
   return items.map(item=>{
-    const entregadoStyle = item.entregado ? 'opacity:.55;' : '';
+    const op = proveedor.replace(/'/g,"\\'");
+    const entregadoStyle = item.entregado ? 'opacity:.6;' : '';
     return `<div style="${entregadoStyle}background:var(--crema);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid ${item.entregado?'var(--verde2)':'var(--naranja)'}">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
 <div style="flex:1">
@@ -1255,8 +1339,11 @@ ${item.precio?`<span>Precio: <strong>${fmt(item.precio)}</strong></span>`:''}
 ${item.nota?`<div style="font-size:12px;color:var(--gris);margin-top:4px;font-style:italic">${item.nota}</div>`:''}
 </div>
 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-<button onclick="toggleEntregado('${proveedor.replace(/'/g,"\\'")}',${item.id})" style="background:${item.entregado?'var(--verde-cl)':'var(--crema2)'};border:1px solid ${item.entregado?'var(--verde2)':'var(--crema3)'};color:${item.entregado?'var(--verde)':'var(--marron2)'};border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer">${item.entregado?'✅ Listo':'Pendiente'}</button>
-<button onclick="eliminarItemPedido('${proveedor.replace(/'/g,"\\'")}',${item.id})" style="background:none;border:none;color:#ddd;font-size:14px;cursor:pointer">✕</button>
+<button onclick="toggleEntregado('${op}',${item.id})" style="background:${item.entregado?'var(--verde-cl)':'var(--crema2)'};border:1px solid ${item.entregado?'var(--verde2)':'var(--crema3)'};color:${item.entregado?'var(--verde)':'var(--marron2)'};border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">${item.entregado?'✅ Recibido':'Pendiente'}</button>
+<div style="display:flex;gap:4px">
+<button onclick="editarItemPedido('${op}',${item.id})" style="background:var(--azul-cl);border:1px solid #b8d0e8;color:var(--azul);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer">✏️</button>
+<button onclick="eliminarItemPedido('${op}',${item.id})" style="background:none;border:none;color:#ddd;font-size:16px;cursor:pointer;padding:2px 4px">✕</button>
+</div>
 </div>
 </div>
 </div>`;
@@ -1313,6 +1400,61 @@ function guardarItemPedido(){
   const lista = getPedidosProveedor(pedidoProveedorActivo);
   lista.unshift(item);
   savePedidosProveedor(pedidoProveedorActivo, lista);
+  cerrarModalPedido();
+  renderPedidos();
+}
+
+function marcarTodoRecibido(proveedor){
+  if(!confirm(`¿Marcar todos los ítems pendientes de ${proveedor} como recibidos?`)) return;
+  const lista = getPedidosProveedor(proveedor);
+  lista.forEach(i=>{ if(!i.entregado) i.entregado=true; });
+  savePedidosProveedor(proveedor, lista);
+  renderPedidos();
+}
+
+function editarItemPedido(proveedor, id){
+  const lista = getPedidosProveedor(proveedor);
+  const item = lista.find(i=>i.id===id);
+  if(!item) return;
+
+  // Reusar el modal de agregar pero precargado
+  const modal = document.createElement('div');
+  modal.className='modal-overlay'; modal.id='modal-pedido';
+  modal.onclick = (e)=>{ if(e.target===modal) cerrarModalPedido(); };
+  modal.innerHTML=`<div class="modal-box" onclick="event.stopPropagation()">
+<h3>✏️ Editar ítem</h3>
+<div class="form-row"><label>Fecha</label><input type="date" id="mp-fecha" value="${item.fecha||hoy()}"></div>
+<div class="form-row"><label>Descripción del material</label><input type="text" id="mp-desc" value="${item.desc||''}"></div>
+<div class="form-grid">
+<div class="form-row"><label>Cantidad</label><input type="text" id="mp-cant" value="${item.cant||'1'}"></div>
+<div class="form-row"><label>Precio (opcional)</label><input type="number" id="mp-precio" value="${item.precio||''}"></div>
+</div>
+<div class="form-row"><label>Nota (opcional)</label><input type="text" id="mp-nota" value="${item.nota||''}"></div>
+<div class="btn-row" style="margin-top:16px">
+<button class="btn btn-secondary" onclick="cerrarModalPedido()">Cancelar</button>
+<button class="btn btn-primary" onclick="guardarEdicionPedido('${proveedor.replace(/'/g,"\\'")}',${id})">Guardar cambios</button>
+</div>
+</div>`;
+  document.body.appendChild(modal);
+  // Focus en cantidad para edición rápida
+  setTimeout(()=>document.getElementById('mp-cant')?.focus(), 100);
+}
+
+function guardarEdicionPedido(proveedor, id){
+  const desc = document.getElementById('mp-desc')?.value?.trim();
+  if(!desc){alert('La descripción no puede estar vacía.');return;}
+  const lista = getPedidosProveedor(proveedor);
+  const idx = lista.findIndex(i=>i.id===id);
+  if(idx<0) return;
+  lista[idx] = {
+    ...lista[idx],
+    fecha: document.getElementById('mp-fecha')?.value||hoy(),
+    desc,
+    cant: document.getElementById('mp-cant')?.value?.trim()||'1',
+    precio: parseFloat(document.getElementById('mp-precio')?.value)||0,
+    nota: document.getElementById('mp-nota')?.value?.trim()||''
+  };
+  savePedidosProveedor(proveedor, lista);
   cerrarModalPedido();
   renderPedidos();
 }
@@ -1400,6 +1542,370 @@ ${totalEstimado>0?`<div class="total-bar"><span>TOTAL ESTIMADO</span><span>${fmt
 <div class="footer">La Mueblería Conca · Concarán, San Luis, Argentina · @lamuebleriaconca</div>`;
 
   imprimirConIframe(html);
+}
+
+// ══ ÓRDENES DINÁMICAS ══
+let otVista = 'semana'; // 'hoy' | 'semana' | 'todas'
+
+function diasRestantesOT(item){
+  const fecha = item.entrega || item.fechaEntrega;
+  if(!fecha) return null;
+  const hoyMs = new Date().setHours(0,0,0,0);
+  const entMs = new Date(fecha).setHours(0,0,0,0);
+  return Math.floor((entMs - hoyMs) / (1000*60*60*24));
+}
+
+function semColorOT(item){
+  const estados_ok = ['Terminado','Entregado','Cancelado'];
+  if(estados_ok.includes(item.estado)) return 'gris';
+  const dias = diasRestantesOT(item);
+  const prioMap = {'Urgente':3,'Alta':2,'Normal':1,'Baja':0};
+  const prio = prioMap[item.prioridad]||0;
+  if(dias === null) return prio >= 3 ? 'rojo' : prio >= 2 ? 'amarillo' : 'verde';
+  if(dias < 0 || prio >= 3) return 'rojo';
+  if(dias <= 2 || prio >= 2) return 'amarillo';
+  if(dias <= 7) return 'amarillo';
+  return 'verde';
+}
+
+function renderOrdenes(){
+  const todas = DB.get('ordenes');
+  const hoyMs = new Date().setHours(0,0,0,0);
+  const finSemana = hoyMs + 7*24*60*60*1000;
+  const activas = todas.filter(o=>!['Terminado','Entregado','Cancelado'].includes(o.estado));
+  const terminadas = todas.filter(o=>['Terminado','Entregado'].includes(o.estado));
+
+  // Filtrar por vista
+  let items;
+  if(otVista==='hoy'){
+    items = activas.filter(o=>{
+      const dias = diasRestantesOT(o);
+      return dias !== null ? dias <= 0 : o.prioridad==='Urgente';
+    });
+  } else if(otVista==='semana'){
+    items = activas.filter(o=>{
+      const dias = diasRestantesOT(o);
+      if(dias === null) return o.prioridad==='Urgente'||o.prioridad==='Alta';
+      return dias <= 7;
+    });
+    // Sumar también las sin fecha urgentes/altas que no están en el filtro anterior
+  } else {
+    items = [...activas];
+  }
+
+  // Ordenar: primero por color semáforo (rojo > amarillo > verde), luego por días
+  const orden = {rojo:0, amarillo:1, verde:2, gris:3};
+  items.sort((a,b)=>{
+    const ca = orden[semColorOT(a)], cb = orden[semColorOT(b)];
+    if(ca!==cb) return ca-cb;
+    const da = diasRestantesOT(a) ?? 999;
+    const db = diasRestantesOT(b) ?? 999;
+    return da - db;
+  });
+
+  // Conteos para tabs
+  const countHoy = activas.filter(o=>{ const d=diasRestantesOT(o); return d!==null&&d<=0; }).length
+    + activas.filter(o=>diasRestantesOT(o)===null&&o.prioridad==='Urgente').length;
+  const countSemana = activas.filter(o=>{ const d=diasRestantesOT(o); return d!==null&&d<=7&&d>0; }).length
+    + activas.filter(o=>diasRestantesOT(o)===null&&o.prioridad==='Alta').length;
+  const countAtrasadas = activas.filter(o=>{ const d=diasRestantesOT(o); return d!==null&&d<0; }).length;
+
+  let html = '';
+
+  // Banner de alerta si hay atrasadas
+  if(countAtrasadas > 0){
+    html += `<div class="ot-banner rojo">⚠️ <strong>${countAtrasadas} orden${countAtrasadas>1?'es':''} atrasada${countAtrasadas>1?'s':''}</strong> — revisá fechas de entrega</div>`;
+  } else if(activas.length === 0){
+    html += `<div class="ot-banner verde">✅ Todo al día — no hay órdenes activas</div>`;
+  }
+
+  // Chips resumen
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">`;
+  if(countAtrasadas>0) html+=`<span class="ot-chip chip-rojo">🔴 ${countAtrasadas} atrasada${countAtrasadas>1?'s':''}</span>`;
+  const urgentes = activas.filter(o=>o.prioridad==='Urgente').length;
+  if(urgentes>0) html+=`<span class="ot-chip chip-rojo">🚨 ${urgentes} urgente${urgentes>1?'s':''}</span>`;
+  const hoyCount = activas.filter(o=>{const d=diasRestantesOT(o);return d!==null&&d===0;}).length;
+  if(hoyCount>0) html+=`<span class="ot-chip chip-amarillo">📅 ${hoyCount} vence hoy</span>`;
+  html+=`<span class="ot-chip chip-azul">🔧 ${activas.length} activa${activas.length!==1?'s':''}</span>`;
+  html += `</div>`;
+
+  // Tabs
+  html += `<div class="ot-tabs">
+<button class="ot-tab${otVista==='hoy'?' active':''}" onclick="otVista='hoy';renderOrdenes()">
+<span class="tab-num">${countHoy}</span>Hoy
+</button>
+<button class="ot-tab${otVista==='semana'?' active':''}" onclick="otVista='semana';renderOrdenes()">
+<span class="tab-num">${countSemana + countHoy}</span>Esta semana
+</button>
+<button class="ot-tab${otVista==='todas'?' active':''}" onclick="otVista='todas';renderOrdenes()">
+<span class="tab-num">${activas.length}</span>Todas
+</button>
+</div>`;
+
+  // Buscador
+  html += `<div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar cliente o trabajo..." id="buscar-ot" oninput="renderOrdenesFiltradas(this.value)"></div>`;
+
+  // Lista
+  html += `<div id="ot-lista">`;
+  html += renderOTCards(items);
+  html += `</div>`;
+
+  // Terminadas (colapsadas)
+  if(terminadas.length > 0){
+    html += `<div style="margin-top:4px">
+<button onclick="toggleTerminadas()" style="width:100%;background:var(--crema2);border:none;border-radius:10px;padding:10px;font-size:12px;font-weight:600;color:var(--gris);cursor:pointer" id="btn-terminadas">
+▸ Ver terminadas / entregadas (${terminadas.length})
+</button>
+<div id="lista-terminadas" style="display:none;margin-top:8px">${renderOTCards(terminadas)}</div>
+</div>`;
+  }
+
+  document.getElementById('ordenes-content').innerHTML = html;
+}
+
+function renderOTCards(items){
+  if(!items.length) return `<div class="empty-state"><div class="e-ico">✅</div><p>No hay órdenes en esta vista.</p></div>`;
+
+  return items.map(item=>{
+    const dias = diasRestantesOT(item);
+    const color = semColorOT(item);
+    const codigo = `OT-${String(item.num).padStart(3,'0')}`;
+    const estados_ok = ['Terminado','Entregado','Cancelado'];
+    const esTerminada = estados_ok.includes(item.estado);
+
+    let diasLabel = '', diasNum = '—';
+    if(esTerminada){
+      diasNum = '✓'; diasLabel = item.estado;
+    } else if(dias === null){
+      diasNum = '?'; diasLabel = 'sin fecha';
+    } else if(dias < 0){
+      diasNum = Math.abs(dias); diasLabel = `día${Math.abs(dias)>1?'s':''} tarde`;
+    } else if(dias === 0){
+      diasNum = 'HOY'; diasLabel = 'entrega';
+    } else {
+      diasNum = dias; diasLabel = `día${dias>1?'s':''} restante${dias>1?'s':''}`;
+    }
+
+    // Próximo estado posible para cambio rápido
+    const flujo = ['Pendiente','En progreso','Terminado'];
+    const idxE = flujo.indexOf(item.estado);
+    const proxEstado = idxE >= 0 && idxE < flujo.length-1 ? flujo[idxE+1] : null;
+
+    return `<div class="ot-card" onclick="verDetalle('ordenes',${item.id})">
+<div class="ot-card-header">
+<div class="ot-sem sem-${color}">
+<div class="dias-num">${diasNum}</div>
+<div class="dias-label">${diasLabel}</div>
+</div>
+<div class="ot-body">
+<div class="ot-body-top">
+<span class="ot-codigo">${codigo}</span>
+<div class="ot-badges">
+<span class="item-badge ${badgeClass(item.estado)}">${item.estado||'Pendiente'}</span>
+${item.prioridad&&item.prioridad!=='Normal'?`<span class="item-badge ${item.prioridad==='Urgente'?'badge-rojo':'badge-env'}">${item.prioridad}</span>`:''}
+</div>
+</div>
+<div class="ot-nombre">${item.apellido||''} ${item.nombre||''}</div>
+<div class="ot-desc">${item.desc||'—'}</div>
+<div class="ot-footer">
+${item.entrega?`<span class="ot-info-chip">📅 ${fmtF(item.entrega)}</span>`:''}
+${item.operario?`<span class="ot-info-chip">👤 ${item.operario}</span>`:''}
+${item.costo?`<span class="ot-info-chip">💰 ${fmt(item.costo)}</span>`:''}
+${proxEstado&&!esTerminada?`<button class="ot-estado-btn" onclick="event.stopPropagation();cambiarEstadoOT(${item.id},'${proxEstado}')">→ ${proxEstado}</button>`:''}
+</div>
+</div>
+</div>
+</div>`;
+  }).join('');
+}
+
+function renderOrdenesFiltradas(busq){
+  const todas = DB.get('ordenes');
+  const activas = todas.filter(o=>!['Terminado','Entregado','Cancelado'].includes(o.estado));
+  const q = busq.toLowerCase();
+  let items = (otVista==='hoy'?activas.filter(o=>{const d=diasRestantesOT(o);return d!==null&&d<=0||(d===null&&o.prioridad==='Urgente');}):
+               otVista==='semana'?activas.filter(o=>{const d=diasRestantesOT(o);return d!==null&&d<=7||(d===null&&(o.prioridad==='Urgente'||o.prioridad==='Alta'));}):
+               activas);
+  if(q) items = items.filter(o=>`${o.apellido} ${o.nombre} ${o.desc} ${o.num}`.toLowerCase().includes(q));
+  const orden = {rojo:0,amarillo:1,verde:2,gris:3};
+  items.sort((a,b)=>{
+    const ca=orden[semColorOT(a)],cb=orden[semColorOT(b)];
+    if(ca!==cb)return ca-cb;
+    return (diasRestantesOT(a)??999)-(diasRestantesOT(b)??999);
+  });
+  const el = document.getElementById('ot-lista');
+  if(el) el.innerHTML = renderOTCards(items);
+}
+
+function cambiarEstadoOT(id, nuevoEstado){
+  const lista = DB.get('ordenes');
+  const idx = lista.findIndex(o=>o.id===id);
+  if(idx<0) return;
+  lista[idx].estado = nuevoEstado;
+  DB.set('ordenes', lista);
+  // Si pasa a En progreso y tiene total del presupuesto, ofrecer crear CC
+  if(nuevoEstado==='En progreso'){
+    const ot = lista[idx];
+    const ccExistente = DB.get('cuentas').find(c=>c.otId===ot.id);
+    if(!ccExistente && (ot.totalPresup||ot.costo)){
+      setTimeout(()=>abrirModalCCdesdeOT(ot), 200);
+      return;
+    }
+  }
+  renderOrdenes();
+}
+
+// ══ CREAR CC DESDE OT ══
+function abrirModalCCdesdeOT(ot){
+  const total = ot.totalPresup || ot.costo || 0;
+  const tasa = ot.condPago==='cc' ? (TASAS_CC[ot.perfilCC||'sinHistorial']||TASAS_CC.sinHistorial) : null;
+  const totalFinal = tasa ? Math.round(total*(1+tasa.pct/100)) : total;
+
+  const modal = document.createElement('div');
+  modal.className='modal-overlay'; modal.id='modal-cc-ot';
+  modal.onclick = (e)=>{ if(e.target===modal) cerrarModalCCOT(); };
+  modal.innerHTML=`<div class="modal-box" onclick="event.stopPropagation()">
+<h3>💰 Crear Cuenta Corriente</h3>
+<p style="font-size:13px;color:var(--gris);margin-bottom:14px">OT iniciada para <strong>${ot.apellido} ${ot.nombre}</strong><br>${ot.desc||''}</p>
+
+<div style="background:var(--crema2);border-radius:10px;padding:12px;margin-bottom:14px">
+<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+<span style="color:var(--gris)">Total del trabajo:</span>
+<span style="font-weight:700">${fmt(total)}</span>
+</div>
+${tasa?`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+<span style="color:var(--gris)">Interés CC (${tasa.pct}%):</span>
+<span style="font-weight:700;color:var(--azul)">${fmt(totalFinal-total)}</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;border-top:1px solid var(--crema3)">
+<span>Total a cobrar:</span><span style="color:var(--azul)">${fmt(totalFinal)}</span>
+</div>`:''}
+</div>
+
+<div class="form-row">
+<label>% de seña inicial</label>
+<div style="display:flex;align-items:center;gap:10px">
+<input type="range" id="cc-pct" min="0" max="100" step="5" value="50"
+  oninput="actualizarModalCC(${totalFinal})"
+  style="flex:1;accent-color:var(--naranja)">
+<span id="cc-pct-label" style="font-weight:700;font-size:16px;color:var(--naranja);min-width:40px">50%</span>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px" id="cc-montos">
+<div style="background:var(--verde-cl);border-radius:10px;padding:10px;text-align:center">
+<div style="font-size:10px;font-weight:600;color:var(--verde);text-transform:uppercase;margin-bottom:3px">Seña inicial</div>
+<div style="font-size:18px;font-weight:700;color:var(--verde)" id="cc-monto-senia">${fmt(totalFinal*0.5)}</div>
+</div>
+<div style="background:var(--azul-cl);border-radius:10px;padding:10px;text-align:center">
+<div style="font-size:10px;font-weight:600;color:var(--azul);text-transform:uppercase;margin-bottom:3px">Saldo al entregar</div>
+<div style="font-size:18px;font-weight:700;color:var(--azul)" id="cc-monto-saldo">${fmt(totalFinal*0.5)}</div>
+</div>
+</div>
+
+<div class="form-row">
+<label>¿Registrar seña como pago recibido?</label>
+<select id="cc-senia-recibida" style="width:100%;border:1.5px solid var(--crema3);border-radius:10px;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--crema);outline:none">
+<option value="si">Sí — ya cobré la seña</option>
+<option value="no">No — todavía no la recibí</option>
+</select>
+</div>
+
+<div class="btn-row" style="margin-top:4px">
+<button class="btn btn-secondary" onclick="cerrarModalCCOT();renderOrdenes()">Omitir</button>
+<button class="btn btn-primary" onclick="crearCCdesdeOT(${ot.id},${totalFinal})">Crear CC</button>
+</div>
+</div>`;
+  document.body.appendChild(modal);
+}
+
+function actualizarModalCC(total){
+  const pct = parseInt(document.getElementById('cc-pct')?.value||50);
+  const senia = Math.round(total * pct / 100);
+  const saldo = total - senia;
+  const lbl = document.getElementById('cc-pct-label');
+  const ms = document.getElementById('cc-monto-senia');
+  const msa = document.getElementById('cc-monto-saldo');
+  if(lbl) lbl.textContent = pct+'%';
+  if(ms) ms.textContent = fmt(senia);
+  if(msa) msa.textContent = fmt(saldo);
+}
+
+function cerrarModalCCOT(){
+  document.getElementById('modal-cc-ot')?.remove();
+}
+
+function crearCCdesdeOT(otId, totalFinal){
+  const ot = DB.get('ordenes').find(o=>o.id===otId);
+  if(!ot) return;
+  const pct = parseInt(document.getElementById('cc-pct')?.value||50);
+  const seniaRecibida = document.getElementById('cc-senia-recibida')?.value==='si';
+  const montoSenia = Math.round(totalFinal * pct / 100);
+  const montoSaldo = totalFinal - montoSenia;
+
+  const num = DB.nextNum('cuentas');
+  const compras = [{
+    fecha: hoy(),
+    desc: ot.desc || 'Trabajo de carpintería',
+    cant: 1,
+    precio: totalFinal
+  }];
+  const pagos = seniaRecibida && montoSenia > 0 ? [{
+    fecha: hoy(),
+    forma: 'Seña inicial',
+    recibo: '',
+    monto: montoSenia
+  }] : [];
+
+  const saldoPendiente = totalFinal - pagos.reduce((s,p)=>s+p.monto,0);
+  const estado = saldoPendiente <= 0 ? 'Pagado' : seniaRecibida ? 'Al día' : 'Pendiente';
+
+  const cc = {
+    id: Date.now(),
+    num,
+    fecha: hoy(),
+    apellido: ot.apellido,
+    nombre: ot.nombre,
+    desc: ot.desc,
+    tel: ot.tel||'',
+    compras,
+    pagos,
+    estado,
+    obs: `Cuenta generada desde OT-${String(ot.num).padStart(3,'0')}${ot.presupOrigen?' · Presup: '+ot.presupOrigen:''}`,
+    otId: otId,
+    otNum: ot.num,
+    presupOrigen: ot.presupOrigen||'',
+    montoSenia,
+    montoSaldo,
+    nombreArchivo: nomArchivo('cuentas', num, ot.apellido, ot.nombre, ot.desc)
+  };
+
+  const listaCC = DB.get('cuentas');
+  listaCC.push(cc);
+  DB.set('cuentas', listaCC);
+
+  // Guardar el ccId en la OT para el link
+  const listaOT = DB.get('ordenes');
+  const idx = listaOT.findIndex(o=>o.id===otId);
+  if(idx>=0){ listaOT[idx].ccId = cc.id; listaOT[idx].ccNum = num; DB.set('ordenes', listaOT); }
+
+  cerrarModalCCOT();
+  actualizarStats();
+  renderOrdenes();
+
+  // Confirmar y ofrecer ir a la CC
+  if(confirm(`✅ Cuenta Corriente CC-${String(num).padStart(3,'0')} creada para ${ot.apellido} ${ot.nombre}\n\nSeña: ${fmt(montoSenia)}\nSaldo pendiente: ${fmt(montoSaldo)}\n\n¿Ir a la cuenta corriente ahora?`)){
+    setTimeout(()=>{ irA('cuentas'); setTimeout(()=>verDetalle('cuentas', cc.id), 300); }, 200);
+  }
+}
+
+function toggleTerminadas(){
+  const div = document.getElementById('lista-terminadas');
+  const btn = document.getElementById('btn-terminadas');
+  if(!div||!btn) return;
+  const abierto = div.style.display!=='none';
+  div.style.display = abierto?'none':'block';
+  btn.textContent = abierto?`▸ Ver terminadas / entregadas`:`▾ Ocultar terminadas`;
 }
 
 // ══ INIT ══
