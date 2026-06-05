@@ -152,13 +152,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:var(--blanco);border-radius:16px;padding:24px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto;}
 .modal-box h3{font-family:'Playfair Display',serif;color:var(--marron);margin-bottom:16px;}
-/* PRINT — CORREGIDO */
-@media print{
-  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  body > *{display:none!important;}
-  #print-area{display:block!important;position:fixed;top:0;left:0;width:100%;height:auto;}
-}
-#print-area{display:none;}
+/* No se necesita CSS de impresión — se usa iframe */
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .screen.active .content>*{animation:fadeUp .25s ease both;}
 .screen.active .content>*:nth-child(2){animation-delay:.04s;}
@@ -166,9 +160,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 </style>
 </head>
 <body>
-
-<!-- PRINT AREA -->
-<div id="print-area"></div>
 
 <!-- HOME -->
 <div id="screen-home" class="screen active">
@@ -916,13 +907,44 @@ function eliminarItem(tipo,id){
   DB.set(tipo,lista); volverDeDetalle(); actualizarStats();
 }
 
-// ══ PDF INDIVIDUAL — CORREGIDO ══
+// ══ FUNCIÓN CENTRAL DE IMPRESIÓN (iframe — funciona en Android) ══
+function imprimirConIframe(htmlContent){
+  // Eliminar iframe anterior si existe
+  const viejo = document.getElementById('iframe-print');
+  if(viejo) viejo.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'iframe-print';
+  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:#fff;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+  doc.write('<meta name="viewport" content="width=device-width,initial-scale=1.0">');
+  doc.write('<style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box;}body{margin:0;padding:0;font-family:Arial,sans-serif;}</style>');
+  doc.write('</head><body>');
+  doc.write(htmlContent);
+  doc.write('</body></html>');
+  doc.close();
+
+  // Esperar a que cargue todo (imágenes incluidas) antes de imprimir
+  iframe.onload = function(){
+    setTimeout(()=>{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      // Cerrar iframe cuando el usuario termine (después de imprimir/cancelar)
+      setTimeout(()=>{ iframe.remove(); }, 1500);
+    }, 300);
+  };
+}
+
+// ══ PDF INDIVIDUAL ══
 function imprimirItem(tipo,id){
   const item=DB.get(tipo).find(i=>i.id===id);
   if(!item)return;
-  const pa=document.getElementById('print-area');
 
-  let html=`<style>
+  const estilos=`<style>
 body{font-family:Arial,sans-serif;color:#2a1a0a;margin:0;padding:0;}
 .ph{background:#4A2C0A;padding:24px 32px;display:flex;align-items:center;gap:16px;}
 .ph-logo{width:48px;height:48px;background:#C4621A;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:#fff;}
@@ -947,8 +969,10 @@ tbody td{padding:7px 10px;font-size:12px;border-bottom:1px solid #F0E0C8;}
 .cuota-box .cv{font-size:14px;font-weight:bold;color:#1A3A5C;}
 .footer{background:#F5E8D5;padding:12px 32px;text-align:center;font-size:11px;color:#888;border-top:2px solid #EDD8BC;}
 img.plano{max-width:100%;border-radius:8px;}
-</style>
-<div class="ph">
+</style>`;
+
+  let html=estilos;
+  html+=`<div class="ph">
 <div class="ph-logo">MC</div>
 <div><h1>La Mueblería Conca</h1><p>Concarán, San Luis, Argentina · @lamuebleriaconca</p></div>
 <div class="badge">${pre(tipo)}<br>${String(item.num).padStart(3,'0')}</div>
@@ -1024,13 +1048,7 @@ ${item.desc?`<div class="field"><label>Descripción</label><span>${item.desc}</s
 
   html+=`</div><div class="footer">La Mueblería Conca · Concarán, San Luis, Argentina · @lamuebleriaconca</div>`;
 
-  pa.innerHTML=html;
-  // Forzar visibilidad antes de imprimir
-  pa.style.display='block';
-  setTimeout(()=>{
-    window.print();
-    setTimeout(()=>{pa.innerHTML='';pa.style.display='';},500);
-  },150);
+  imprimirConIframe(html);
 }
 
 // ══ BANCO DE HORAS ══
@@ -1335,11 +1353,8 @@ function imprimirPedido(proveedor, incluirEntregados){
   const items = incluirEntregados ? todos : todos.filter(i=>!i.entregado);
   if(items.length===0){alert('No hay ítems pendientes para imprimir.');return;}
 
-  // Ordenar por fecha
   items.sort((a,b)=>a.fecha.localeCompare(b.fecha));
-
   const totalEstimado = items.reduce((s,i)=>s+(i.precio||0),0);
-  const pa = document.getElementById('print-area');
 
   let html=`<style>
 body{font-family:Arial,sans-serif;color:#2a1a0a;margin:0;padding:0;}
@@ -1384,12 +1399,7 @@ ${totalEstimado>0?`<div class="total-bar"><span>TOTAL ESTIMADO</span><span>${fmt
 </div>
 <div class="footer">La Mueblería Conca · Concarán, San Luis, Argentina · @lamuebleriaconca</div>`;
 
-  pa.innerHTML=html;
-  pa.style.display='block';
-  setTimeout(()=>{
-    window.print();
-    setTimeout(()=>{pa.innerHTML='';pa.style.display='';},500);
-  },150);
+  imprimirConIframe(html);
 }
 
 // ══ INIT ══
