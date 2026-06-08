@@ -590,6 +590,22 @@ function guardarPagoOT(otId){
 }
 
 // ══ PDF OT ══
+function imprimirConIframe(html){
+  const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${html}</body></html>`;
+  const blob=new Blob([fullHtml],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:white;';
+  iframe.src=url;
+  document.body.appendChild(iframe);
+  iframe.onload=()=>{
+    setTimeout(()=>{
+      try{iframe.contentWindow.focus();iframe.contentWindow.print();}catch(e){window.open(url,'_blank');}
+      setTimeout(()=>{document.body.removeChild(iframe);URL.revokeObjectURL(url);},2000);
+    },400);
+  };
+}
+
 function pdfOT(otId){
   const ot=DB.get('ordenes').find(o=>o.id===otId);
   if(!ot)return;
@@ -599,7 +615,6 @@ function pdfOT(otId){
   const totalPagosExtra=pagosOT.reduce((a,p)=>a+(parseFloat(p.monto)||0),0);
   const totalCobrado=senia+totalPagosExtra;
   const saldo=Math.max(0,costo-totalCobrado);
-  const pa=document.getElementById('print-area');
   let html=pdfHeader('OT',ot.num);
   html+=`<div class="section">
     <div class="grid">
@@ -617,7 +632,6 @@ function pdfOT(otId){
     ${ot.instrucciones?`<div style="margin:12px 0"><strong style="font-size:12px">Instrucciones especiales:</strong><p style="font-size:12px;color:#666;white-space:pre-line;margin-top:4px">${ot.instrucciones}</p></div>`:''}
     ${ot.notas?`<p style="font-size:12px;color:#888;margin:8px 0">${ot.notas}</p>`:''}
     ${ot.presupOrigen?`<p style="font-size:11px;color:#aaa">Presupuesto origen: ${ot.presupOrigen}</p>`:''}
-
     <h3 style="margin:20px 0 10px;font-size:14px;color:#4A2C0A;border-bottom:2px solid #EDD8BC;padding-bottom:6px">💰 Estado de cuenta</h3>
     <table>
       <thead><tr><th>Concepto</th><th style="text-align:right">Monto</th></tr></thead>
@@ -631,12 +645,10 @@ function pdfOT(otId){
       <span>${saldo<=0?'✅ TRABAJO SALDADO':'⚠ SALDO PENDIENTE'}</span>
       <span>${fmt(Math.abs(saldo))}</span>
     </div>
-    ${ot.imagen?`<div style="margin:12px 0"><strong style="font-size:12px">Plano / Imagen:</strong><br><img class="plano" src="${ot.imagen}" style="margin-top:8px;max-width:100%;border-radius:8px"></div>`:''}
+    ${ot.imagen?`<div style="margin:12px 0"><strong style="font-size:12px">Plano / Imagen:</strong><br><img src="${ot.imagen}" style="margin-top:8px;max-width:100%;border-radius:8px"></div>`:''}
   </div>`;
   html+=pdfFooter();
-  pa.innerHTML=html;
-  window.print();
-  setTimeout(()=>{pa.innerHTML='';},1000);
+  imprimirConIframe(html);
 }
 
 function pdfHeader(tipo,num){
@@ -1182,9 +1194,7 @@ function imprimirItem(tipo,id){
     html+=`<div class="saldo-bar" style="background:${saldo<=0?'#2A5C32':'#9B1C1C'}"><span>${saldo<=0?'✅ CUENTA SALDADA':'⚠ SALDO PENDIENTE'}</span><span>${fmt(Math.abs(saldo))}</span></div>`;
   }
   html+=`</div>${pdfFooter()}`;
-  pa.innerHTML=html;
-  window.print();
-  setTimeout(()=>{pa.innerHTML='';},1000);
+  imprimirConIframe(html);
 }
 
 // ══ BANCO DE HORAS ══
