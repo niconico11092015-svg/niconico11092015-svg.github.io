@@ -591,19 +591,15 @@ function guardarPagoOT(otId){
 
 // ══ PDF OT ══
 function imprimirConIframe(html){
-  const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${html}</body></html>`;
+  const fullHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media print{.no-print{display:none!important;}body{margin:0;}}</style></head><body><div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#4A2C0A;padding:12px 16px;display:flex;gap:10px;z-index:999"><button onclick="window.print()" style="flex:1;background:#C4621A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer">🖨 Imprimir / Guardar PDF</button><button onclick="window.close()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer">✕</button></div><div style="margin-top:56px">${html}</div></body></html>`;
   const blob=new Blob([fullHtml],{type:'text/html'});
   const url=URL.createObjectURL(blob);
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:white;';
-  iframe.src=url;
-  document.body.appendChild(iframe);
-  iframe.onload=()=>{
-    setTimeout(()=>{
-      try{iframe.contentWindow.focus();iframe.contentWindow.print();}catch(e){window.open(url,'_blank');}
-      setTimeout(()=>{document.body.removeChild(iframe);URL.revokeObjectURL(url);},2000);
-    },400);
-  };
+  const ventana=window.open(url,'_blank');
+  if(!ventana){
+    // si el navegador bloqueó el popup, mostrar directamente
+    document.open();document.write(fullHtml);document.close();
+  }
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 
 function pdfOT(otId){
