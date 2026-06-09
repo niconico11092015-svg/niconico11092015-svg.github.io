@@ -257,10 +257,7 @@ body{background:white;}
 <!-- ORDENES -->
 <div id="screen-ordenes" class="screen">
   <div class="topbar"><div class="topbar-icon">🔧</div><div><h1>Órdenes de Trabajo</h1></div></div>
-  <div class="content">
-    <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-ot" oninput="renderLista('ordenes')"></div>
-    <div class="lista" id="lista-ordenes"></div>
-  </div>
+  <div class="content" id="ordenes-content"></div>
   <button class="fab" onclick="abrirForm('ordenes',null)">＋</button>
 </div>
 
@@ -340,11 +337,12 @@ function irA(p){
   if(nb)nb.classList.add('active');
   document.getElementById('navbar').style.display='flex';
   pantalla=p;
-  if(['presupuestos','cuentas','ordenes'].includes(p))renderLista(p);
+  if(['presupuestos','cuentas'].includes(p))renderLista(p);
   if(p==='home')actualizarStats();
   if(p==='horas')renderHoras();
   if(p==='cobros')renderCobros();
   if(p==='pedidos')renderPedidos();
+  if(p==='ordenes')renderOrdenes();
 }
 function mostrarForm(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -445,7 +443,169 @@ function renderLista(tipo){
   }).join('');
 }
 
-// ══ COBROS PENDIENTES ══
+// ══ PANEL ÓRDENES SEMANAL ══
+let otVista='semana'; // 'semana' o 'lista'
+let otSemanaOffset=0;
+
+function renderOrdenes(){
+  const cont=document.getElementById('ordenes-content');
+  if(!cont)return;
+  const todas=DB.get('ordenes');
+
+  // Tabs vista
+  let html=`<div style="display:flex;gap:8px;margin-bottom:14px">
+    <button onclick="otVista='semana';renderOrdenes()" style="flex:1;padding:10px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${otVista==='semana'?'var(--marron)':'var(--blanco)'};color:${otVista==='semana'?'#fff':'var(--marron2)'};box-shadow:var(--sombra)">📅 Semana</button>
+    <button onclick="otVista='lista';renderOrdenes()" style="flex:1;padding:10px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${otVista==='lista'?'var(--marron)':'var(--blanco)'};color:${otVista==='lista'?'#fff':'var(--marron2)'};box-shadow:var(--sombra)">📋 Lista</button>
+  </div>`;
+
+  if(otVista==='semana'){
+    // Navegación semana
+    const fechaBase=new Date();
+    fechaBase.setDate(fechaBase.getDate()+otSemanaOffset*7);
+    const lunes=new Date(fechaBase);
+    const dia=lunes.getDay();
+    lunes.setDate(lunes.getDate()-(dia===0?6:dia-1));
+    const sabado=new Date(lunes); sabado.setDate(lunes.getDate()+5);
+    const fmtDia=d=>d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+    const diasSemana=['Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+    html+=`<div style="background:var(--blanco);border-radius:14px;padding:12px 14px;box-shadow:var(--sombra);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <button onclick="otSemanaOffset--;renderOrdenes()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">←</button>
+      <div style="text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--marron)">${fmtDia(lunes)} — ${fmtDia(sabado)}</div>
+        ${otSemanaOffset===0?'<div style="font-size:11px;color:var(--naranja)">semana actual</div>':''}
+      </div>
+      <button onclick="otSemanaOffset++;renderOrdenes()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">→</button>
+    </div>`;
+
+    // Resumen semáforo
+    const activas=todas.filter(o=>!['Entregado','Cancelado'].includes(o.estado));
+    const hoyMs=new Date().setHours(0,0,0,0);
+    const rojas=activas.filter(o=>{
+      const e=o.entrega?new Date(o.entrega).setHours(0,0,0,0):null;
+      return o.prioridad==='Urgente'||(e&&e<hoyMs);
+    }).length;
+    const amarillas=activas.filter(o=>{
+      const e=o.entrega?new Date(o.entrega).setHours(0,0,0,0):null;
+      const dias=e?Math.floor((e-hoyMs)/(1000*60*60*24)):999;
+      return o.prioridad==='Alta'||(dias>=0&&dias<=4);
+    }).length;
+    const verdes=activas.length-rojas-amarillas;
+
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:#FEF2F2;border-radius:10px;padding:10px;text-align:center;border-top:3px solid #EF4444">
+        <div style="font-size:22px;font-weight:700;color:#EF4444">${rojas}</div>
+        <div style="font-size:10px;font-weight:600;color:#EF4444;text-transform:uppercase">Urgente</div>
+      </div>
+      <div style="background:#FEF3C7;border-radius:10px;padding:10px;text-align:center;border-top:3px solid #F59E0B">
+        <div style="font-size:22px;font-weight:700;color:#F59E0B">${amarillas}</div>
+        <div style="font-size:10px;font-weight:600;color:#F59E0B;text-transform:uppercase">Próximas</div>
+      </div>
+      <div style="background:var(--verde-cl);border-radius:10px;padding:10px;text-align:center;border-top:3px solid #22C55E">
+        <div style="font-size:22px;font-weight:700;color:#22C55E">${verdes}</div>
+        <div style="font-size:10px;font-weight:600;color:#22C55E;text-transform:uppercase">En tiempo</div>
+      </div>
+    </div>`;
+
+    // Días de la semana con OTs
+    for(let i=0;i<6;i++){
+      const fechaDia=new Date(lunes); fechaDia.setDate(lunes.getDate()+i);
+      const fechaStr=fechaDia.toISOString().split('T')[0];
+      const fechaDiaMs=fechaDia.setHours(0,0,0,0);
+      const esHoy=fechaDiaMs===hoyMs;
+
+      // OTs que vencen ese día o fueron creadas ese día
+      const otsDia=todas.filter(o=>{
+        const entrega=o.entrega||o.fecha;
+        return entrega===fechaStr&&!['Cancelado'].includes(o.estado);
+      });
+
+      html+=`<div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="background:${esHoy?'var(--naranja)':'var(--marron2)'};color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700">${diasSemana[i]}</div>
+          <span style="font-size:12px;color:var(--gris)">${fmtDia(fechaDia)}</span>
+          ${otsDia.length>0?`<span style="background:var(--naranja);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700">${otsDia.length}</span>`:''}
+        </div>`;
+
+      if(otsDia.length===0){
+        html+=`<div style="background:var(--blanco);border-radius:10px;padding:10px 14px;font-size:12px;color:#ccc;box-shadow:var(--sombra)">Sin órdenes</div>`;
+      } else {
+        otsDia.forEach(ot=>{
+          const sem=calcSemaforo(ot,'ordenes');
+          const colores={verde:'#22C55E',amarillo:'#F59E0B',rojo:'#EF4444'};
+          const color=colores[sem];
+          const costo=parseFloat(ot.costo)||0;
+          const senia=parseFloat(ot.senia)||0;
+          const pagosExtra=(ot.pagosOT||[]).reduce((a,p)=>a+(parseFloat(p.monto)||0),0);
+          const saldo=Math.max(0,costo-senia-pagosExtra);
+          html+=`<div onclick="verDetalle('ordenes',${ot.id})" style="background:var(--blanco);border-radius:10px;padding:12px 14px;box-shadow:var(--sombra);margin-bottom:6px;border-left:4px solid ${color};cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gris);letter-spacing:.8px">OT-${String(ot.num).padStart(3,'0')}</div>
+                <div style="font-weight:600;font-size:14px;color:var(--marron);margin:2px 0">${ot.apellido||''} ${ot.nombre||''}</div>
+                <div style="font-size:12px;color:var(--gris)">${ot.desc||'—'}</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;margin-left:8px">
+                <div style="width:10px;height:10px;border-radius:50%;background:${color};margin-left:auto;margin-bottom:4px"></div>
+                <span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;background:${color}22;color:${color}">${ot.estado||'Pendiente'}</span>
+              </div>
+            </div>
+            ${saldo>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--crema2);font-size:11px;color:var(--rojo);font-weight:600">💰 Saldo: ${fmt(saldo)}</div>`:''}
+          </div>`;
+        });
+      }
+      html+=`</div>`;
+    }
+
+    // OTs sin fecha de entrega
+    const sinFecha=todas.filter(o=>!o.entrega&&!['Entregado','Cancelado'].includes(o.estado));
+    if(sinFecha.length>0){
+      html+=`<div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="background:var(--gris);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700">Sin fecha</div>
+          <span style="background:var(--gris);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700">${sinFecha.length}</span>
+        </div>`;
+      sinFecha.forEach(ot=>{
+        html+=`<div onclick="verDetalle('ordenes',${ot.id})" style="background:var(--blanco);border-radius:10px;padding:12px 14px;box-shadow:var(--sombra);margin-bottom:6px;border-left:4px solid var(--gris);cursor:pointer">
+          <div style="font-size:11px;font-weight:700;color:var(--gris);letter-spacing:.8px">OT-${String(ot.num).padStart(3,'0')}</div>
+          <div style="font-weight:600;font-size:14px;color:var(--marron);margin:2px 0">${ot.apellido||''} ${ot.nombre||''}</div>
+          <div style="font-size:12px;color:var(--gris)">${ot.desc||'—'}</div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+
+  } else {
+    // Vista lista
+    html+=`<div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-ot" oninput="renderOrdenes()" style="border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:14px;flex:1;color:var(--marron);background:transparent"></div>`;
+    const busq=(document.getElementById('buscar-ot')?.value||'').toLowerCase();
+    const filtradas=todas.filter(o=>`${o.apellido} ${o.nombre} ${o.desc} ${o.num}`.toLowerCase().includes(busq));
+    if(!filtradas.length){
+      html+=`<div class="empty-state"><div class="e-ico">🔧</div><p>No hay órdenes.<br>Tocá ＋ para agregar.</p></div>`;
+    } else {
+      filtradas.forEach(ot=>{
+        const sem=calcSemaforo(ot,'ordenes');
+        const costo=parseFloat(ot.costo)||0;
+        const senia=parseFloat(ot.senia)||0;
+        const pagosExtra=(ot.pagosOT||[]).reduce((a,p)=>a+(parseFloat(p.monto)||0),0);
+        const saldo=Math.max(0,costo-senia-pagosExtra);
+        html+=`<div class="item-card ot" onclick="verDetalle('ordenes',${ot.id})" style="margin-bottom:10px">
+          <div class="semaforo-dot sem-${sem}"></div>
+          <div class="item-top"><span class="item-codigo">OT-${String(ot.num).padStart(3,'0')}</span><span class="item-fecha">${fmtF(ot.fecha)}</span></div>
+          <div class="item-nombre">${ot.apellido||''} ${ot.nombre||''}</div>
+          <div class="item-desc">${ot.desc||'—'}</div>
+          <div class="item-footer">
+            <span class="item-total">Saldo: ${fmt(saldo)}</span>
+            <span class="item-badge ${badgeClass(ot.estado)}">${ot.estado||'Pendiente'}</span>
+          </div>
+        </div>`;
+      });
+    }
+  }
+
+  cont.innerHTML=html;
+}
+
 function renderCobros(){
   const cont=document.getElementById('cobros-content');
   const ots=DB.get('ordenes').filter(ot=>!['Cancelado'].includes(ot.estado));
