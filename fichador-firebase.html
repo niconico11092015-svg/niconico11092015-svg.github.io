@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Fichador – La Mueblería Conca</title>
+<style>
+:root {
+  --bg:        #0f0f0f;
+  --surface:   #1a1a1a;
+  --surface2:  #222;
+  --border:    #2e2e2e;
+  --text:      #f0ebe4;
+  --text2:     #7a7268;
+  --text3:     #3a3530;
+  --entrada:   #2d7a3a;
+  --entrada-h: #38994a;
+  --descanso:  #7a6a1a;
+  --descanso-h:#9a850f;
+  --regreso:   #1a5c7a;
+  --regreso-h: #1f739a;
+  --salida:    #7a1a1a;
+  --salida-h:  #9a2020;
+  --extra:     #c0392b;
+  --ok:        #27ae60;
+  --warn:      #e67e22;
+  --wood:      #a0703a;
+  --wood-light:#c89050;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+/* HEADER */
+.app-header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--wood);
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { font-size: 17px; font-weight: 800; color: var(--wood-light); letter-spacing: .5px; }
+.logo sub { font-size: 10px; font-weight: 400; color: var(--text2); display: block; letter-spacing: 1.5px; text-transform: uppercase; }
+.mode-toggle { display: flex; gap: 6px; }
+.mode-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+  padding: 7px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all .2s;
+}
+.mode-btn.active { background: var(--wood); color: #fff; border-color: var(--wood); }
+
+/* SYNC INDICATOR */
+.sync-bar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 20px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--text2);
+}
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background .3s; }
+.sync-dot.online { background: var(--ok); }
+.sync-dot.syncing { background: var(--warn); animation: pulse .8s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* VIEWS */
+.view { display: none; padding: 20px; max-width: 600px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* CLOCK */
+.clock-bar { text-align: center; padding: 18px 0 10px; margin-bottom: 20px; }
+.clock-time { font-size: clamp(42px,12vw,72px); font-weight: 200; letter-spacing: -2px; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+.clock-date { font-size: 13px; color: var(--text2); margin-top: 6px; text-transform: capitalize; }
+
+/* EMPLOYEE SELECTOR */
+.emp-selector { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 24px; }
+.emp-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2); margin-bottom: 10px; }
+.emp-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.emp-chip {
+  background: var(--surface2); border: 2px solid var(--border); color: var(--text);
+  padding: 10px 18px; border-radius: 30px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all .15s; position: relative;
+}
+.emp-chip:hover { border-color: var(--wood); }
+.emp-chip.selected { background: var(--wood); border-color: var(--wood-light); color: #fff; }
+.emp-chip.has-session::after { content:'●'; position:absolute; top:-3px; right:-3px; font-size:10px; color:var(--ok); }
+
+/* TRACK */
+.status-track { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 28px; padding: 0 4px; }
+.track-step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+.track-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); z-index: 2; transition: all .3s; }
+.track-dot.done { background: var(--wood); border-color: var(--wood-light); }
+.track-dot.active { background: var(--ok); border-color: #4ddd80; box-shadow: 0 0 8px #27ae6088; }
+.track-label { font-size: 9px; color: var(--text3); margin-top: 5px; text-align: center; text-transform: uppercase; letter-spacing: .8px; transition: color .3s; }
+.track-label.done { color: var(--wood-light); }
+.track-label.active { color: var(--ok); }
+.track-line { flex: 1; height: 2px; background: var(--border); margin-top: -18px; z-index: 1; transition: background .3s; }
+.track-line.done { background: var(--wood); }
+
+/* SESSION CARD */
+.session-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; margin-bottom: 24px; display: none; }
+.session-card.visible { display: block; }
+.session-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; }
+.session-row-label { color: var(--text2); }
+.session-row-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.session-row-val.extra { color: var(--extra); }
+.session-divider { height: 1px; background: var(--border); margin: 6px 0; }
+.elapsed-bar { margin-top: 10px; }
+.elapsed-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text2); margin-bottom: 4px; }
+.elapsed-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.elapsed-fill { height: 100%; border-radius: 3px; transition: width .5s, background .5s; background: var(--ok); }
+
+/* FICHAR BUTTONS */
+.fichar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.fichar-btn {
+  border: none; border-radius: 18px; padding: 28px 16px; font-size: 15px; font-weight: 700;
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  transition: all .15s; position: relative; overflow: hidden; letter-spacing: .3px; line-height: 1.3; text-align: center;
+}
+.fichar-btn::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,0); transition:background .1s; }
+.fichar-btn:active::after { background:rgba(255,255,255,0.1); }
+.fichar-btn:disabled { opacity:.28; cursor:not-allowed; pointer-events:none; }
+.fichar-btn .btn-icon { font-size: 36px; }
+.fichar-btn .btn-sub { font-size: 11px; font-weight: 400; opacity: .8; }
+.btn-entrada  { background: var(--entrada);  color: #fff; }
+.btn-entrada:hover  { background: var(--entrada-h); }
+.btn-idescanso { background: var(--descanso); color: #fff; }
+.btn-idescanso:hover { background: var(--descanso-h); }
+.btn-fdescanso { background: var(--regreso);  color: #fff; }
+.btn-fdescanso:hover { background: var(--regreso-h); }
+.btn-salida   { background: var(--salida);   color: #fff; }
+.btn-salida:hover   { background: var(--salida-h); }
+
+/* CONFIRM OVERLAY */
+.confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:200; display:none; align-items:center; justify-content:center; padding:24px; }
+.confirm-overlay.open { display:flex; }
+.confirm-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px 28px; text-align:center; max-width:340px; width:100%; }
+.confirm-icon { font-size:52px; margin-bottom:12px; }
+.confirm-title { font-size:22px; font-weight:800; margin-bottom:6px; }
+.confirm-sub { font-size:14px; color:var(--text2); margin-bottom:12px; }
+.confirm-time { font-size:36px; font-weight:200; color:var(--wood-light); margin-bottom:24px; font-variant-numeric:tabular-nums; }
+.confirm-actions { display:flex; gap:12px; }
+.confirm-actions button { flex:1; padding:16px; border-radius:12px; border:none; font-size:16px; font-weight:700; cursor:pointer; }
+.confirm-ok { background:var(--wood); color:#fff; }
+.confirm-cancel { background:var(--surface2); color:var(--text2); border:1px solid var(--border) !important; }
+
+/* SUPERVISOR */
+.sup-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.sup-title { font-size:18px; font-weight:800; }
+.date-nav { display:flex; align-items:center; gap:8px; }
+.date-nav button { background:var(--surface2); border:1px solid var(--border); color:var(--text); width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:16px; }
+.date-nav .cur-date { font-size:12px; color:var(--text2); white-space:nowrap; }
+
+.emp-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; transition:border-color .2s; }
+.emp-card.active-now { border-color:var(--ok); }
+.emp-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.emp-card-name { font-size:16px; font-weight:700; }
+.emp-status-badge { font-size:10px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:.5px; text-transform:uppercase; }
+.badge-fuera { background:#1a1a1a; color:var(--text2); border:1px solid var(--border); }
+.badge-trabajando { background:#1a3a20; color:#4ddd80; border:1px solid #2d7a3a; }
+.badge-descanso { background:#3a2e00; color:#f0c040; border:1px solid #7a6a1a; }
+.badge-completo { background:#1a2a3a; color:#60aaff; border:1px solid #1a5c7a; }
+.badge-extras { background:#3a1010; color:#ff6060; border:1px solid #7a1a1a; }
+
+.emp-times { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.time-cell { background:var(--surface2); border-radius:8px; padding:8px 10px; }
+.time-cell-label { font-size:9px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.time-cell-val { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px; }
+.time-cell-val.pending { color:var(--text3); }
+.emp-summary { display:flex; gap:8px; flex-wrap:wrap; }
+.sum-pill { font-size:11px; padding:4px 10px; border-radius:20px; border:1px solid var(--border); color:var(--text2); }
+.sum-pill span { font-weight:700; color:var(--text); }
+.sum-pill.extra-pill { border-color:var(--extra); color:var(--extra); }
+.sum-pill.extra-pill span { color:var(--extra); }
+
+/* QUINCENAL */
+.quincenal-section { margin-top:28px; background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.quin-header { padding:14px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); cursor:pointer; }
+.quin-title { font-size:14px; font-weight:700; color:var(--wood-light); }
+.quin-toggle { color:var(--text2); font-size:18px; transition:transform .2s; }
+.quin-toggle.open { transform:rotate(180deg); }
+.quin-body { display:none; padding:16px; }
+.quin-body.open { display:block; }
+.quin-emp { margin-bottom:20px; }
+.quin-emp-name { font-size:13px; font-weight:700; color:var(--wood-light); margin-bottom:10px; }
+.quin-table { width:100%; border-collapse:collapse; font-size:11px; }
+.quin-table th { text-align:left; padding:5px 8px; color:var(--text2); font-weight:600; border-bottom:1px solid var(--border); }
+.quin-table td { padding:5px 8px; border-bottom:1px solid var(--text3); font-variant-numeric:tabular-nums; }
+.quin-table tr:last-child td { border-bottom:none; }
+.extra-cell { color:var(--extra); font-weight:700; }
+.quin-totals { margin-top:10px; background:var(--surface2); border-radius:8px; padding:10px 12px; display:flex; gap:12px; flex-wrap:wrap; }
+.quin-tot { font-size:12px; }
+.quin-tot span { font-weight:700; color:var(--wood-light); }
+
+/* CONFIG */
+.config-section { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:16px; }
+.config-section h3 { font-size:13px; font-weight:700; color:var(--wood-light); margin-bottom:14px; text-transform:uppercase; letter-spacing:1px; }
+.emp-config-list { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.emp-config-item { display:flex; align-items:center; justify-content:space-between; background:var(--surface2); padding:10px 14px; border-radius:10px; font-size:14px; }
+.emp-config-del { background:none; border:none; color:var(--salida); cursor:pointer; font-size:18px; padding:0 4px; }
+.add-emp-row { display:flex; gap:8px; }
+.add-emp-input { flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:10px; font-size:14px; }
+.add-emp-input:focus { outline:none; border-color:var(--wood); }
+.add-emp-btn { background:var(--wood); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
+.config-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:13px; }
+.config-val-input { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:6px 10px; border-radius:8px; font-size:13px; width:80px; text-align:center; }
+.config-val-input:focus { outline:none; border-color:var(--wood); }
+
+/* TOAST */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface); border:1px solid var(--wood); color:var(--text); padding:12px 22px; border-radius:30px; font-size:14px; font-weight:600; z-index:300; transition:transform .3s cubic-bezier(.34,1.56,.64,1); white-space:nowrap; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+/* LOADING */
+.loading-screen { position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; gap:16px; }
+.loading-screen.hidden { display:none; }
+.loading-logo { font-size:40px; }
+.loading-text { color:var(--text2); font-size:14px; }
+.spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--wood); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.no-session-msg { text-align:center; color:var(--text2); font-size:13px; padding:24px 0; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo">🪵</div>
+  <div class="spinner"></div>
+  <div class="loading-text">Conectando con Firebase…</div>
+</div>
+
+<header class="app-header">
+  <div class="logo">🪵 La Mueblería Conca <sub>Control de asistencia</sub></div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-view="tablet" onclick="switchView('tablet')">📲 Fichar</button>
+    <button class="mode-btn" data-view="supervisor" onclick="switchView('supervisor')">👁 Supervisor</button>
+    <button class="mode-btn" data-view="config" onclick="switchView('config')">⚙️</button>
+  </div>
+</header>
+
+<div class="sync-bar">
+  <div class="sync-dot" id="syncDot"></div>
+  <span id="syncLabel">Conectando…</span>
+</div>
+
+<!-- ═══ VISTA TABLET ═══ -->
+<div class="view active" id="view-tablet">
+  <div class="clock-bar">
+    <div class="clock-time" id="clock">00:00:00</div>
+    <div class="clock-date" id="clockDate">–</div>
+  </div>
+
+  <div class="emp-selector">
+    <div class="emp-label">¿Quién sos?</div>
+    <div class="emp-list" id="empList"></div>
+  </div>
+
+  <div class="status-track">
+    <div class="track-step"><div class="track-dot" id="dot-0"></div><div class="track-label" id="lbl-0">Entrada</div></div>
+    <div class="track-line" id="line-0"></div>
+    <div class="track-step"><div class="track-dot" id="dot-1"></div><div class="track-label" id="lbl-1">Descanso</div></div>
+    <div class="track-line" id="line-1"></div>
+    <div class="track-step"><div class="track-dot" id="dot-2"></div><div class="track-label" id="lbl-2">Regreso</div></div>
+    <div class="track-line" id="line-2"></div>
+    <div class="track-step"><div class="track-dot" id="dot-3"></div><div class="track-label" id="lbl-3">Salida</div></div>
+  </div>
+
+  <div class="session-card" id="sessionCard">
+    <div id="sessionRows"></div>
+    <div class="elapsed-bar">
+      <div class="elapsed-label"><span>Tiempo trabajado</span><span id="elapsedPct">0%</span></div>
+      <div class="elapsed-track"><div class="elapsed-fill" id="elapsedFill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="fichar-grid">
+    <button class="fichar-btn btn-entrada"   id="btn-entrada"   onclick="requestFichar('entrada')">
+      <span class="btn-icon">🟢</span>ENTRADA<span class="btn-sub">Inicio de jornada</span>
+    </button>
+    <button class="fichar-btn btn-idescanso" id="btn-idescanso" onclick="requestFichar('idescanso')" disabled>
+      <span class="btn-icon">🍽️</span>INICIO DESCANSO<span class="btn-sub">Salida al mediodía</span>
+    </button>
+    <button class="fichar-btn btn-fdescanso" id="btn-fdescanso" onclick="requestFichar('fdescanso')" disabled>
+      <span class="btn-icon">🔵</span>FIN DESCANSO<span class="btn-sub">Regreso del almuerzo</span>
+    </button>
+    <button class="fichar-btn btn-salida"    id="btn-salida"    onclick="requestFichar('salida')" disabled>
+      <span class="btn-icon">🔴</span>FIN DE JORNADA<span class="btn-sub">Hasta mañana</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ VISTA SUPERVISOR ═══ -->
+<div class="view" id="view-supervisor">
+  <div class="sup-header">
+    <div class="sup-title">Panel del día</div>
+    <div class="date-nav">
+      <button onclick="navDate(-1)">‹</button>
+      <span class="cur-date" id="supDateLabel">–</span>
+      <button onclick="navDate(+1)">›</button>
+    </div>
+  </div>
+  <div id="supCards"></div>
+  <div class="quincenal-section">
+    <div class="quin-header" onclick="toggleQuin()">
+      <span class="quin-title">📊 Resumen quincenal</span>
+      <span class="quin-toggle" id="quinToggle">▼</span>
+    </div>
+    <div class="quin-body" id="quinBody"></div>
+  </div>
+</div>
+
+<!-- ═══ VISTA CONFIG ═══ -->
+<div class="view" id="view-config">
+  <div class="config-section">
+    <h3>Empleados</h3>
+    <div class="emp-config-list" id="empConfigList"></div>
+    <div class="add-emp-row">
+      <input class="add-emp-input" id="newEmpName" placeholder="Nombre del empleado" maxlength="30">
+      <button class="add-emp-btn" onclick="addEmployee()">+ Agregar</button>
+    </div>
+  </div>
+  <div class="config-section">
+    <h3>Parámetros de jornada</h3>
+    <div class="config-row">
+      <span>Horas de jornada normal</span>
+      <input class="config-val-input" id="cfgJornada" type="number" value="8" min="4" max="12" onchange="saveConfig()">
+    </div>
+    <div class="config-row">
+      <span>Tolerancia antes de horas extra (min)</span>
+      <input class="config-val-input" id="cfgTolerancia" type="number" value="40" min="0" max="120" onchange="saveConfig()">
+    </div>
+  </div>
+  <div class="config-section">
+    <h3>Datos</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="add-emp-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)" onclick="exportData()">⬇️ Exportar JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirmIcon">✅</div>
+    <div class="confirm-title" id="confirmTitle">Confirmar</div>
+    <div class="confirm-sub" id="confirmSub"></div>
+    <div class="confirm-time" id="confirmTime"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="confirm-ok" id="confirmOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE SDK
+═══════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, update }
+                                                   from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+
+// ── CONFIG ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBFVJaPQ2jQKgyEaZIcc18jj0Q8FMY4ZHA",
+  authDomain:        "fichador-conca.firebaseapp.com",
+  databaseURL:       "https://fichador-conca-default-rtdb.firebaseio.com",
+  projectId:         "fichador-conca",
+  storageBucket:     "fichador-conca.firebasestorage.app",
+  messagingSenderId: "815679306774",
+  appId:             "1:815679306774:web:714222627b860456ecc937"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── REFS ────────────────────────────────────────────────
+const fichRef  = ref(db, 'fichajes');
+const cfgRef   = ref(db, 'config');
+
+// ── STATE ───────────────────────────────────────────────
+let remoteData = {};   // fichajes de Firebase
+let cfg = { employees: [], jornada: 8, tolerancia: 40 };
+let selectedEmp  = null;
+let pendingAction = null;
+let supViewDate  = todayKey();
+
+// ── HELPERS ─────────────────────────────────────────────
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function dateFromKey(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); }
+function fmtTime(ts){ if(!ts) return '–'; const d=new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function diffMin(a,b){ return Math.round((b-a)/60000); }
+function minToHM(m){ if(m<0)m=0; return `${Math.floor(m/60)}h ${pad(m%60)}m`; }
+function formatDateLabel(k){ return dateFromKey(k).toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}); }
+
+function getTodaySession(name){ return (remoteData[name]||{})[supViewDate]||null; }
+function getPhaseFromSession(s){
+  if(!s||!s.entrada)   return 0;
+  if(!s.idescanso)     return 1;
+  if(!s.fdescanso)     return 2;
+  if(!s.salida)        return 3;
+  return 4;
+}
+function calcTrabajado(s){
+  if(!s||!s.entrada) return 0;
+  const now=Date.now();
+  let min = diffMin(s.entrada, s.idescanso||(s.salida?s.salida:now));
+  if(s.fdescanso) min += diffMin(s.fdescanso, s.salida||now);
+  return Math.max(0,min);
+}
+function calcExtras(s){
+  const t=calcTrabajado(s);
+  const lim=cfg.jornada*60+cfg.tolerancia;
+  return t<=lim ? 0 : t-cfg.jornada*60-cfg.tolerancia;
+}
+
+// ── CLOCK ────────────────────────────────────────────────
+function tickClock(){
+  const d=new Date();
+  document.getElementById('clock').textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  document.getElementById('clockDate').textContent=d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+setInterval(tickClock,1000); tickClock();
+
+// ── SYNC INDICATOR ───────────────────────────────────────
+function setSyncStatus(status, label){
+  const dot=document.getElementById('syncDot');
+  const lbl=document.getElementById('syncLabel');
+  dot.className='sync-dot'+(status?' '+status:'');
+  lbl.textContent=label;
+}
+
+// ── FIREBASE LISTENERS ───────────────────────────────────
+onValue(fichRef, snap => {
+  remoteData = snap.val() || {};
+  renderAll();
+  setSyncStatus('online','Sincronizado ✓');
+}, err => {
+  setSyncStatus('','Sin conexión');
+});
+
+onValue(cfgRef, snap => {
+  const remote = snap.val();
+  if(remote){
+    cfg = Object.assign({ employees:[], jornada:8, tolerancia:40 }, remote);
+    renderAll();
+  }
+  document.getElementById('loadingScreen').classList.add('hidden');
+});
+
+// Si Firebase tarda más de 4s en responder, ocultar loading igual
+setTimeout(()=>{ document.getElementById('loadingScreen').classList.add('hidden'); }, 4000);
+
+// ── WRITE HELPERS ────────────────────────────────────────
+async function writeFichaje(name, dateKey, field, ts){
+  setSyncStatus('syncing','Guardando…');
+  const path = `fichajes/${name}/${dateKey}/${field}`;
+  await set(ref(db, path), ts);
+  setSyncStatus('online','Sincronizado ✓');
+}
+
+async function writeConfig(newCfg){
+  setSyncStatus('syncing','Guardando…');
+  await set(cfgRef, newCfg);
+  setSyncStatus('online','Sincronizado ✓');
+}
+
+// ── VIEW SWITCHING ───────────────────────────────────────
+window.switchView = function(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.mode-btn[data-view="${v}"]`).classList.add('active');
+  if(v==='supervisor') renderSupervisor();
+  if(v==='config') renderConfig();
+};
+
+// ── RENDER ALL ───────────────────────────────────────────
+function renderAll(){
+  renderEmpList();
+  renderFichar();
+  if(document.getElementById('view-supervisor').classList.contains('active')) renderSupervisor();
+  if(document.getElementById('view-config').classList.contains('active')) renderConfig();
+}
+
+// ── EMPLOYEE LIST ────────────────────────────────────────
+function renderEmpList(){
+  const list=document.getElementById('empList');
+  list.innerHTML='';
+  cfg.employees.forEach(name=>{
+    const btn=document.createElement('button');
+    btn.className='emp-chip'+(selectedEmp===name?' selected':'');
+    const s=(remoteData[name]||{})[todayKey()];
+    if(s&&s.entrada) btn.classList.add('has-session');
+    btn.textContent=name;
+    btn.onclick=()=>{ selectedEmp=name; renderEmpList(); renderFichar(); };
+    list.appendChild(btn);
+  });
+}
+
+// ── RENDER FICHAR ────────────────────────────────────────
+function renderFichar(){
+  if(!selectedEmp){
+    ['entrada','idescanso','fdescanso','salida'].forEach(k=>{ document.getElementById('btn-'+k).disabled=true; });
+    document.getElementById('sessionCard').classList.remove('visible');
+    resetTrack(); return;
+  }
+  const s=(remoteData[selectedEmp]||{})[todayKey()]||null;
+  const phase=getPhaseFromSession(s);
+  document.getElementById('btn-entrada').disabled   = phase!==0;
+  document.getElementById('btn-idescanso').disabled = phase!==1;
+  document.getElementById('btn-fdescanso').disabled = phase!==2;
+  document.getElementById('btn-salida').disabled    = phase!==3;
+  updateTrack(phase);
+  if(!s||!s.entrada){ document.getElementById('sessionCard').classList.remove('visible'); return; }
+  document.getElementById('sessionCard').classList.add('visible');
+  const trab=calcTrabajado(s);
+  const extras=calcExtras(s);
+  const lim=cfg.jornada*60+cfg.tolerancia;
+  const pct=Math.min(100,Math.round(trab/lim*100));
+  document.getElementById('sessionRows').innerHTML=`
+    <div class="session-row"><span class="session-row-label">Entrada</span><span class="session-row-val">${fmtTime(s.entrada)}</span></div>
+    <div class="session-row"><span class="session-row-label">Inicio descanso</span><span class="session-row-val">${fmtTime(s.idescanso)}</span></div>
+    <div class="session-row"><span class="session-row-label">Fin descanso</span><span class="session-row-val">${fmtTime(s.fdescanso)}</span></div>
+    <div class="session-row"><span class="session-row-label">Fin de jornada</span><span class="session-row-val">${fmtTime(s.salida)}</span></div>
+    <div class="session-divider"></div>
+    <div class="session-row"><span class="session-row-label">Tiempo trabajado</span><span class="session-row-val">${minToHM(trab)}</span></div>
+    ${extras>0?`<div class="session-row"><span class="session-row-label">Horas extra</span><span class="session-row-val extra">+${minToHM(extras)}</span></div>`:''}
+  `;
+  const fill=document.getElementById('elapsedFill');
+  fill.style.width=pct+'%';
+  fill.style.background=extras>0?'var(--extra)':pct>80?'var(--warn)':'var(--ok)';
+  document.getElementById('elapsedPct').textContent=pct+'%';
+}
+
+function updateTrack(phase){
+  [0,1,2,3].forEach(i=>{
+    document.getElementById('dot-'+i).className='track-dot'+(i<phase?' done':i===phase&&phase<4?' active':'');
+    document.getElementById('lbl-'+i).className='track-label'+(i<phase?' done':i===phase&&phase<4?' active':'');
+  });
+  [0,1,2].forEach(i=>{ document.getElementById('line-'+i).className='track-line'+(i<phase-1?' done':''); });
+}
+function resetTrack(){
+  [0,1,2,3].forEach(i=>{ document.getElementById('dot-'+i).className='track-dot'; document.getElementById('lbl-'+i).className='track-label'; });
+  [0,1,2].forEach(i=>{ document.getElementById('line-'+i).className='track-line'; });
+}
+
+// ── FICHAR ───────────────────────────────────────────────
+const ACTION_META={
+  entrada:   {icon:'🟢',title:'Registrar entrada'},
+  idescanso: {icon:'🍽️',title:'Inicio de descanso'},
+  fdescanso: {icon:'🔵',title:'Fin de descanso'},
+  salida:    {icon:'🔴',title:'Fin de jornada'},
+};
+
+window.requestFichar = function(action){
+  if(!selectedEmp) return;
+  const now=new Date();
+  const meta=ACTION_META[action];
+  pendingAction={action, ts:now.getTime()};
+  document.getElementById('confirmIcon').textContent=meta.icon;
+  document.getElementById('confirmTitle').textContent=meta.title;
+  document.getElementById('confirmSub').textContent=selectedEmp;
+  document.getElementById('confirmTime').textContent=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  document.getElementById('confirmOk').onclick=doFichar;
+  document.getElementById('confirmOverlay').classList.add('open');
+};
+
+async function doFichar(){
+  if(!pendingAction||!selectedEmp) return;
+  const {action,ts}=pendingAction;
+  closeConfirm();
+  try {
+    await writeFichaje(selectedEmp, todayKey(), action, ts);
+    showToast('✅ Fichaje guardado en la nube');
+  } catch(e) {
+    showToast('❌ Error al guardar. Verificá la conexión.');
+  }
+}
+
+window.closeConfirm=function(){ document.getElementById('confirmOverlay').classList.remove('open'); pendingAction=null; };
+
+// ── SUPERVISOR ───────────────────────────────────────────
+function renderSupervisor(){
+  document.getElementById('supDateLabel').textContent=formatDateLabel(supViewDate);
+  const container=document.getElementById('supCards');
+  container.innerHTML='';
+  if(!cfg.employees.length){ container.innerHTML='<div class="no-session-msg">No hay empleados configurados.</div>'; return; }
+  cfg.employees.forEach(name=>{
+    const s=(remoteData[name]||{})[supViewDate]||null;
+    const phase=getPhaseFromSession(s);
+    const trab=calcTrabajado(s);
+    const extras=calcExtras(s);
+    let statusClass='badge-fuera', statusLabel='Sin fichar';
+    if(phase===1||phase===3){statusClass='badge-trabajando';statusLabel='Trabajando';}
+    if(phase===2){statusClass='badge-descanso';statusLabel='En descanso';}
+    if(phase===4&&extras===0){statusClass='badge-completo';statusLabel='Jornada completa';}
+    if(phase===4&&extras>0){statusClass='badge-extras';statusLabel='Con horas extra';}
+    const card=document.createElement('div');
+    card.className='emp-card'+(phase===1||phase===3?' active-now':'');
+    card.innerHTML=`
+      <div class="emp-card-header">
+        <div class="emp-card-name">${name}</div>
+        <div class="emp-status-badge ${statusClass}">${statusLabel}</div>
+      </div>
+      <div class="emp-times">
+        <div class="time-cell"><div class="time-cell-label">Entrada</div><div class="time-cell-val ${s?.entrada?'':'pending'}">${fmtTime(s?.entrada)}</div></div>
+        <div class="time-cell"><div class="time-cell-label">Inicio descanso</div><div class="time-cell-val ${s?.idescanso?'':'pending'}">${fmtTime(s?.idescanso)}</div></div>
+        <div class="time-cell"><div class="time-cell-label">Fin descanso</div><div class="time-cell-val ${s?.fdescanso?'':'pending'}">${fmtTime(s?.fdescanso)}</div></div>
+        <div class="time-cell"><div class="time-cell-label">Fin de jornada</div><div class="time-cell-val ${s?.salida?'':'pending'}">${fmtTime(s?.salida)}</div></div>
+      </div>
+      <div class="emp-summary">
+        <div class="sum-pill">Trabajado: <span>${minToHM(trab)}</span></div>
+        ${extras>0?`<div class="sum-pill extra-pill">Extras: <span>+${minToHM(extras)}</span></div>`:''}
+        ${phase===0?'<div class="sum-pill">Sin actividad hoy</div>':''}
+      </div>`;
+    container.appendChild(card);
+  });
+  renderQuincenal();
+}
+
+window.navDate=function(dir){
+  const d=dateFromKey(supViewDate); d.setDate(d.getDate()+dir);
+  supViewDate=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  renderSupervisor();
+};
+
+// ── QUINCENAL ────────────────────────────────────────────
+function getCurrentQuincena(){
+  const d=new Date(); const y=d.getFullYear(),m=d.getMonth(),day=d.getDate();
+  return day<=15 ? {from:new Date(y,m,1),to:new Date(y,m,15)} : {from:new Date(y,m,16),to:new Date(y,m+1,0)};
+}
+function dateRange(from,to){
+  const dates=[]; const d=new Date(from);
+  while(d<=to){ if(d.getDay()!==0){ dates.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`); } d.setDate(d.getDate()+1); }
+  return dates;
+}
+
+function renderQuincenal(){
+  const {from,to}=getCurrentQuincena();
+  const dates=dateRange(from,to);
+  const body=document.getElementById('quinBody');
+  body.innerHTML='';
+  cfg.employees.forEach(name=>{
+    let totalTrab=0,totalExtras=0,dias=0,rows='';
+    dates.forEach(k=>{
+      const s=(remoteData[name]||{})[k]||null;
+      if(!s||!s.entrada) return;
+      dias++;
+      const trab=calcTrabajado(s);
+      const extras=calcExtras(s);
+      totalTrab+=trab; totalExtras+=extras;
+      const lbl=dateFromKey(k).toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+      rows+=`<tr><td>${lbl}</td><td>${fmtTime(s.entrada)}</td><td>${fmtTime(s.idescanso)}</td><td>${fmtTime(s.fdescanso)}</td><td>${fmtTime(s.salida)}</td><td>${minToHM(trab)}</td><td class="${extras>0?'extra-cell':''}">${extras>0?'+'+minToHM(extras):'–'}</td></tr>`;
+    });
+    const sec=document.createElement('div'); sec.className='quin-emp';
+    sec.innerHTML=`
+      <div class="quin-emp-name">${name}</div>
+      <table class="quin-table"><thead><tr><th>Día</th><th>Entrada</th><th>I.Desc.</th><th>F.Desc.</th><th>Salida</th><th>Trabajado</th><th>Extra</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7" style="color:var(--text2);text-align:center">Sin registros</td></tr>'}</tbody></table>
+      <div class="quin-totals">
+        <div class="quin-tot">Días: <span>${dias}</span></div>
+        <div class="quin-tot">Total trabajado: <span>${minToHM(totalTrab)}</span></div>
+        ${totalExtras>0?`<div class="quin-tot">Horas extra: <span style="color:var(--extra)">+${minToHM(totalExtras)}</span></div>`:''}
+      </div>`;
+    body.appendChild(sec);
+  });
+}
+
+window.toggleQuin=function(){
+  document.getElementById('quinBody').classList.toggle('open');
+  document.getElementById('quinToggle').classList.toggle('open');
+};
+
+// ── CONFIG ───────────────────────────────────────────────
+function renderConfig(){
+  const list=document.getElementById('empConfigList');
+  list.innerHTML='';
+  cfg.employees.forEach((name,i)=>{
+    const el=document.createElement('div'); el.className='emp-config-item';
+    el.innerHTML=`<span>${name}</span><button class="emp-config-del" onclick="removeEmployee(${i})">✕</button>`;
+    list.appendChild(el);
+  });
+  document.getElementById('cfgJornada').value=cfg.jornada;
+  document.getElementById('cfgTolerancia').value=cfg.tolerancia;
+}
+
+window.addEmployee=async function(){
+  const inp=document.getElementById('newEmpName');
+  const name=inp.value.trim();
+  if(!name){ return; }
+  if(cfg.employees.includes(name)){ showToast('⚠️ Ya existe ese empleado'); return; }
+  cfg.employees.push(name);
+  inp.value='';
+  await writeConfig(cfg);
+  showToast('✅ '+name+' agregado');
+};
+
+window.removeEmployee=async function(i){
+  if(!confirm('¿Eliminar a '+cfg.employees[i]+'? Sus registros se mantienen.')) return;
+  cfg.employees.splice(i,1);
+  await writeConfig(cfg);
+};
+
+window.saveConfig=async function(){
+  cfg.jornada=parseInt(document.getElementById('cfgJornada').value)||8;
+  cfg.tolerancia=parseInt(document.getElementById('cfgTolerancia').value)||40;
+  await writeConfig(cfg);
+  showToast('✅ Configuración guardada');
+};
+
+// ── EXPORT ───────────────────────────────────────────────
+window.exportData=function(){
+  const payload={config:cfg, data:remoteData, exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`fichador-conca-${todayKey()}.json`; a.click();
+  showToast('⬇️ Exportado');
+};
+
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+window.showToast=showToast;
+
+// ── LIVE REFRESH ─────────────────────────────────────────
+setInterval(()=>{
+  renderFichar();
+  if(document.getElementById('view-supervisor').classList.contains('active')) renderSupervisor();
+},60000);
+
+</script>
+</body>
+</html>
