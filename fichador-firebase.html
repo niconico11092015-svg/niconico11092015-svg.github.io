@@ -411,10 +411,52 @@ function calcTrabajado(s){
   if(s.fdescanso) min += diffMin(s.fdescanso, s.salida||now);
   return Math.max(0,min);
 }
+
+// Horarios esperados en minutos desde medianoche
+const HORARIO = { entrada: 9*60, idescanso: 13*60, fdescanso: 14*60, salida: 18*60 };
+
+function tsToMinOfDay(ts){
+  const d=new Date(ts);
+  return d.getHours()*60+d.getMinutes();
+}
+
+// Devuelve el saldo del día en minutos.
+// Negativo = tiempo a deber (empresa). Positivo = tiempo a favor (empleado).
+// Extras = minutos trabajados por encima de 8h40m (se pagan).
+function calcSaldo(s){
+  if(!s||!s.entrada) return { debe:0, favor:0, saldo:0, extras:0, trab:0 };
+
+  const trab = calcTrabajado(s);
+
+  // Diferencias por evento (minutos reales vs esperados)
+  // Entrada tarde → negativo (debe)
+  const diffEntrada  = s.entrada   ? HORARIO.entrada   - tsToMinOfDay(s.entrada)   : 0; // + = llegó antes, - = llegó tarde
+  // Inicio descanso tarde → positivo (trabajó más)
+  const diffIDesc    = s.idescanso ? tsToMinOfDay(s.idescanso) - HORARIO.idescanso : 0; // + = salió tarde al desc
+  // Fin descanso tarde → negativo (debe)
+  const diffFDesc    = s.fdescanso ? HORARIO.fdescanso - tsToMinOfDay(s.fdescanso) : 0; // + = volvió antes
+  // Salida tarde → positivo (trabajó más)
+  const diffSalida   = s.salida    ? tsToMinOfDay(s.salida)    - HORARIO.salida    : 0; // + = salió tarde
+
+  // Solo tomamos eventos ya registrados
+  let saldo = 0;
+  if(s.entrada)   saldo += diffEntrada;   // llegó tarde: resta; llegó antes: suma
+  if(s.idescanso) saldo += diffIDesc;     // salió tarde al desc: suma
+  if(s.fdescanso) saldo += diffFDesc;     // volvió tarde: resta; volvió antes: suma
+  if(s.salida)    saldo += diffSalida;    // salió tarde: suma
+
+  // Horas extra = tiempo sobre 8h40m de trabajo efectivo (se pagan aparte)
+  const limExtra = cfg.jornada*60 + cfg.tolerancia;
+  const extras = trab > limExtra ? trab - limExtra : 0;
+
+  const debe  = Math.max(0, -saldo);
+  const favor = saldo > 0 ? Math.min(saldo, cfg.tolerancia) : 0; // favor dentro de tolerancia no se paga
+
+  return { debe, favor, saldo, extras, trab };
+}
+
 function calcExtras(s){
-  const t=calcTrabajado(s);
-  const lim=cfg.jornada*60+cfg.tolerancia;
-  return t<=lim ? 0 : t-cfg.jornada*60-cfg.tolerancia;
+  return calcSaldo(s).extras;
 }
 
 // ── CLOCK ────────────────────────────────────────────────
@@ -517,10 +559,12 @@ function renderFichar(){
   updateTrack(phase);
   if(!s||!s.entrada){ document.getElementById('sessionCard').classList.remove('visible'); return; }
   document.getElementById('sessionCard').classList.add('visible');
-  const trab=calcTrabajado(s);
-  const extras=calcExtras(s);
+  const {trab,extras,saldo,debe,favor}=calcSaldo(s);
   const lim=cfg.jornada*60+cfg.tolerancia;
   const pct=Math.min(100,Math.round(trab/lim*100));
+  const saldoLabel = saldo===0 ? '' :
+    saldo<0 ? `<div class="session-row"><span class="session-row-label">⚠️ Tiempo a deber</span><span class="session-row-val" style="color:var(--extra)">−${minToHM(debe)}</span></div>` :
+              `<div class="session-row"><span class="session-row-label">✅ Tiempo a favor</span><span class="session-row-val" style="color:var(--ok)">+${minToHM(favor)}</span></div>`;
   document.getElementById('sessionRows').innerHTML=`
     <div class="session-row"><span class="session-row-label">Entrada</span><span class="session-row-val">${fmtTime(s.entrada)}</span></div>
     <div class="session-row"><span class="session-row-label">Inicio descanso</span><span class="session-row-val">${fmtTime(s.idescanso)}</span></div>
@@ -528,11 +572,12 @@ function renderFichar(){
     <div class="session-row"><span class="session-row-label">Fin de jornada</span><span class="session-row-val">${fmtTime(s.salida)}</span></div>
     <div class="session-divider"></div>
     <div class="session-row"><span class="session-row-label">Tiempo trabajado</span><span class="session-row-val">${minToHM(trab)}</span></div>
-    ${extras>0?`<div class="session-row"><span class="session-row-label">Horas extra</span><span class="session-row-val extra">+${minToHM(extras)}</span></div>`:''}
+    ${saldoLabel}
+    ${extras>0?`<div class="session-row"><span class="session-row-label">🔴 Horas extra</span><span class="session-row-val extra">+${minToHM(extras)}</span></div>`:''}
   `;
   const fill=document.getElementById('elapsedFill');
   fill.style.width=pct+'%';
-  fill.style.background=extras>0?'var(--extra)':pct>80?'var(--warn)':'var(--ok)';
+  fill.style.background=extras>0?'var(--extra)':debe>0?'var(--warn)':pct>80?'var(--warn)':'var(--ok)';
   document.getElementById('elapsedPct').textContent=pct+'%';
 }
 
@@ -592,13 +637,22 @@ function renderSupervisor(){
   cfg.employees.forEach(name=>{
     const s=(remoteData[name]||{})[supViewDate]||null;
     const phase=getPhaseFromSession(s);
-    const trab=calcTrabajado(s);
-    const extras=calcExtras(s);
+    const {trab,extras,saldo,debe,favor}=calcSaldo(s);
     let statusClass='badge-fuera', statusLabel='Sin fichar';
     if(phase===1||phase===3){statusClass='badge-trabajando';statusLabel='Trabajando';}
     if(phase===2){statusClass='badge-descanso';statusLabel='En descanso';}
-    if(phase===4&&extras===0){statusClass='badge-completo';statusLabel='Jornada completa';}
+    if(phase===4&&extras===0&&debe===0){statusClass='badge-completo';statusLabel='Jornada completa';}
+    if(phase===4&&extras===0&&debe>0){statusClass='badge-fuera';statusLabel='Jornada con deuda';}
     if(phase===4&&extras>0){statusClass='badge-extras';statusLabel='Con horas extra';}
+
+    const saldoHtml = s && s.entrada ? (
+      debe > 0
+        ? `<div class="sum-pill" style="border-color:var(--extra);color:var(--extra)">A deber: <span style="color:var(--extra)">−${minToHM(debe)}</span></div>`
+        : favor > 0
+          ? `<div class="sum-pill" style="border-color:var(--ok);color:var(--ok)">A favor: <span style="color:var(--ok)">+${minToHM(favor)}</span></div>`
+          : `<div class="sum-pill" style="border-color:var(--ok)">Saldo: <span style="color:var(--ok)">✓ OK</span></div>`
+    ) : '';
+
     const card=document.createElement('div');
     card.className='emp-card'+(phase===1||phase===3?' active-now':'');
     card.innerHTML=`
@@ -614,6 +668,7 @@ function renderSupervisor(){
       </div>
       <div class="emp-summary">
         <div class="sum-pill">Trabajado: <span>${minToHM(trab)}</span></div>
+        ${saldoHtml}
         ${extras>0?`<div class="sum-pill extra-pill">Extras: <span>+${minToHM(extras)}</span></div>`:''}
         ${phase===0?'<div class="sum-pill">Sin actividad hoy</div>':''}
       </div>`;
@@ -645,26 +700,45 @@ function renderQuincenal(){
   const body=document.getElementById('quinBody');
   body.innerHTML='';
   cfg.employees.forEach(name=>{
-    let totalTrab=0,totalExtras=0,dias=0,rows='';
+    let totalTrab=0,totalExtras=0,totalDebe=0,totalFavor=0,dias=0,rows='';
     dates.forEach(k=>{
       const s=(remoteData[name]||{})[k]||null;
       if(!s||!s.entrada) return;
       dias++;
-      const trab=calcTrabajado(s);
-      const extras=calcExtras(s);
-      totalTrab+=trab; totalExtras+=extras;
+      const {trab,extras,debe,favor,saldo}=calcSaldo(s);
+      totalTrab+=trab; totalExtras+=extras; totalDebe+=debe; totalFavor+=favor;
       const lbl=dateFromKey(k).toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-      rows+=`<tr><td>${lbl}</td><td>${fmtTime(s.entrada)}</td><td>${fmtTime(s.idescanso)}</td><td>${fmtTime(s.fdescanso)}</td><td>${fmtTime(s.salida)}</td><td>${minToHM(trab)}</td><td class="${extras>0?'extra-cell':''}">${extras>0?'+'+minToHM(extras):'–'}</td></tr>`;
+      const saldoCell = debe>0
+        ? `<td class="extra-cell">−${minToHM(debe)}</td>`
+        : favor>0
+          ? `<td style="color:var(--ok)">+${minToHM(favor)}</td>`
+          : `<td style="color:var(--text2)">✓</td>`;
+      rows+=`<tr>
+        <td>${lbl}</td>
+        <td>${fmtTime(s.entrada)}</td>
+        <td>${fmtTime(s.idescanso)}</td>
+        <td>${fmtTime(s.fdescanso)}</td>
+        <td>${fmtTime(s.salida)}</td>
+        <td>${minToHM(trab)}</td>
+        ${saldoCell}
+        <td class="${extras>0?'extra-cell':''}">${extras>0?'+'+minToHM(extras):'–'}</td>
+      </tr>`;
     });
+    const saldoNetQuincena = totalFavor - totalDebe;
     const sec=document.createElement('div'); sec.className='quin-emp';
     sec.innerHTML=`
       <div class="quin-emp-name">${name}</div>
-      <table class="quin-table"><thead><tr><th>Día</th><th>Entrada</th><th>I.Desc.</th><th>F.Desc.</th><th>Salida</th><th>Trabajado</th><th>Extra</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="7" style="color:var(--text2);text-align:center">Sin registros</td></tr>'}</tbody></table>
+      <table class="quin-table">
+        <thead><tr><th>Día</th><th>Entrada</th><th>I.Desc.</th><th>F.Desc.</th><th>Salida</th><th>Trabajado</th><th>Saldo</th><th>Extras</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" style="color:var(--text2);text-align:center">Sin registros</td></tr>'}</tbody>
+      </table>
       <div class="quin-totals">
         <div class="quin-tot">Días: <span>${dias}</span></div>
         <div class="quin-tot">Total trabajado: <span>${minToHM(totalTrab)}</span></div>
+        ${totalDebe>0?`<div class="quin-tot">Total a deber: <span style="color:var(--extra)">−${minToHM(totalDebe)}</span></div>`:''}
+        ${totalFavor>0?`<div class="quin-tot">Total a favor: <span style="color:var(--ok)">+${minToHM(totalFavor)}</span></div>`:''}
         ${totalExtras>0?`<div class="quin-tot">Horas extra: <span style="color:var(--extra)">+${minToHM(totalExtras)}</span></div>`:''}
+        <div class="quin-tot">Saldo neto: <span style="color:${saldoNetQuincena>=0?'var(--ok)':'var(--extra)'}">${saldoNetQuincena>=0?'+':''}${minToHM(Math.abs(saldoNetQuincena))}</span></div>
       </div>`;
     body.appendChild(sec);
   });
