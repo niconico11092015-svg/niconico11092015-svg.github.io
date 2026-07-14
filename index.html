@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-title" content="Mueblería Conca">
 <title>La Mueblería Conca</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -246,6 +248,10 @@ body{background:white;}
         <input type="file" accept=".json" style="display:none" onchange="importarDatos(this)">
       </label>
     </div>
+    <button onclick="sincronizarTodoAFirebase()" style="width:100%;background:linear-gradient(135deg,#C4621A,#E8832A);border:none;border-radius:var(--radio);padding:16px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--sombra);margin-top:10px">
+      ☁️ Subir todos mis datos a la nube
+    </button>
+    
   </div>
 </div>
 
@@ -338,9 +344,74 @@ body{background:white;}
 
 <script>
 // ══ DB ══
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBFVJaPQ2jQKgyEaZIcc18jj0Q8FMY4ZHA",
+  authDomain: "fichador-conca.firebaseapp.com",
+  databaseURL: "https://fichador-conca-default-rtdb.firebaseio.com",
+  projectId: "fichador-conca",
+  storageBucket: "fichador-conca.firebasestorage.app",
+  messagingSenderId: "815679306774",
+  appId: "1:815679306774:web:714222627b860456ecc937"
+};
+
+// Init Firebase
+firebase.initializeApp(firebaseConfig);
+const fbDB = firebase.database();
+
+// Cache local para lectura rápida
+const _cache = {};
+
+// Sincronización en tiempo real — escucha cambios de Firebase
+const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes'];
+
+function iniciarSyncFirebase(){
+  CLAVES_SYNC.forEach(k=>{
+    fbDB.ref('muebleria/'+k).on('value', snap=>{
+      const val = snap.val();
+      const datos = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+      _cache[k] = datos;
+      localStorage.setItem('mc_'+k, JSON.stringify(datos));
+      // Refrescar pantalla actual si corresponde
+      try{
+        if(pantalla==='presupuestos'&&k==='presupuestos')renderLista('presupuestos');
+        if(pantalla==='cuentas'&&k==='cuentas')renderLista('cuentas');
+        if(pantalla==='ordenes'&&k==='ordenes')renderOrdenes();
+        if(pantalla==='cobros')renderCobros();
+        if(pantalla==='pedidos'&&k==='pedidos')renderPedidos();
+        if(pantalla==='home')actualizarStats();
+      }catch(e){}
+    });
+  });
+  // Horas — escucha todo el nodo horas
+  fbDB.ref('muebleria/horas').on('value', snap=>{
+    const val = snap.val()||{};
+    Object.keys(val).forEach(k=>{
+      _cache['horas_'+k] = val[k];
+      localStorage.setItem('mc_horas_'+k, JSON.stringify(val[k]));
+    });
+    try{if(pantalla==='horas')renderHoras();}catch(e){}
+  });
+}
+
 const DB={
-  get(k){try{return JSON.parse(localStorage.getItem('mc_'+k)||'[]');}catch(e){return[];}},
-  set(k,v){localStorage.setItem('mc_'+k,JSON.stringify(v));},
+  get(k){
+    // Priorizar cache de Firebase, fallback a localStorage
+    if(_cache[k]!==undefined) return _cache[k];
+    try{return JSON.parse(localStorage.getItem('mc_'+k)||'[]');}catch(e){return[];}
+  },
+  set(k,v){
+    // Guardar local inmediatamente (para que la UI responda rápido)
+    _cache[k]=v;
+    localStorage.setItem('mc_'+k,JSON.stringify(v));
+    // Guardar en Firebase
+    if(CLAVES_SYNC.includes(k)){
+      fbDB.ref('muebleria/'+k).set(v).catch(e=>console.warn('Firebase set error:',e));
+    } else if(k.startsWith('horas_')){
+      const subkey = k.replace('horas_','');
+      fbDB.ref('muebleria/horas/'+subkey).set(v).catch(e=>console.warn('Firebase horas error:',e));
+    }
+  },
   nextNum(k){const i=this.get(k);return i.length?Math.max(...i.map(x=>x.num||0))+1:1;}
 };
 function fmt(n){return '$ '+Math.round(n||0).toLocaleString('es-AR');}
@@ -1922,6 +1993,25 @@ function copiarWhatsAppPedido(id){
 }
 
 // ══ EXPORTAR / IMPORTAR ══
+function sincronizarTodoAFirebase(){
+  // Fuerza subir todos los datos locales a Firebase (útil para migración inicial)
+  CLAVES_SYNC.forEach(k=>{
+    const datos=DB.get(k);
+    if(datos&&datos.length>0){
+      fbDB.ref('muebleria/'+k).set(datos);
+    }
+  });
+  // Horas
+  Object.keys(localStorage).filter(k=>k.startsWith('mc_horas_')).forEach(k=>{
+    try{
+      const subkey=k.replace('mc_horas_','');
+      const val=JSON.parse(localStorage.getItem(k)||'[]');
+      fbDB.ref('muebleria/horas/'+subkey).set(val);
+    }catch(e){}
+  });
+  alert('✅ Todos los datos subidos a Firebase. Tu señora ya puede ver todo desde su teléfono.');
+}
+
 function exportarDatos(){
   const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes'];
   const datos={};
@@ -1981,6 +2071,7 @@ function sincronizarCCdesdeOT(ot){
 // ══ MOD 4: crearOTdesdePresup guarda link en presupuesto ══
 // ══ INIT ══
 actualizarStats();
+iniciarSyncFirebase();
 </script>
 </body>
 </html>
