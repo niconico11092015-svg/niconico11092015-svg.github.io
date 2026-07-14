@@ -183,13 +183,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--crema2);color:var(--marro
 
 /* FICHA TECNICA */
 .ficha-section{background:linear-gradient(135deg,#1a2a3a 0%,#0f1923 100%);border-radius:var(--radio);padding:16px;margin-bottom:14px;}
-.ficha-section h3{color:#fff;font-size:13px;font-family:'Playfair Display',serif;margin-bottom:10px;opacity:.9;}
-.ficha-badge{display:inline-block;background:rgba(196,98,26,.3);color:var(--naranja2);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:10px;letter-spacing:.5px;text-transform:uppercase;}
-.ficha-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border-radius:8px;padding:5px 10px;margin:3px;font-size:12px;color:#fff;}
-.ficha-tag .ft-del{color:rgba(255,255,255,.4);cursor:pointer;font-size:14px;}
-.ficha-add{background:rgba(255,255,255,.08);border:1.5px dashed rgba(255,255,255,.2);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:rgba(255,255,255,.6);cursor:pointer;margin-top:6px;width:100%;}
-.ficha-input{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;width:100%;margin-top:6px;}
-.ficha-input::placeholder{color:rgba(255,255,255,.4);}
+.ficha-section h3{color:#FFD9B0;font-size:13px;font-family:'Playfair Display',serif;margin-bottom:10px;}
+.ficha-badge{display:inline-block;background:rgba(196,98,26,.5);color:#FFD9B0;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:10px;letter-spacing:.5px;text-transform:uppercase;}
+.ficha-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.18);border-radius:8px;padding:5px 10px;margin:3px;font-size:12px;color:#fff;font-weight:500;}
+.ficha-tag .ft-del{color:rgba(255,200,150,.6);cursor:pointer;font-size:14px;}
+.ficha-add{background:rgba(255,255,255,.1);border:1.5px dashed rgba(255,200,150,.4);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:#FFD9B0;cursor:pointer;margin-top:6px;width:100%;}
+.ficha-input{background:rgba(255,255,255,.15);border:1px solid rgba(255,200,150,.3);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:#fff;outline:none;width:100%;margin-top:6px;}
+.ficha-input::placeholder{color:rgba(255,200,150,.5);}
 /* MODAL */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
 .modal-box{background:var(--blanco);border-radius:16px;padding:24px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto;}
@@ -355,9 +355,24 @@ const firebaseConfig = {
   appId: "1:815679306774:web:714222627b860456ecc937"
 };
 
-// Init Firebase
-firebase.initializeApp(firebaseConfig);
-const fbDB = firebase.database();
+// Init Firebase con verificación
+let fbDB = null;
+function initFirebase(){
+  try{
+    if(typeof firebase === 'undefined'){
+      console.warn('Firebase SDK no disponible, usando solo localStorage');
+      return;
+    }
+    if(!firebase.apps.length){
+      firebase.initializeApp(firebaseConfig);
+    }
+    fbDB = firebase.database();
+    console.log('✅ Firebase conectado');
+  }catch(e){
+    console.warn('Error iniciando Firebase:', e);
+    fbDB = null;
+  }
+}
 
 // Cache local para lectura rápida
 const _cache = {};
@@ -366,6 +381,7 @@ const _cache = {};
 const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes'];
 
 function iniciarSyncFirebase(){
+  if(!fbDB){ console.warn('Firebase no disponible, sin sync en tiempo real'); return; }
   CLAVES_SYNC.forEach(k=>{
     fbDB.ref('muebleria/'+k).on('value', snap=>{
       const val = snap.val();
@@ -384,6 +400,7 @@ function iniciarSyncFirebase(){
     });
   });
   // Horas — escucha todo el nodo horas
+  if(!fbDB) return;
   fbDB.ref('muebleria/horas').on('value', snap=>{
     const val = snap.val()||{};
     Object.keys(val).forEach(k=>{
@@ -404,12 +421,14 @@ const DB={
     // Guardar local inmediatamente (para que la UI responda rápido)
     _cache[k]=v;
     localStorage.setItem('mc_'+k,JSON.stringify(v));
-    // Guardar en Firebase
-    if(CLAVES_SYNC.includes(k)){
-      fbDB.ref('muebleria/'+k).set(v).catch(e=>console.warn('Firebase set error:',e));
-    } else if(k.startsWith('horas_')){
-      const subkey = k.replace('horas_','');
-      fbDB.ref('muebleria/horas/'+subkey).set(v).catch(e=>console.warn('Firebase horas error:',e));
+    // Guardar en Firebase (si está disponible)
+    if(fbDB){
+      if(CLAVES_SYNC.includes(k)){
+        fbDB.ref('muebleria/'+k).set(v).catch(e=>console.warn('Firebase set error:',e));
+      } else if(k.startsWith('horas_')){
+        const subkey = k.replace('horas_','');
+        fbDB.ref('muebleria/horas/'+subkey).set(v).catch(e=>console.warn('Firebase horas error:',e));
+      }
     }
   },
   nextNum(k){const i=this.get(k);return i.length?Math.max(...i.map(x=>x.num||0))+1:1;}
@@ -1002,7 +1021,25 @@ function abrirForm(tipo, id){
     if(tipo==='cuentas'){agregarFilaCompra();agregarFilaPago();}
   }
   mostrarForm();
-  setTimeout(()=>actualizarNombreArchivo(),100);
+  setTimeout(()=>{
+    actualizarNombreArchivo();
+    // Agregar listeners para cálculo de horas OT
+    ['ot-inicio-fecha','ot-inicio-hora','ot-fin-fecha','ot-fin-hora'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.addEventListener('change',actualizarHorasOT);
+    });
+    // Cargar horas estimadas desde presupuesto vinculado si existe
+    if(formTipo==='ordenes'){
+      const item=formId?DB.get('ordenes').find(i=>i.id===formId):null;
+      if(item?.presupId){
+        const presup=DB.get('presupuestos').find(p=>p.id===item.presupId);
+        if(presup?.horasEstimadas){
+          const el=document.getElementById('ot-horas-est');
+          if(el)el.value=presup.horasEstimadas;
+        }
+      }
+    }
+  },150);
 }
 
 function buildFormPresup(num,item){
@@ -1065,6 +1102,18 @@ function buildFormPresup(num,item){
       </div>
     </div>
     <div class="form-row"><label>Observaciones</label><textarea id="fp-obs" placeholder="Notas...">${v('obs')}</textarea></div>
+  </div>
+  <div class="form-card" style="border-left:4px solid var(--naranja);background:var(--crema)">
+    <h3>⏱ Horas estimadas de producción <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(uso interno — no aparece en PDF)</span></h3>
+    <div class="form-grid">
+      <div class="form-row"><label>Horas estimadas</label><input type="number" id="fp-horas-est" value="${v('horasEstimadas')}" placeholder="Ej: 8" min="0" step="0.5"></div>
+      <div class="form-row"><label>Dificultad</label>
+        <select id="fp-dificultad">
+          ${['Simple','Media','Compleja','Muy compleja'].map(e=>`<option${v('dificultad')==e?' selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label>Notas de producción</label><textarea id="fp-notas-prod" placeholder="Procesos especiales, materiales difíciles, detalles técnicos...">${v('notasProduccion')}</textarea></div>
   </div>
   <div class="btn-row">
     <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
@@ -1164,6 +1213,22 @@ function buildFormOT(num,item){
     </div>
     <div class="form-row"><label>N° Presupuesto origen</label><input type="text" id="ot-presup-origen" value="${v('presupOrigen')}" placeholder="PRE-001..."></div>
     <div class="form-row"><label>Notas adicionales</label><textarea id="ot-notas" placeholder="Observaciones...">${v('notas')}</textarea></div>
+  </div>
+  <div class="form-card" style="border-left:4px solid var(--azul);background:var(--azul-cl)">
+    <h3 style="color:var(--azul)">⏱ Control de tiempos de producción <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(uso interno)</span></h3>
+    <div class="form-grid">
+      <div class="form-row"><label>Fecha inicio real</label><input type="date" id="ot-inicio-fecha" value="${v('inicioFecha')}"></div>
+      <div class="form-row"><label>Hora inicio</label><input type="time" id="ot-inicio-hora" value="${v('inicioHora')}"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Fecha fin real</label><input type="date" id="ot-fin-fecha" value="${v('finFecha')}"></div>
+      <div class="form-row"><label>Hora fin</label><input type="time" id="ot-fin-hora" value="${v('finHora')}"></div>
+    </div>
+    <div id="ot-horas-calc" style="background:#fff;border-radius:8px;padding:10px 12px;margin-top:4px;display:${v('inicioFecha')&&v('finFecha')?'block':'none'}">
+      <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px">Horas reales insumidas</div>
+      <div style="font-size:20px;font-weight:700;color:var(--azul);margin-top:2px" id="ot-horas-real">${calcHorasOT(v('inicioFecha'),v('inicioHora'),v('finFecha'),v('finHora'))}</div>
+    </div>
+    <div class="form-row" style="margin-top:10px"><label>Horas estimadas (del presupuesto)</label><input type="number" id="ot-horas-est" value="${v('horasEstimadas')}" placeholder="Ej: 8" min="0" step="0.5" readonly style="background:var(--crema2);color:var(--azul);font-weight:600"></div>
   </div>
   <div class="form-card"><h3>💵 Valores y cobros</h3>
     <div class="form-grid">
@@ -1380,7 +1445,7 @@ function guardarPresup(num){
   const cuotasNum=parseInt(document.getElementById('fp-cuotas-num')?.value||2);
   const tasa=TASAS_CREDITO[perfilCredito];const totalCI=condPago==='credito'?total*Math.pow(1+tasa.pct/100,cuotasNum):0;
   const cuotasCredito=condPago==='credito'?Array.from({length:cuotasNum},()=>totalCI/cuotasNum):[];
-  const obj={id:formId||Date.now(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',cuit:document.getElementById('fp-cuit')?.value||'',domicilio:document.getElementById('fp-domicilio')?.value||'',items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',fichaTecnica,condPago,perfilCredito,cuotasNum,cuotasCredito,nombreArchivo:nomArchivo('presupuestos',num,ap,no,de)};
+  const obj={id:formId||Date.now(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',cuit:document.getElementById('fp-cuit')?.value||'',domicilio:document.getElementById('fp-domicilio')?.value||'',items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',horasEstimadas:parseFloat(document.getElementById('fp-horas-est')?.value)||0,dificultad:document.getElementById('fp-dificultad')?.value||'Simple',notasProduccion:document.getElementById('fp-notas-prod')?.value||'',fichaTecnica,condPago,perfilCredito,cuotasNum,cuotasCredito,nombreArchivo:nomArchivo('presupuestos',num,ap,no,de)};
   const lista=DB.get('presupuestos');
   // MOD 4: Nunca duplicar — si existe formId siempre actualizar el original
   if(formId){
@@ -1445,7 +1510,7 @@ function guardarOT(num){
   document.querySelectorAll('#ot-pagos-extra .tabla-fila').forEach(r=>{
     pagosOT.push({fecha:r.querySelector('.fop-fecha')?.value||'',forma:r.querySelector('.fop-forma')?.value||'',monto:parseFloat(r.querySelector('.fop-monto')?.value)||0});
   });
-  const obj={id:formId||Date.now(),num,fecha:document.getElementById('ot-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('ot-tel')?.value||'',operario:document.getElementById('ot-operario')?.value||'',entrega:document.getElementById('ot-entrega')?.value||'',medidas:document.getElementById('ot-medidas')?.value||'',materiales:document.getElementById('ot-materiales')?.value||'',instrucciones:document.getElementById('ot-instrucciones')?.value||'',costo:parseFloat(document.getElementById('ot-costo')?.value)||0,senia:parseFloat(document.getElementById('ot-senia')?.value)||0,pagosOT,prioridad:document.getElementById('ot-prioridad')?.value||'Normal',estado:document.getElementById('ot-estado')?.value||'Pendiente',notas:document.getElementById('ot-notas')?.value||'',presupOrigen:document.getElementById('ot-presup-origen')?.value||'',imagen:formImgData,nombreArchivo:nomArchivo('ordenes',num,ap,no,de)};
+  const obj={id:formId||Date.now(),num,fecha:document.getElementById('ot-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('ot-tel')?.value||'',operario:document.getElementById('ot-operario')?.value||'',entrega:document.getElementById('ot-entrega')?.value||'',medidas:document.getElementById('ot-medidas')?.value||'',materiales:document.getElementById('ot-materiales')?.value||'',instrucciones:document.getElementById('ot-instrucciones')?.value||'',costo:parseFloat(document.getElementById('ot-costo')?.value)||0,senia:parseFloat(document.getElementById('ot-senia')?.value)||0,pagosOT,prioridad:document.getElementById('ot-prioridad')?.value||'Normal',estado:document.getElementById('ot-estado')?.value||'Pendiente',notas:document.getElementById('ot-notas')?.value||'',presupOrigen:document.getElementById('ot-presup-origen')?.value||'',inicioFecha:document.getElementById('ot-inicio-fecha')?.value||'',inicioHora:document.getElementById('ot-inicio-hora')?.value||'',finFecha:document.getElementById('ot-fin-fecha')?.value||'',finHora:document.getElementById('ot-fin-hora')?.value||'',horasEstimadas:parseFloat(document.getElementById('ot-horas-est')?.value)||0,imagen:formImgData,nombreArchivo:nomArchivo('ordenes',num,ap,no,de)};
   const lista=DB.get('ordenes');
   if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0)lista[idx]=obj;else lista.push(obj);}
   else lista.push(obj);
@@ -1484,12 +1549,25 @@ function verDetalle(tipo,id){
         <span style="font-size:12px;text-align:right">${it.cant}</span><span style="font-size:12px;text-align:right">${fmt(it.precio)}</span>
         <span class="total-cell">${fmt(it.cant*it.precio)}</span><span></span></div>`;
     });
-    html+=`<div class="tabla-total"><span>TOTAL</span><span class="tv">${fmt(item.total)}</span></div></div>`;
+    if(item.condPago!=='credito'){
+      html+=`<div class="tabla-total"><span>TOTAL</span><span class="tv">${fmt(item.total)}</span></div>`;
+    }
+    html+=`</div>`;
     if(item.condPago==='credito'&&item.cuotasCredito?.length){
       const tasa=TASAS_CREDITO[item.perfilCredito||'sinHistorial'];
       html+=`<div class="form-card"><h3>💳 Crédito de la Casa</h3><div style="background:var(--azul-cl);border-radius:10px;padding:12px;border:1px solid #b8d0e8"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${tasa.emoji} ${tasa.label} · ${tasa.pct}% mensual</div><div style="display:flex;gap:8px">${item.cuotasCredito.map((c,i)=>`<div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center;border:1px solid #b8d0e8"><div style="font-size:10px;color:var(--gris)">Cuota ${i+1}</div><div style="font-size:14px;font-weight:700;color:var(--azul)">${fmt(c)}</div></div>`).join('')}</div></div></div>`;
     }
-    if(item.prioridad)html+=`<div class="form-card"><h3>📋 Info</h3><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:13px;color:var(--gris)">Prioridad: <strong>${item.prioridad}</strong></span></div>${item.obs?`<p style="font-size:13px;color:var(--gris);margin-top:8px">${item.obs}</p>`:''}</div>`;
+    if(item.prioridad||item.horasEstimadas){
+      html+=`<div class="form-card"><h3>📋 Info</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:13px;color:var(--gris)">Prioridad: <strong>${item.prioridad}</strong></span></div>
+      ${item.obs?`<p style="font-size:13px;color:var(--gris);margin-bottom:10px">${item.obs}</p>`:''}
+      ${item.horasEstimadas?`<div style="background:var(--crema);border-radius:8px;padding:10px 12px;border-left:3px solid var(--naranja)">
+        <div style="font-size:10px;font-weight:700;color:var(--naranja);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⏱ Horas estimadas de producción (interno)</div>
+        <div style="font-size:16px;font-weight:700;color:var(--marron)">${item.horasEstimadas}h <span style="font-size:12px;font-weight:400;color:var(--gris)">· ${item.dificultad||'Simple'}</span></div>
+        ${item.notasProduccion?`<div style="font-size:12px;color:var(--gris);margin-top:4px">${item.notasProduccion}</div>`:''}
+      </div>`:''}
+      </div>`;
+    }
   }
 
   if(tipo==='cuentas'){
@@ -1540,6 +1618,20 @@ function verDetalle(tipo,id){
       <div class="sf-val">${fmt(saldo)}</div>
     </div>`;
 
+    // Control de tiempos
+    if(item.inicioFecha||item.finFecha||item.horasEstimadas){
+      const horasReales=calcHorasOT(item.inicioFecha,item.inicioHora,item.finFecha,item.finHora);
+      html+=`<div class="form-card" style="border-left:4px solid var(--azul);background:var(--azul-cl)">
+        <h3 style="color:var(--azul)">⏱ Control de tiempos</h3>
+        ${item.horasEstimadas?`<div class="res-row"><span class="rl">Horas estimadas</span><span style="font-weight:700;color:var(--naranja)">${item.horasEstimadas}h</span></div>`:''}
+        ${item.inicioFecha?`<div class="res-row"><span class="rl">Inicio real</span><span style="font-weight:600">${fmtF(item.inicioFecha)} ${item.inicioHora||''}</span></div>`:''}
+        ${item.finFecha?`<div class="res-row"><span class="rl">Fin real</span><span style="font-weight:600">${fmtF(item.finFecha)} ${item.finHora||''}</span></div>`:''}
+        ${item.inicioFecha&&item.finFecha?`<div class="res-row" style="background:#fff;border-radius:8px;margin-top:4px"><span class="rl" style="font-weight:700">Horas reales</span><span style="font-size:18px;font-weight:700;color:var(--azul)">${horasReales}</span></div>`:''}
+        ${item.horasEstimadas&&item.inicioFecha&&item.finFecha?`<div style="margin-top:8px;padding:8px 12px;background:#fff;border-radius:8px;font-size:12px;color:var(--gris)">
+          ${(()=>{const est=item.horasEstimadas*60;const real=((new Date(item.finFecha+'T'+(item.finHora||'00:00'))-new Date(item.inicioFecha+'T'+(item.inicioHora||'00:00')))/60000);const diff=real-est;return diff>0?`⚠️ Tomó <strong>${Math.round(diff/60*10)/10}h más</strong> de lo estimado`:`✅ Terminó <strong>${Math.round(Math.abs(diff)/60*10)/10}h antes</strong> de lo estimado`;})()}
+        </div>`:''}
+      </div>`;
+    }
     if(item.materiales)html+=`<div class="form-card"><h3>🪵 Materiales</h3><p style="font-size:13px;color:var(--gris);white-space:pre-line">${item.materiales}</p></div>`;
     if(item.instrucciones)html+=`<div class="form-card"><h3>📋 Instrucciones especiales</h3><p style="font-size:13px;color:var(--gris);white-space:pre-line">${item.instrucciones}</p></div>`;
     if(item.notas)html+=`<div class="form-card"><h3>📝 Notas</h3><p style="font-size:13px;color:var(--gris)">${item.notas}</p></div>`;
@@ -1591,9 +1683,42 @@ function imprimirItem(tipo,id){
     </div>`;
   }
   if(tipo==='presupuestos'&&item.items?.length){
-    html+=`<table><thead><tr><th>Cant</th><th>Descripción</th><th style="text-align:right">P. Unit</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
-    item.items.forEach(it=>{html+=`<tr><td style="text-align:center">${it.cant}</td><td>${it.desc}</td><td style="text-align:right">${fmt(it.precio)}</td><td style="text-align:right;font-weight:bold">${fmt(it.cant*it.precio)}</td></tr>`;});
-    html+=`</tbody></table><div class="total-bar"><span>TOTAL PRESUPUESTO</span><span>${fmt(item.total)}</span></div>`;
+    const esCred = item.condPago==='credito' && item.cuotasCredito?.length;
+    if(esCred){
+      html+=`<table><thead><tr><th>Cant</th><th>Descripción</th></tr></thead><tbody>`;
+      item.items.forEach(it=>{html+=`<tr><td style="text-align:center">${it.cant}</td><td>${it.desc}</td></tr>`;});
+    } else {
+      html+=`<table><thead><tr><th>Cant</th><th>Descripción</th><th style="text-align:right">P. Unit</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
+      item.items.forEach(it=>{html+=`<tr><td style="text-align:center">${it.cant}</td><td>${it.desc}</td><td style="text-align:right">${fmt(it.precio)}</td><td style="text-align:right;font-weight:bold">${fmt(it.cant*it.precio)}</td></tr>`;});
+    }
+    const esCredito = item.condPago==='credito' && item.cuotasCredito?.length;
+    if(esCredito){
+      const nCuotas=item.cuotasCredito.length;
+      const totalFinanciado=item.cuotasCredito.reduce((s,c)=>s+c,0);
+      html+=`</tbody></table>
+      <div style="background:#EEF4FB;border:2px solid #1A3A5C;border-radius:8px;padding:16px;margin-top:8px">
+        <div style="font-size:13px;font-weight:bold;color:#1A3A5C;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">💳 Venta a Crédito — ${nCuotas} cuotas</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#1A3A5C">
+            <th style="color:#fff;padding:8px 10px;font-size:11px;text-align:left">Cuota</th>
+            <th style="color:#fff;padding:8px 10px;font-size:11px;text-align:center">Vencimiento</th>
+            <th style="color:#fff;padding:8px 10px;font-size:11px;text-align:right">Valor</th>
+          </tr></thead>
+          <tbody>
+          ${item.cuotasCredito.map((c,i)=>`<tr style="background:${i%2===0?'#fff':'#EEF4FB'}">
+            <td style="padding:8px 10px;font-size:13px;font-weight:600">Cuota ${i+1} de ${nCuotas}</td>
+            <td style="padding:8px 10px;font-size:12px;color:#666;text-align:center">Mes ${i+1}</td>
+            <td style="padding:8px 10px;font-size:14px;font-weight:bold;color:#1A3A5C;text-align:right">${fmt(c)}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="background:#1A3A5C;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:0;border-radius:0 0 6px 6px">
+          <span>TOTAL A PAGAR</span><span>${fmt(totalFinanciado)}</span>
+        </div>
+      </div>`;
+    } else {
+      html+=`</tbody></table><div class="total-bar"><span>TOTAL PRESUPUESTO</span><span>${fmt(item.total)}</span></div>`;
+    }
     if(item.obs)html+=`<div class="obs-box">📌 ${item.obs}</div>`;
     html+=`<p style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">Presupuesto sujeto a variación sin previo aviso · Validez 15 días</p>`;
   }
@@ -1994,14 +2119,13 @@ function copiarWhatsAppPedido(id){
 
 // ══ EXPORTAR / IMPORTAR ══
 function sincronizarTodoAFirebase(){
-  // Fuerza subir todos los datos locales a Firebase (útil para migración inicial)
+  if(!fbDB){ alert('⚠️ Firebase no está conectado. Verificá tu conexión a internet.'); return; }
   CLAVES_SYNC.forEach(k=>{
     const datos=DB.get(k);
     if(datos&&datos.length>0){
       fbDB.ref('muebleria/'+k).set(datos);
     }
   });
-  // Horas
   Object.keys(localStorage).filter(k=>k.startsWith('mc_horas_')).forEach(k=>{
     try{
       const subkey=k.replace('mc_horas_','');
@@ -2069,9 +2193,63 @@ function sincronizarCCdesdeOT(ot){
 }
 
 // ══ MOD 4: crearOTdesdePresup guarda link en presupuesto ══
+
+
+// ══ MOD 3: Calcular horas reales OT ══
+function calcHorasOT(fechaI, horaI, fechaF, horaF){
+  if(!fechaI||!fechaF) return '—';
+  try{
+    const inicio = new Date(`${fechaI}T${horaI||'00:00'}`);
+    const fin = new Date(`${fechaF}T${horaF||'00:00'}`);
+    const diff = fin - inicio;
+    if(diff<=0) return '—';
+    const horas = Math.floor(diff/3600000);
+    const mins = Math.floor((diff%3600000)/60000);
+    return `${horas}h ${mins}m`;
+  }catch(e){return '—';}
+}
+function actualizarHorasOT(){
+  const fi=document.getElementById('ot-inicio-fecha')?.value;
+  const hi=document.getElementById('ot-inicio-hora')?.value;
+  const ff=document.getElementById('ot-fin-fecha')?.value;
+  const hf=document.getElementById('ot-fin-hora')?.value;
+  const resultado=calcHorasOT(fi,hi,ff,hf);
+  const el=document.getElementById('ot-horas-real');
+  const box=document.getElementById('ot-horas-calc');
+  if(el)el.textContent=resultado;
+  if(box)box.style.display=(fi&&ff)?'block':'none';
+}
+
+// ══ MOD B: Vencimiento automático de presupuestos (45 días) ══
+function verificarPresupuestosVencidos(){
+  const lista = DB.get('presupuestos');
+  const hoyMs = new Date().setHours(0,0,0,0);
+  const estadosPendientes = ['Pendiente','Enviado'];
+  let vencidos = 0;
+  const nuevaLista = lista.map(p=>{
+    if(!estadosPendientes.includes(p.estado)) return p;
+    if(!p.fecha) return p;
+    const fechaMs = new Date(p.fecha).setHours(0,0,0,0);
+    const diasTranscurridos = Math.floor((hoyMs - fechaMs) / (1000*60*60*24));
+    if(diasTranscurridos >= 45){
+      vencidos++;
+      return {...p, estado:'Rechazado', fechaVencimiento: new Date().toISOString().split('T')[0]};
+    }
+    return p;
+  });
+  if(vencidos > 0){
+    DB.set('presupuestos', nuevaLista);
+    setTimeout(()=>{
+      alert(`⚠️ ${vencidos} presupuesto${vencidos>1?'s':''} vencido${vencidos>1?'s':''} (más de 45 días sin respuesta) ${vencidos>1?'fueron':'fue'} marcado${vencidos>1?'s':''} como Rechazado.`);
+    }, 1500);
+  }
+}
+
 // ══ INIT ══
+verificarPresupuestosVencidos();
 actualizarStats();
-iniciarSyncFirebase();
+// Iniciar Firebase cuando el DOM esté listo
+window.addEventListener('load', ()=>{ initFirebase(); iniciarSyncFirebase(); });
 </script>
 </body>
 </html>
