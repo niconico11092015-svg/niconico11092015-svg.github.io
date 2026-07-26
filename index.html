@@ -1550,7 +1550,12 @@ function guardarPresup(num){
  }
  if(estado==='Aprobado'&&!obj.otId){
  // MOD 5: creación automática de OT, sin depender de confirm() del navegador (fallaba en modo app instalada)
+ try{
  crearOTdesdePresup(obj);
+ }catch(e){
+ alert('⚠️ No se pudo crear la Orden de Trabajo automáticamente.\nDetalle: '+e.message+'\n\nEl presupuesto quedó guardado como Aprobado igual. Podés crear la Orden manualmente desde Órdenes de Trabajo.');
+ volverDeForm(); actualizarStats();
+ }
  return;
  }
  volverDeForm(); actualizarStats();
