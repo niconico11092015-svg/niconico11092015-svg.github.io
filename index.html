@@ -404,7 +404,7 @@ const _cache = {};
 
 
 // Sincronización en tiempo real — escucha cambios de Firebase
-const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config'];
+const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config'];
 
 
 function iniciarSyncFirebase(){
@@ -1106,6 +1106,7 @@ function abrirForm(tipo, id){
  if(el)el.value=presup.horasEstimadas;
  }
  }
+ actualizarCapacidadOT(formId);
  }
  },150);
 }
@@ -1268,9 +1269,16 @@ function buildFormOT(num,item){
   </div>
   <div class="form-card"><h3>📐 Detalles de producción</h3>
     <div class="form-grid">
-      <div class="form-row"><label>Operario</label><input type="text" id="ot-operario" value="${v('operario')}" placeholder="Nombre..."></div>
-      <div class="form-row"><label>Fecha entrega</label><input type="date" id="ot-entrega" value="${v('entrega')}"></div>
+      <div class="form-row"><label>Operario</label><input type="text" id="ot-operario" value="${v('operario')}" placeholder="Nombre..." oninput="actualizarCapacidadOT(${item?.id||'null'})"></div>
+      <div class="form-row"><label>Fecha entrega</label><input type="date" id="ot-entrega" value="${v('entrega')}" onchange="actualizarCapacidadOT(${item?.id||'null'})"></div>
     </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font-size:11px;color:var(--gris)">
+      <span>Modo de capacidad:</span>
+      <button type="button" onclick="setModoCapacidad('general',${item?.id||'null'})" style="padding:4px 10px;border-radius:14px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${getProdCfg().modo==='general'?'var(--marron)':'var(--crema2)'};color:${getProdCfg().modo==='general'?'#fff':'var(--gris)'}">Taller (general)</button>
+      <button type="button" onclick="setModoCapacidad('individual',${item?.id||'null'})" style="padding:4px 10px;border-radius:14px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${getProdCfg().modo==='individual'?'var(--marron)':'var(--crema2)'};color:${getProdCfg().modo==='individual'?'#fff':'var(--gris)'}">Por carpintero</button>
+    </div>
+    <div id="ot-capacidad-check"></div>
+    <label style="display:none" id="ot-capacidad-override-wrap"><input type="checkbox" id="ot-capacidad-override"> Cargar de todas formas (fuera de horario)</label>
     <div class="form-row"><label>Medidas / Dimensiones</label><input type="text" id="ot-medidas" value="${v('medidas')}" placeholder="Ej: 1.80 x 0.45 x 2.10 m"></div>
     <div class="form-row"><label>Materiales</label><textarea id="ot-materiales" placeholder="Listado de materiales...">${v('materiales')}</textarea></div>
     <div class="form-row"><label>Instrucciones especiales</label><textarea id="ot-instrucciones" placeholder="Detalles de producción, terminaciones, etc.">${v('instrucciones')}</textarea></div>
@@ -1562,10 +1570,15 @@ function guardarPresup(num){
 }
 
 
+// MOD 6: total real a cobrar — si es Crédito de la Casa, usa el total financiado (con interés), no el de contado
+function totalFinalPresup(p){
+ if(p.condPago==='credito'&&p.cuotasCredito?.length)return p.cuotasCredito.reduce((s,c)=>s+c,0);
+ return p.total||0;
+}
 function crearOTdesdePresup(presup){
  const num=DB.nextNum('ordenes');
  const desc=presup.items&&presup.items.length>0?presup.items.map(i=>i.desc).filter(Boolean).join(', '):presup.desc;
- const obj={id:Date.now(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,tel:presup.tel||'',operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:presup.total||0,senia:0,pagosOT:[],prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:'',presupOrigen:presup.nombreArchivo,presupId:presup.id,nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:''};
+ const obj={id:Date.now(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,tel:presup.tel||'',operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:totalFinalPresup(presup),senia:0,pagosOT:[],prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:presup.condPago==='credito'?'💳 Venta con Crédito de la Casa':'',presupOrigen:presup.nombreArchivo,presupId:presup.id,nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:''};
  const lista=DB.get('ordenes'); lista.push(obj); DB.set('ordenes',lista);
  // Guardar link otId en el presupuesto
  const listaP=DB.get('presupuestos');
@@ -1597,6 +1610,69 @@ function guardarCC(num){
 }
 
 
+// ══ MOD 7: Control de capacidad de producción ══
+function getProdCfg(){
+ const arr=DB.get('produccion_config');
+ const base={modo:'general',horasDia:8};
+ if(Array.isArray(arr)&&arr[0])return{...base,...arr[0]};
+ return base;
+}
+function setProdCfg(cfg){DB.set('produccion_config',[cfg]);}
+function setModoCapacidad(modo,otId){
+ const cfg=getProdCfg();
+ cfg.modo=modo;
+ setProdCfg(cfg);
+ abrirForm('ordenes',otId===null||isNaN(otId)?null:otId);
+}
+// Ventana de días de trabajo que insume una OT (terminan el día antes de la entrega)
+function ventanaTrabajoOT(entrega,horas,horasDia){
+ if(!entrega||!horas)return[];
+ const dias=Math.max(1,Math.ceil(horas/horasDia));
+ const fin=new Date(entrega+'T00:00:00');
+ const out=[];
+ for(let i=dias;i>=1;i--){
+ const d=new Date(fin); d.setDate(d.getDate()-i);
+ out.push(d.toISOString().split('T')[0]);
+ }
+ return out;
+}
+function calcCapacidadOT(entrega,horas,operario,excludeId){
+ const cfg=getProdCfg();
+ if(!entrega||!horas)return{ok:true,disponible:0,necesario:0,dias:0};
+ const diasNecesarios=Math.max(1,Math.ceil(horas/cfg.horasDia));
+ const ventana=ventanaTrabajoOT(entrega,horas,cfg.horasDia);
+ let comprometido=0;
+ DB.get('ordenes').filter(o=>o.id!==excludeId&&!['Cancelado','Entregado'].includes(o.estado)&&o.entrega&&o.horasEstimadas).forEach(o=>{
+ if(cfg.modo==='individual'){
+ const opA=(operario||'').trim().toLowerCase();
+ const opB=(o.operario||'').trim().toLowerCase();
+ if(!opA||opA!==opB)return;
+ }
+ const ventanaO=ventanaTrabajoOT(o.entrega,o.horasEstimadas,cfg.horasDia);
+ const horasPorDiaO=o.horasEstimadas/ventanaO.length;
+ ventanaO.forEach(dia=>{if(ventana.includes(dia))comprometido+=horasPorDiaO;});
+ });
+ const capacidadTotal=cfg.horasDia*diasNecesarios;
+ const disponible=capacidadTotal-comprometido;
+ return{ok:disponible>=horas,disponible:Math.max(0,disponible),necesario:horas,dias:diasNecesarios,comprometido};
+}
+function actualizarCapacidadOT(excludeId){
+ const cont=document.getElementById('ot-capacidad-check');
+ if(!cont)return;
+ const entrega=document.getElementById('ot-entrega')?.value;
+ const horas=parseFloat(document.getElementById('ot-horas-est')?.value)||0;
+ const operario=document.getElementById('ot-operario')?.value||'';
+ const wrap=document.getElementById('ot-capacidad-override-wrap');
+ if(!entrega||!horas){cont.innerHTML='';if(wrap)wrap.style.display='none';return;}
+ const r=calcCapacidadOT(entrega,horas,operario,excludeId);
+ if(r.ok){
+ cont.innerHTML=`<div style="background:#DCFCE7;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#166534">✅ Hay capacidad disponible para estas ${r.dias} jornada${r.dias>1?'s':''} de trabajo.</div>`;
+ if(wrap)wrap.style.display='none';
+ } else {
+ cont.innerHTML=`<div style="background:#FEE2E2;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#991B1B">🔴 Esos días ya están comprometidos. Necesitás ${r.necesario}hs y solo hay ${Math.round(r.disponible)}hs libres en los ${r.dias} día${r.dias>1?'s':''} previos a la entrega.</div>`;
+ if(wrap)wrap.style.display='block';
+ }
+}
 function guardarOT(num){
  const ap=document.getElementById('ot-apellido')?.value||'';
  const no=document.getElementById('ot-nombre')?.value||'';
@@ -1605,13 +1681,26 @@ function guardarOT(num){
  document.querySelectorAll('#ot-pagos-extra .tabla-fila').forEach(r=>{
  pagosOT.push({fecha:r.querySelector('.fop-fecha')?.value||'',forma:r.querySelector('.fop-forma')?.value||'',monto:parseFloat(r.querySelector('.fop-monto')?.value)||0});
  });
- const obj={id:formId||Date.now(),num,fecha:document.getElementById('ot-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('ot-tel')?.value||'',operario:document.getElementById('ot-operario')?.value||'',entrega:document.getElementById('ot-entrega')?.value||'',medidas:document.getElementById('ot-medidas')?.value||'',materiales:document.getElementById('ot-materiales')?.value||'',instrucciones:document.getElementById('ot-instrucciones')?.value||'',costo:parseFloat(document.getElementById('ot-costo')?.value)||0,senia:parseFloat(document.getElementById('ot-senia')?.value)||0,pagosOT,prioridad:document.getElementById('ot-prioridad')?.value||'Normal',estado:document.getElementById('ot-estado')?.value||'Pendiente',notas:document.getElementById('ot-notas')?.value||'',presupOrigen:document.getElementById('ot-presup-origen')?.value||'',inicioFecha:document.getElementById('ot-inicio-fecha')?.value||'',inicioHora:document.getElementById('ot-inicio-hora')?.value||'',finFecha:document.getElementById('ot-fin-fecha')?.value||'',finHora:document.getElementById('ot-fin-hora')?.value||'',horasEstimadas:parseFloat(document.getElementById('ot-horas-est')?.value)||0,imagen:formImgData,nombreArchivo:nomArchivo('ordenes',num,ap,no,de)};
+ const entregaVal=document.getElementById('ot-entrega')?.value||'';
+ const horasVal=parseFloat(document.getElementById('ot-horas-est')?.value)||0;
+ const operarioVal=document.getElementById('ot-operario')?.value||'';
+ const estadoVal=document.getElementById('ot-estado')?.value||'Pendiente';
+ if(!['Cancelado','Entregado'].includes(estadoVal)&&entregaVal&&horasVal){
+ const cap=calcCapacidadOT(entregaVal,horasVal,operarioVal,formId);
+ const override=document.getElementById('ot-capacidad-override')?.checked;
+ if(!cap.ok&&!override){
+ alert(`🔴 No hay capacidad de producción suficiente.\nNecesitás ${cap.necesario}hs y solo hay ${Math.round(cap.disponible)}hs libres en los ${cap.dias} día(s) previos a la entrega (${cfgModoTexto()}).\n\nCambiá la fecha de entrega, revisá otras órdenes, o tildá "Cargar de todas formas" si estás seguro.`);
+ return;
+ }
+ }
+ const obj={id:formId||Date.now(),num,fecha:document.getElementById('ot-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('ot-tel')?.value||'',operario:operarioVal,entrega:entregaVal,medidas:document.getElementById('ot-medidas')?.value||'',materiales:document.getElementById('ot-materiales')?.value||'',instrucciones:document.getElementById('ot-instrucciones')?.value||'',costo:parseFloat(document.getElementById('ot-costo')?.value)||0,senia:parseFloat(document.getElementById('ot-senia')?.value)||0,pagosOT,prioridad:document.getElementById('ot-prioridad')?.value||'Normal',estado:estadoVal,notas:document.getElementById('ot-notas')?.value||'',presupOrigen:document.getElementById('ot-presup-origen')?.value||'',inicioFecha:document.getElementById('ot-inicio-fecha')?.value||'',inicioHora:document.getElementById('ot-inicio-hora')?.value||'',finFecha:document.getElementById('ot-fin-fecha')?.value||'',finHora:document.getElementById('ot-fin-hora')?.value||'',horasEstimadas:horasVal,imagen:formImgData,nombreArchivo:nomArchivo('ordenes',num,ap,no,de)};
  const lista=DB.get('ordenes');
  if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0)lista[idx]=obj;else lista.push(obj);}
  else lista.push(obj);
  DB.set('ordenes',lista); formImgData=''; fopIdx=0;
  volverDeForm(); actualizarStats();
 }
+function cfgModoTexto(){return getProdCfg().modo==='individual'?'por carpintero':'taller general';}
 
 
 // ══ DETALLE ══
@@ -1652,7 +1741,8 @@ function verDetalle(tipo,id){
  html+=`</div>`;
  if(item.condPago==='credito'&&item.cuotasCredito?.length){
  const tasa=TASAS_CREDITO[item.perfilCredito||'sinHistorial'];
- html+=`<div class="form-card"><h3>💳 Crédito de la Casa</h3><div style="background:var(--azul-cl);border-radius:10px;padding:12px;border:1px solid #b8d0e8"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${tasa.emoji} ${tasa.label} · ${tasa.pct}% mensual</div><div style="display:flex;gap:8px">${item.cuotasCredito.map((c,i)=>`<div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center;border:1px solid #b8d0e8"><div style="font-size:10px;color:var(--gris)">Cuota ${i+1}</div><div style="font-size:14px;font-weight:700;color:var(--azul)">${fmt(c)}</div></div>`).join('')}</div></div></div>`;
+ const totalFin=item.cuotasCredito.reduce((s,c)=>s+c,0);
+ html+=`<div class="form-card"><h3>💳 Crédito de la Casa</h3><div style="background:var(--azul-cl);border-radius:10px;padding:12px;border:1px solid #b8d0e8"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${tasa.emoji} ${tasa.label} · ${tasa.pct}% mensual</div><div style="display:flex;gap:8px">${item.cuotasCredito.map((c,i)=>`<div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center;border:1px solid #b8d0e8"><div style="font-size:10px;color:var(--gris)">Cuota ${i+1}</div><div style="font-size:14px;font-weight:700;color:var(--azul)">${fmt(c)}</div></div>`).join('')}</div><div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid #b8d0e8;font-weight:700;font-size:13px"><span>Total financiado (a cobrar)</span><span style="color:var(--azul)">${fmt(totalFin)}</span></div></div></div>`;
  }
  if(item.prioridad||item.horasEstimadas){
  html+=`<div class="form-card"><h3>📋 Info</h3>
@@ -1738,6 +1828,13 @@ function verDetalle(tipo,id){
  if(item.instrucciones)html+=`<div class="form-card"><h3>📋 Instrucciones especiales</h3><p style="font-size:13px;color:var(--gris);white-space:pre-line">${item.instrucciones}</p></div>`;
  if(item.notas)html+=`<div class="form-card"><h3>📝 Notas</h3><p style="font-size:13px;color:var(--gris)">${item.notas}</p></div>`;
  if(item.imagen)html+=`<div class="form-card"><h3>📷 Plano / Imagen</h3><img src="${item.imagen}" style="width:100%;max-height:300px;object-fit:cover;border-radius:10px"></div>`;
+ if(item.estado==='Aprobado'&&!item.otId){
+ html+=`<div class="form-card" style="background:var(--amarillo-cl);border:1px solid var(--amarillo)">
+      <h3>⚠️ Sin Orden de Trabajo</h3>
+      <p style="font-size:13px;color:var(--marron2);margin-bottom:10px">Este presupuesto está Aprobado pero todavía no tiene una Orden de Trabajo vinculada.</p>
+      <button class="btn btn-primary" style="width:100%" onclick="crearOTdesdePresup(DB.get('presupuestos').find(p=>p.id===${id})); actualizarStats();">🔧 Crear Orden de Trabajo ahora</button>
+    </div>`;
+ }
  }
 
 
@@ -2271,7 +2368,7 @@ function sincronizarTodoAFirebase(){
 
 
 function exportarDatos(){
- const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config'];
+ const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config'];
  const datos={};
  claves.forEach(k=>{datos[k]=DB.get(k);});
  Object.keys(localStorage).forEach(k=>{
@@ -2292,7 +2389,7 @@ function importarDatos(input){
  reader.onload=e=>{
  try{
  const datos=JSON.parse(e.target.result);
- const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config'];
+ const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config'];
  let importados=0;
  Object.keys(datos).forEach(k=>{
  if(claves.includes(k)){DB.set(k,datos[k]);importados++;}
@@ -2312,7 +2409,7 @@ function sincronizarOTdesdePresup(presup){
  const listaOT=DB.get('ordenes');
  const idx=listaOT.findIndex(o=>o.id===presup.otId);
  if(idx<0)return;
- listaOT[idx].costo=presup.total;
+ listaOT[idx].costo=totalFinalPresup(presup);
  DB.set('ordenes',listaOT);
  sincronizarCCdesdeOT(listaOT[idx]);
 }
