@@ -210,6 +210,10 @@ body{background:white;}
 </style>
 </head>
 <body>
+<!-- INDICADOR DE SINCRONIZACIÓN (Bloque 5) -->
+<div id="sync-indicator" title="Sincronizado" onclick="irA('mas')" style="position:fixed;top:10px;right:10px;z-index:9998;background:rgba(0,0,0,.35);color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;backdrop-filter:blur(4px)">☁️</div>
+<!-- BÚSQUEDA GLOBAL (Bloque 5) -->
+<div id="busqueda-global-btn" title="Buscar en toda la app" onclick="abrirBusquedaGlobal()" style="position:fixed;top:10px;left:10px;z-index:9998;background:rgba(0,0,0,.35);color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;backdrop-filter:blur(4px)">🔍</div>
 <!-- PRINT AREA -->
 <div id="print-area"></div>
 
@@ -232,16 +236,12 @@ body{background:white;}
  <p class="section-title">Accesos rápidos</p>
  <div class="menu-grid">
  <button class="menu-card" onclick="irA('presupuestos')"><div class="mc-ico">📋</div><div class="mc-label">Presupuestos</div></button>
- <button class="menu-card" onclick="irA('cuentas')"><div class="mc-ico">💰</div><div class="mc-label">Ctas. Corrientes</div></button>
- <button class="menu-card" onclick="irA('ordenes')"><div class="mc-ico">🔧</div><div class="mc-label">Órdenes Trabajo</div></button>
- <button class="menu-card" onclick="irA('horas')"><div class="mc-ico">⏱</div><div class="mc-label">Banco de Horas</div></button>
- <button class="menu-card" onclick="irA('cobros')"><div class="mc-ico">💵</div><div class="mc-label">Cobros Pendientes</div></button>
- <button class="menu-card" onclick="irA('pedidos')"><div class="mc-ico">📦</div><div class="mc-label">Pedidos Proveedores</div></button>
+ <button class="menu-card" onclick="irA('ordenes')"><div class="mc-ico">🏭</div><div class="mc-label">Producción (OT)</div></button>
  <button class="menu-card" onclick="irA('finanzas')" style="grid-column:1/-1;background:linear-gradient(135deg,var(--marron),var(--marron2))"><div class="mc-ico" style="filter:brightness(3)">💼</div><div class="mc-label" style="color:#fff">Administración / Finanzas</div></button>
- <button class="menu-card" onclick="irA('dashboard')" style="grid-column:1/-1"><div class="mc-ico">📊</div><div class="mc-label">Dashboard Analytics</div></button>
+ <button class="menu-card" onclick="irA('mas')" style="grid-column:1/-1"><div class="mc-ico">☰</div><div class="mc-label">Ver todo (Más)</div></button>
  </div>
  <p class="section-title">Datos</p>
- <div style="display:flex;gap:10px;margin-bottom:24px">
+ <div style="display:flex;gap:10px;margin-bottom:10px">
  <button onclick="exportarDatos()" style="flex:1;background:var(--verde-cl);border:none;border-radius:var(--radio);padding:16px 10px;text-align:center;cursor:pointer;box-shadow:var(--sombra)">
  <div style="font-size:28px;margin-bottom:6px">📤</div>
  <div style="font-size:11px;font-weight:600;color:var(--verde)">Exportar datos</div>
@@ -287,6 +287,94 @@ body{background:white;}
  <div class="lista" id="lista-cuentas"></div>
  </div>
  <button class="fab" onclick="abrirForm('cuentas',null)">＋</button>
+</div>
+
+
+<!-- CLIENTES -->
+<div id="screen-clientes" class="screen">
+ <div class="topbar"><div class="topbar-icon">👤</div><div><h1>Clientes</h1></div></div>
+ <div class="content">
+ <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-clientes" oninput="renderClientes()"></div>
+ <div id="clientes-content"></div>
+ </div>
+</div>
+
+
+<!-- MATERIALES -->
+<div id="screen-materiales" class="screen">
+ <div class="topbar"><div class="topbar-icon">🪵</div><div><h1>Materiales</h1></div></div>
+ <div class="content">
+ <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-materiales" oninput="renderMateriales()"></div>
+ <div id="materiales-content"></div>
+ </div>
+</div>
+
+
+<!-- PERSONAL -->
+<div id="screen-personal" class="screen">
+ <div class="topbar"><div class="topbar-icon">🧑‍💼</div><div><h1>Personal</h1></div></div>
+ <div class="content">
+ <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-personal" oninput="renderPersonal()"></div>
+ <div id="personal-content"></div>
+ </div>
+</div>
+
+
+<!-- PROVEEDORES -->
+<div id="screen-proveedores" class="screen">
+ <div class="topbar"><div class="topbar-icon">📦</div><div><h1>Proveedores</h1></div></div>
+ <div class="content">
+ <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar..." id="buscar-proveedores" oninput="renderProveedores()"></div>
+ <div id="proveedores-content"></div>
+ </div>
+</div>
+
+
+<!-- MÁS -->
+<div id="screen-mas" class="screen">
+ <div class="topbar"><div class="topbar-icon">☰</div><div><h1>Más</h1></div></div>
+ <div class="content">
+ <p class="section-title">Clientes y proveedores</p>
+ <div class="menu-grid">
+ <button class="menu-card" onclick="irA('clientes')"><div class="mc-ico">👤</div><div class="mc-label">Clientes</div></button>
+ <button class="menu-card" onclick="irA('proveedores')"><div class="mc-ico">📦</div><div class="mc-label">Proveedores</div></button>
+ <button class="menu-card" onclick="irA('materiales')"><div class="mc-ico">🪵</div><div class="mc-label">Materiales</div></button>
+ <button class="menu-card" onclick="irA('personal')"><div class="mc-ico">🧑‍💼</div><div class="mc-label">Personal</div></button>
+ <button class="menu-card" onclick="irA('cuentas')"><div class="mc-ico">💰</div><div class="mc-label">Ctas. Corrientes</div></button>
+ </div>
+ <p class="section-title">Cobros y trabajo</p>
+ <div class="menu-grid">
+ <button class="menu-card" onclick="irA('cobros')"><div class="mc-ico">💵</div><div class="mc-label">Cobros Pendientes</div></button>
+ <button class="menu-card" onclick="irA('horas')"><div class="mc-ico">⏱</div><div class="mc-label">Banco de Horas</div></button>
+ <button class="menu-card" onclick="irA('pedidos')"><div class="mc-ico">📬</div><div class="mc-label">Pedidos Proveedores</div></button>
+ <button class="menu-card" onclick="irA('dashboard')"><div class="mc-ico">📊</div><div class="mc-label">Dashboard Analytics</div></button>
+ </div>
+ <p class="section-title">Datos</p>
+ <div style="display:flex;gap:10px;margin-bottom:10px">
+ <button onclick="exportarDatos()" style="flex:1;background:var(--verde-cl);border:none;border-radius:var(--radio);padding:16px 10px;text-align:center;cursor:pointer;box-shadow:var(--sombra)">
+ <div style="font-size:28px;margin-bottom:6px">📤</div>
+ <div style="font-size:11px;font-weight:600;color:var(--verde)">Exportar datos</div>
+ </button>
+ <label style="flex:1;background:var(--azul-cl);border:none;border-radius:var(--radio);padding:16px 10px;text-align:center;cursor:pointer;box-shadow:var(--sombra);display:block">
+ <div style="font-size:28px;margin-bottom:6px">📥</div>
+ <div style="font-size:11px;font-weight:600;color:var(--azul)">Importar datos</div>
+ <input type="file" accept=".json" style="display:none" onchange="importarDatos(this)">
+ </label>
+ </div>
+ <button class="menu-card" onclick="irA('papelera')" style="width:100%;margin-bottom:10px;position:relative">
+ <div class="mc-ico">🗑️</div><div class="mc-label">Papelera <span id="papelera-badge-mas" style="background:var(--rojo);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">0</span></div>
+ </button>
+ <button onclick="sincronizarTodoAFirebase()" style="width:100%;background:linear-gradient(135deg,#C4621A,#E8832A);border:none;border-radius:var(--radio);padding:16px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--sombra);margin-top:4px">
+      ☁️ Subir todos mis datos a la nube
+ </button>
+ </div>
+</div>
+
+
+<!-- PAPELERA -->
+<div id="screen-papelera" class="screen">
+ <div class="topbar"><div class="topbar-icon">🗑️</div><div><h1>Papelera</h1></div></div>
+ <div class="content" id="papelera-content"></div>
 </div>
 
 
@@ -358,9 +446,9 @@ body{background:white;}
 <nav class="navbar" id="navbar">
  <button class="nav-btn active" id="nav-home" onclick="irA('home')"><span class="nav-ico">🏠</span>Inicio</button>
  <button class="nav-btn" id="nav-presupuestos" onclick="irA('presupuestos')"><span class="nav-ico">📋</span>Presup.</button>
- <button class="nav-btn" id="nav-cobros" onclick="irA('cobros')"><span class="nav-ico">💵</span>Cobros</button>
- <button class="nav-btn" id="nav-ordenes" onclick="irA('ordenes')"><span class="nav-ico">🔧</span>Órdenes</button>
- <button class="nav-btn" id="nav-cuentas" onclick="irA('cuentas')"><span class="nav-ico">💰</span>Cuentas</button>
+ <button class="nav-btn" id="nav-ordenes" onclick="irA('ordenes')"><span class="nav-ico">🏭</span>OT</button>
+ <button class="nav-btn" id="nav-finanzas" onclick="irA('finanzas')"><span class="nav-ico">💰</span>Finanzas</button>
+ <button class="nav-btn" id="nav-mas" onclick="irA('mas')"><span class="nav-ico">☰</span>Más</button>
 </nav>
 
 
@@ -381,10 +469,21 @@ const firebaseConfig = {
 
 // Init Firebase con verificación
 let fbDB = null;
+let ultimoEstadoConexion='ok';
+// Bloque 5: ☁ sincronizado, ⚠ sin conexión/error, ⌁ guardando en este momento.
+function actualizarIndicadorSync(estado){
+ if(estado==='ok'||estado==='off')ultimoEstadoConexion=estado;
+ const el=document.getElementById('sync-indicator');
+ if(!el)return;
+ const mapa={ok:['☁️','Sincronizado con la nube'],off:['⚠️','Sin conexión — se está guardando solo en este dispositivo'],error:['⚠️','Error al sincronizar — revisá la conexión'],syncing:['⌁','Guardando...']};
+ const par=mapa[estado]||mapa.ok;
+ el.textContent=par[0]; el.title=par[1];
+}
 function initFirebase(){
  try{
  if(typeof firebase === 'undefined'){
  console.warn('Firebase SDK no disponible, usando solo localStorage');
+ actualizarIndicadorSync('off');
  return;
  }
  if(!firebase.apps.length){
@@ -395,6 +494,7 @@ function initFirebase(){
  }catch(e){
  console.warn('Error iniciando Firebase:', e);
  fbDB = null;
+ actualizarIndicadorSync('off');
  }
 }
 
@@ -404,11 +504,16 @@ const _cache = {};
 
 
 // Sincronización en tiempo real — escucha cambios de Firebase
-const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config'];
+const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config','papelera','contadores','clientes','costeo_config','materiales','fondos_config','personal','agenda_notas'];
 
 
 function iniciarSyncFirebase(){
- if(!fbDB){ console.warn('Firebase no disponible, sin sync en tiempo real'); return; }
+ if(!fbDB){ console.warn('Firebase no disponible, sin sync en tiempo real'); actualizarIndicadorSync('off'); return; }
+ // Bloque 5: indicador visual de conexión real (no un simple intento de guardado) usando el
+ // path especial de Firebase que refleja la conexión de verdad.
+ fbDB.ref('.info/connected').on('value',snap=>{
+ actualizarIndicadorSync(snap.val()?'ok':'off');
+ });
  CLAVES_SYNC.forEach(k=>{
  fbDB.ref('muebleria/'+k).on('value', snap=>{
  const val = snap.val();
@@ -447,20 +552,41 @@ const DB={
  try{return JSON.parse(localStorage.getItem('mc_'+k)||'[]');}catch(e){return[];}
  },
  set(k,v){
- // Guardar local inmediatamente (para que la UI responda rápido)
+ // Guardar local inmediatamente (para que la UI responda rápido). Si localStorage está bloqueado
+ // (ej: abriendo el archivo directo con file:// en el celular, o modo privado), no debe cortar el
+ // resto del arranque de la app — sigue funcionando con la copia en memoria (_cache) igual.
  _cache[k]=v;
- localStorage.setItem('mc_'+k,JSON.stringify(v));
+ try{localStorage.setItem('mc_'+k,JSON.stringify(v));}catch(e){console.warn('localStorage no disponible, sigo solo en memoria:',e);}
  // Guardar en Firebase (si está disponible)
  if(fbDB){
  if(CLAVES_SYNC.includes(k)){
- fbDB.ref('muebleria/'+k).set(v).catch(e=>console.warn('Firebase set error:',e));
+ actualizarIndicadorSync('syncing');
+ fbDB.ref('muebleria/'+k).set(v)
+ .then(()=>actualizarIndicadorSync(ultimoEstadoConexion))
+ .catch(e=>{console.warn('Firebase set error:',e);actualizarIndicadorSync('error');});
  } else if(k.startsWith('horas_')){
  const subkey = k.replace('horas_','');
- fbDB.ref('muebleria/horas/'+subkey).set(v).catch(e=>console.warn('Firebase horas error:',e));
+ actualizarIndicadorSync('syncing');
+ fbDB.ref('muebleria/horas/'+subkey).set(v)
+ .then(()=>actualizarIndicadorSync(ultimoEstadoConexion))
+ .catch(e=>{console.warn('Firebase horas error:',e);actualizarIndicadorSync('error');});
  }
  }
  },
- nextNum(k){const i=this.get(k);return i.length?Math.max(...i.map(x=>x.num||0))+1:1;}
+ nextNum(k){
+  const cont=this.get('contadores');
+  let obj=(Array.isArray(cont)&&cont[0])?{...cont[0]}:{};
+  if(obj[k]===undefined){
+   const actuales=this.get(k).map(x=>x.num||0);
+   const enPapelera=this.get('papelera').filter(p=>p.tipo===k).map(p=>(p.data&&p.data.num)||0);
+   obj[k]=Math.max(0,...actuales,...enPapelera);
+  }
+  obj[k]=(obj[k]||0)+1;
+  this.set('contadores',[obj]);
+  return obj[k];
+ }
+ ,
+ nuevoId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
 };
 function fmt(n){return '$ '+Math.round(n||0).toLocaleString('es-AR');}
 function fmtF(f){if(!f)return'';const[y,m,d]=f.split('-');return`${d}/${m}/${y}`;}
@@ -482,7 +608,9 @@ function irA(p){
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
  document.getElementById('screen-'+p).classList.add('active');
- const nb=document.getElementById('nav-'+p);
+ const AGRUPADAS_EN_MAS=['cuentas','cobros','horas','pedidos','clientes','proveedores','materiales','personal','dashboard','papelera','mas'];
+ const navId=AGRUPADAS_EN_MAS.includes(p)?'nav-mas':'nav-'+p;
+ const nb=document.getElementById(navId);
  if(nb)nb.classList.add('active');
  document.getElementById('navbar').style.display='flex';
  pantalla=p;
@@ -494,6 +622,12 @@ function irA(p){
  if(p==='dashboard')renderDashboard();
  if(p==='ordenes')renderOrdenes();
  if(p==='finanzas')renderFinanzas();
+ if(p==='papelera')renderPapelera();
+ if(p==='clientes')renderClientes();
+ if(p==='proveedores')renderProveedores();
+ if(p==='materiales')renderMateriales();
+ if(p==='personal')renderPersonal();
+ if(p==='mas'){const b=document.getElementById('papelera-badge-mas');if(b)b.textContent=getPapelera().length;}
 }
 function mostrarForm(){
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -505,7 +639,7 @@ function mostrarDetalle(){
  document.getElementById('screen-detalle').classList.add('active');
  document.getElementById('navbar').style.display='none';
 }
-function volverDeForm(){irA(pantalla);}
+function volverDeForm(){detenerAutosaveBorrador();irA(pantalla);}
 function volverDeDetalle(){irA(pantalla);}
 
 
@@ -620,10 +754,60 @@ function renderLista(tipo){
 
 
 // ══ PANEL ÓRDENES SEMANAL ══
-let otVista='semana'; // 'semana' o 'lista'
+let otVista='semana'; // 'semana', 'mes' o 'lista'
 let otSemanaOffset=0;
+let otMesOffset=0;
 
 
+// ── Agenda del calendario de OT: notas propias (con horario), no ligadas a ninguna OT en particular.
+function getAgendaNotas(){return DB.get('agenda_notas')||[];}
+function agregarNotaAgenda(fecha,hora,texto){
+ const notas=getAgendaNotas();
+ notas.push({id:DB.nuevoId(),fecha,hora:hora||'',texto,createdAt:Date.now()});
+ DB.set('agenda_notas',notas);
+}
+function eliminarNotaAgenda(id){
+ DB.set('agenda_notas',getAgendaNotas().filter(n=>n.id!==id));
+}
+// Al tocar un día del calendario de Mes: muestra las OT que entregan ese día + las notas propias
+// (con horario) cargadas para esa fecha, y deja agregar una nota nueva (ej: "10:00 Visitar a Fulano").
+function abrirDiaOTCalendario(fechaStr){
+ document.getElementById('modal-dia-ot')?.remove();
+ const otsDelDia=DB.get('ordenes').filter(o=>(o.entrega||o.fecha)===fechaStr&&o.estado!=='Cancelado');
+ const notasDelDia=getAgendaNotas().filter(n=>n.fecha===fechaStr).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-dia-ot';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>📆 ${fmtF(fechaStr)}</h3>
+    <p class="section-title">Órdenes de Trabajo</p>
+    ${otsDelDia.length?otsDelDia.map(ot=>{
+ const sem=calcSemaforo(ot,'ordenes');
+ const colores={verde:'#22C55E',amarillo:'#F59E0B',rojo:'#EF4444'};
+ return`<div class="item-card" style="cursor:pointer;margin-bottom:6px;border-left:4px solid ${colores[sem]}" onclick="document.getElementById('modal-dia-ot').remove();verDetalle('ordenes',${ot.id})">
+        <div class="item-top"><span class="item-codigo">OT-${String(ot.num).padStart(3,'0')}</span><span class="item-fecha">${ot.estado||''}</span></div>
+        <div class="item-nombre">${ot.apellido||''} ${ot.nombre||''}</div>
+        <div class="item-desc">${ot.desc||''}</div>
+      </div>`;
+ }).join(''):'<p style="font-size:12px;color:var(--gris)">Sin OT con entrega este día.</p>'}
+    <p class="section-title">Notas / agenda</p>
+    <div id="dia-ot-notas">${notasDelDia.length?notasDelDia.map(n=>`<div class="res-row"><span class="rl">${n.hora?n.hora+' · ':''}${n.texto}</span><span class="rv"><button onclick="eliminarNotaAgenda(${n.id});abrirDiaOTCalendario('${fechaStr}')" style="border:none;background:none;color:var(--rojo);cursor:pointer;font-size:14px">✕</button></span></div>`).join(''):'<p style="font-size:12px;color:var(--gris)">Sin notas todavía.</p>'}</div>
+    <div class="form-row" style="margin-top:10px"><label>Horario (opcional)</label><input type="time" id="dnc-hora"></div>
+    <div class="form-row"><label>Nota</label><input type="text" id="dnc-texto" placeholder="Ej: Visitar a Fulano para tomar medidas"></div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:6px" onclick="guardarNotaDesdeCalendario('${fechaStr}')">＋ Agregar nota</button>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('modal-dia-ot').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarNotaDesdeCalendario(fechaStr){
+ const hora=document.getElementById('dnc-hora')?.value||'';
+ const texto=(document.getElementById('dnc-texto')?.value||'').trim();
+ if(!texto){alert('Escribí algo para la nota.');return;}
+ agregarNotaAgenda(fechaStr,hora,texto);
+ abrirDiaOTCalendario(fechaStr); // re-renderiza el modal con la nota ya agregada
+}
 function renderOrdenes(){
  const cont=document.getElementById('ordenes-content');
  if(!cont)return;
@@ -633,11 +817,58 @@ function renderOrdenes(){
  // Tabs vista
  let html=`<div style="display:flex;gap:8px;margin-bottom:14px">
     <button onclick="otVista='semana';renderOrdenes()" style="flex:1;padding:10px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${otVista==='semana'?'var(--marron)':'var(--blanco)'};color:${otVista==='semana'?'#fff':'var(--marron2)'};box-shadow:var(--sombra)">📅 Semana</button>
+    <button onclick="otVista='mes';renderOrdenes()" style="flex:1;padding:10px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${otVista==='mes'?'var(--marron)':'var(--blanco)'};color:${otVista==='mes'?'#fff':'var(--marron2)'};box-shadow:var(--sombra)">📆 Mes</button>
     <button onclick="otVista='lista';renderOrdenes()" style="flex:1;padding:10px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${otVista==='lista'?'var(--marron)':'var(--blanco)'};color:${otVista==='lista'?'#fff':'var(--marron2)'};box-shadow:var(--sombra)">📋 Lista</button>
   </div>`;
 
 
- if(otVista==='semana'){
+ if(otVista==='mes'){
+ // Vista por mes: calendario real (no solo una lista) — cada día muestra un badge con la cantidad
+ // de OT que entregan ese día y un punto si hay notas de agenda cargadas. Tocás un día y se abre
+ // el detalle con las OT de ese día + las notas (con horario) que le cargaste.
+ const base=new Date();
+ base.setMonth(base.getMonth()+otMesOffset);
+ const anio=base.getFullYear(), mes=base.getMonth();
+ const nombreMes=base.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+ html+=`<div style="background:var(--blanco);border-radius:14px;padding:12px 14px;box-shadow:var(--sombra);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <button onclick="otMesOffset--;renderOrdenes()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">←</button>
+      <div style="text-align:center">
+        <div style="font-size:14px;font-weight:700;color:var(--marron);text-transform:capitalize">${nombreMes}</div>
+ ${otMesOffset===0?'<div style="font-size:11px;color:var(--naranja)">mes actual</div>':''}
+      </div>
+      <button onclick="otMesOffset++;renderOrdenes()" style="background:var(--crema2);border:none;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer">→</button>
+    </div>`;
+ const primerDia=new Date(anio,mes,1);
+ const diasEnMes=new Date(anio,mes+1,0).getDate();
+ const offset=(primerDia.getDay()+6)%7; // semana arranca en lunes
+ const hoyStr2=hoy();
+ const notas=getAgendaNotas();
+ let celdas='';
+ for(let i=0;i<offset;i++)celdas+='<div></div>';
+ for(let d=1;d<=diasEnMes;d++){
+ const fechaStr=`${anio}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+ const otsDelDia=todas.filter(o=>(o.entrega||o.fecha)===fechaStr&&o.estado!=='Cancelado').length;
+ const notasDelDia=notas.filter(n=>n.fecha===fechaStr).length;
+ const esHoy2=fechaStr===hoyStr2;
+ celdas+=`<div onclick="abrirDiaOTCalendario('${fechaStr}')" style="cursor:pointer;text-align:center;padding:6px 2px;border-radius:8px;background:${esHoy2?'var(--naranja)':'var(--crema)'};position:relative;min-height:38px">
+      <div style="font-size:12px;font-weight:700;color:${esHoy2?'#fff':'var(--marron2)'}">${d}</div>
+      <div style="display:flex;justify-content:center;gap:2px;margin-top:2px">
+        ${otsDelDia>0?`<span style="background:var(--azul);color:#fff;border-radius:6px;padding:0 4px;font-size:9px;font-weight:700">${otsDelDia}</span>`:''}
+        ${notasDelDia>0?`<span style="color:${esHoy2?'#fff':'var(--naranja)'};font-size:9px">📝</span>`:''}
+      </div>
+    </div>`;
+ }
+ html+=`<div style="background:var(--blanco);border-radius:14px;padding:12px;box-shadow:var(--sombra)">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:10px;color:var(--gris);text-align:center;margin-bottom:6px">
+        <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${celdas}</div>
+      <div style="display:flex;gap:10px;font-size:10px;color:var(--gris);margin-top:10px">
+        <span><span style="background:var(--azul);color:#fff;border-radius:6px;padding:0 4px">N</span> OT ese día</span>
+        <span>📝 tiene notas</span>
+      </div>
+    </div>`;
+ } else if(otVista==='semana'){
  // Navegación semana
  const fechaBase=new Date();
  fechaBase.setDate(fechaBase.getDate()+otSemanaOffset*7);
@@ -933,15 +1164,24 @@ function guardarPagoOT(otId){
  const idx=lista.findIndex(o=>o.id===otId);
  if(idx<0)return;
  if(!lista[idx].pagosOT)lista[idx].pagosOT=[];
- lista[idx].pagosOT.push({fecha,forma,monto});
+ const pagoId=DB.nuevoId();
+ // Corrección: usar la estructura económica propia del presupuesto de origen (MP/MO/Globales/Utilidad
+ // de ESE trabajo puntual) en vez del % general de fábrica — solo cae al % general si no hay costeo.
+ // Reparto en cascada por prioridad (MP→MO→Globales→Ganancia): hace falta saber cuánto se había
+ // cobrado ya de esta OT ANTES de este pago, para saber en qué escalón cae el nuevo pago.
+ const presupOrigenPago=lista[idx].presupId?DB.get('presupuestos').find(p=>p.id===lista[idx].presupId):null;
+ const estructuraPago=estructuraEconomicaPresup(presupOrigenPago);
+ const prevPagadoOT=(lista[idx].pagosOT||[]).reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+ // MOD FINANZAS: registrar el cobro en el flujo de caja de Administración
+ const movId=registrarMovimiento('ingreso',medioFromTexto(forma),'',monto,`Cobro OT-${String(lista[idx].num).padStart(3,'0')} ${lista[idx].apellido||''} ${lista[idx].nombre||''}`,`OT-${lista[idx].num}`,estructuraPago,prevPagadoOT);
+ // CORRECCIÓN: cada pago tiene ID propio y queda enlazado al movimiento que generó, para poder rastrear si se editan por separado
+ lista[idx].pagosOT.push({id:pagoId,fecha,forma,monto,movimientoId:movId});
  // verificar si quedó saldado
  const costo=parseFloat(lista[idx].costo)||0;
  const senia=parseFloat(lista[idx].senia)||0;
  const totalPagado=lista[idx].pagosOT.reduce((a,p)=>a+(parseFloat(p.monto)||0),0);
  if(senia+totalPagado>=costo){lista[idx].estado='Entregado';}
  DB.set('ordenes',lista);
- // MOD FINANZAS: registrar el cobro en el flujo de caja de Administración
- registrarMovimiento('ingreso',medioFromTexto(forma),'',monto,`Cobro OT-${String(lista[idx].num).padStart(3,'0')} ${lista[idx].apellido||''} ${lista[idx].nombre||''}`,`OT-${lista[idx].num}`);
  document.getElementById('modal-pago-ot')?.remove();
  actualizarStats();
  renderCobros();
@@ -1062,11 +1302,15 @@ function pdfFooter(){
 
 // ══ FORM ══
 let formTipo='', formId=null, formItems=[], formCompras=[], formPagos=[], formImgData='';
+// Fase 11: detección de conflictos de sincronización — guarda una "foto" del registro tal como
+// estaba al abrir el formulario, para poder avisar si otro dispositivo lo cambió mientras lo editabas.
+let formSnapshotOriginal=null;
 function abrirForm(tipo, id){
  formTipo=tipo; formId=id;
  formItems=[]; formCompras=[]; formPagos=[]; formImgData='';
  const esEdicion=id!==null;
  const item=esEdicion?DB.get(tipo).find(i=>i.id===id):null;
+ formSnapshotOriginal=item?JSON.stringify(item):null;
  const num=esEdicion?(item?.num||1):DB.nextNum(tipo);
  const titulos={presupuestos:esEdicion?'Editar Presupuesto':'Nuevo Presupuesto',cuentas:esEdicion?'Editar Cuenta':'Nueva Cuenta Corriente',ordenes:esEdicion?'Editar Orden':'Nueva Orden de Trabajo'};
  document.getElementById('form-title').textContent=titulos[tipo];
@@ -1078,6 +1322,8 @@ function abrirForm(tipo, id){
  if(esEdicion && item){
  if(tipo==='presupuestos'&&item.items){item.items.forEach(it=>agregarFilaPresup(it));}
  if(tipo==='presupuestos'&&item.fichaTecnica){setTimeout(()=>renderFichaTecnicaExistente(item.fichaTecnica),100);}
+ if(tipo==='presupuestos'&&item.costeo){setTimeout(()=>renderCosteoExistente(item.costeo),100);}
+ if(tipo==='ordenes'){setTimeout(()=>renderMaterialesRealesExistentes(item.materialesReales),100);}
  if(tipo==='cuentas'){
  if(item.compras)item.compras.forEach(c=>agregarFilaCompra(c));
  if(item.pagos)item.pagos.forEach(p=>agregarFilaPago(p));
@@ -1087,6 +1333,11 @@ function abrirForm(tipo, id){
  } else {
  if(tipo==='presupuestos')agregarFilaPresup();
  if(tipo==='cuentas'){agregarFilaCompra();agregarFilaPago();}
+ }
+ detenerAutosaveBorrador();
+ if(tipo==='presupuestos'||tipo==='ordenes'){
+ if(!esEdicion)setTimeout(()=>ofrecerRestaurarBorrador(tipo),300);
+ iniciarAutosaveBorrador(tipo);
  }
  mostrarForm();
  setTimeout(()=>{
@@ -1129,6 +1380,10 @@ function buildFormPresup(num,item){
       <div class="form-row"><label>CUIT / CUIL</label><input type="text" id="fp-cuit" value="${v('cuit')}" placeholder="20-12345678-9"></div>
     </div>
     <div class="form-row"><label>Domicilio</label><input type="text" id="fp-domicilio" value="${v('domicilio')}" placeholder="Calle y número..."></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;background:var(--crema);border-radius:10px;padding:10px 12px">
+      <input type="checkbox" id="fp-retira-fabrica" ${item?.retiraFabrica?'checked':''} style="width:18px;height:18px">
+      <span style="font-size:12px;color:var(--marron2)">📍 Retira de fábrica (Concarán) — no incluye flete</span>
+    </label>
     <div class="nombre-archivo" id="fp-nombre-archivo"><span>Nombre del archivo:</span>PRE-${String(num).padStart(3,'0')}</div>
   </div>
   <div class="form-card"><h3>📦 Ítems del presupuesto</h3>
@@ -1176,7 +1431,7 @@ function buildFormPresup(num,item){
   <div class="form-card" style="border-left:4px solid var(--naranja);background:var(--crema)">
     <h3>⏱ Horas estimadas de producción <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(uso interno — no aparece en PDF)</span></h3>
     <div class="form-grid">
-      <div class="form-row"><label>Horas estimadas</label><input type="number" id="fp-horas-est" value="${v('horasEstimadas')}" placeholder="Ej: 8" min="0" step="0.5"></div>
+      <div class="form-row"><label>Horas estimadas</label><input type="number" id="fp-horas-est" value="${v('horasEstimadas')}" placeholder="Ej: 8" min="0" step="0.5" oninput="recalcularCosteoPresup()"></div>
       <div class="form-row"><label>Dificultad</label>
         <select id="fp-dificultad">
  ${['Simple','Media','Compleja','Muy compleja'].map(e=>`<option${v('dificultad')==e?' selected':''}>${e}</option>`).join('')}
@@ -1185,21 +1440,26 @@ function buildFormPresup(num,item){
     </div>
     <div class="form-row"><label>Notas de producción</label><textarea id="fp-notas-prod" placeholder="Procesos especiales, materiales difíciles, detalles técnicos...">${v('notasProduccion')}</textarea></div>
   </div>
-  <div class="btn-row">
-    <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
-    <button class="btn btn-primary" <div class="ficha-section">
+  <div class="ficha-section">
     <div class="ficha-badge">🔒 Ficha técnica interna</div>
-    <h3>📐 Materiales</h3><div id="ft-materiales"></div>
-    <button class="ficha-add" onclick="agregarFichaTag('materiales')">＋ Material</button>
-    <div id="ft-mat-sugs" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
-    <h3 style="margin-top:12px">🪚 Piezas</h3><div id="ft-piezas"></div>
-    <button class="ficha-add" onclick="agregarFichaTag('piezas')">＋ Pieza (Piso 600×580...)</button>
+    <h3>📐 Despiece</h3><div id="ft-piezas"></div>
+    <button class="ficha-add" onclick="agregarFichaTag('piezas')">＋ Pieza (Laterales 1000x400mm...)</button>
     <h3 style="margin-top:12px">🔩 Herrajes</h3><div id="ft-herrajes"></div>
     <button class="ficha-add" onclick="agregarFichaTag('herrajes')">＋ Herraje</button>
     <h3 style="margin-top:12px">🎨 Tapacanto</h3>
     <input class="ficha-input" id="ft-tapacanto" placeholder="Ej: 3m lineal blanco...">
     <h3 style="margin-top:12px">📝 Notas técnicas</h3>
     <textarea class="ficha-input" id="ft-notas" style="height:60px;resize:none" placeholder="Detalles técnicos..."></textarea>
+  </div>
+  <div class="form-card" style="border-left:4px solid var(--verde2);background:var(--crema)">
+    <h3>📋 Materiales <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(una sola lista: ficha técnica + costeo)</span></h3>
+    <div class="tabla-header" style="grid-template-columns:1fr 50px 75px 75px 75px 28px;font-size:10px">
+      <span>Material</span><span>Cant</span><span>$/u.</span><span>Proveedor</span><span>Subtotal</span><span></span>
+    </div>
+    <div id="ct-materiales"></div>
+    <button class="add-row-btn" onclick="agregarFilaCosteoMaterial()">＋ Agregar material</button>
+    <div class="form-row" style="margin-top:10px"><label>Margen de ganancia sobre este producto (%)</label><input type="number" id="ct-margen" step="1" placeholder="Ej: 30" oninput="recalcularCosteoPresup()"></div>
+    <div id="ct-resumen" style="margin-top:10px"></div>
   </div>
   <div class="btn-row" style="margin-top:14px">
     <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
@@ -1270,7 +1530,12 @@ function buildFormOT(num,item){
   <div class="form-card"><h3>📐 Detalles de producción</h3>
     <div class="form-grid">
       <div class="form-row"><label>Operario</label><input type="text" id="ot-operario" value="${v('operario')}" placeholder="Nombre..." oninput="actualizarCapacidadOT(${item?.id||'null'})"></div>
-      <div class="form-row"><label>Fecha entrega</label><input type="date" id="ot-entrega" value="${v('entrega')}" onchange="actualizarCapacidadOT(${item?.id||'null'})"></div>
+      <div class="form-row"><label>Fecha entrega</label>
+        <div style="display:flex;gap:6px">
+          <input type="date" id="ot-entrega" value="${v('entrega')}" onchange="actualizarCapacidadOT(${item?.id||'null'})" style="flex:1">
+          <button type="button" onclick="abrirCalendarioOT(${item?.id||'null'})" style="border:none;background:var(--crema2);border-radius:8px;padding:0 12px;cursor:pointer;font-size:16px">📅</button>
+        </div>
+      </div>
     </div>
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;font-size:11px;color:var(--gris)">
       <span>Modo de capacidad:</span>
@@ -1308,6 +1573,16 @@ function buildFormOT(num,item){
       <div style="font-size:20px;font-weight:700;color:var(--azul);margin-top:2px" id="ot-horas-real">${calcHorasOT(v('inicioFecha'),v('inicioHora'),v('finFecha'),v('finHora'))}</div>
     </div>
     <div class="form-row" style="margin-top:10px"><label>Horas estimadas (del presupuesto)</label><input type="number" id="ot-horas-est" value="${v('horasEstimadas')}" placeholder="Ej: 8" min="0" step="0.5" readonly style="background:var(--crema2);color:var(--azul);font-weight:600"></div>
+    <input type="hidden" id="ot-presup-id-oculto" value="${v('presupId')}">
+  </div>
+  <div class="form-card" style="border-left:4px solid var(--azul);background:var(--azul-cl)">
+    <h3 style="color:var(--azul)">🪵 Materiales realmente usados <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(uso interno)</span></h3>
+    <div class="tabla-header" style="grid-template-columns:1fr 55px 85px 85px 28px">
+      <span>Material</span><span>Cant</span><span>$/u.</span><span>Subtotal</span><span></span>
+    </div>
+    <div id="otm-materiales"></div>
+    <button class="add-row-btn" onclick="agregarFilaMaterialOT()">＋ Agregar material</button>
+    <div id="otm-resumen" style="margin-top:10px"></div>
   </div>
   <div class="form-card"><h3>💵 Valores y cobros</h3>
     <div class="form-grid">
@@ -1414,6 +1689,129 @@ function calcPresup(){
 }
 
 
+// ── Costeo real de un presupuesto (referencia interna) ──
+let ctIdx=0;
+// Desplegable propio de sugerencias de material (reemplaza <datalist>, que muchos navegadores
+// móviles no muestran — mismo tipo de problema que tuvimos con prompt()).
+function renderSugerenciasBox(inputEl,onPick){
+ cerrarSugerenciasBox();
+ const filtro=(inputEl.value||'').toLowerCase();
+ let lista=getMateriales().slice().sort((a,b)=>(a.descripcion||'').localeCompare(b.descripcion||''));
+ if(filtro)lista=lista.filter(m=>(m.descripcion||'').toLowerCase().includes(filtro));
+ // Sin límite artificial de resultados — la caja ya scrollea (max-height más abajo).
+ if(!lista.length)return;
+ const rect=inputEl.getBoundingClientRect();
+ const box=document.createElement('div');
+ box.id='sugerencias-material-box';
+ box.style.cssText=`position:fixed;top:${rect.bottom+2}px;left:${rect.left}px;width:${Math.max(rect.width,220)}px;max-height:300px;overflow-y:auto;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);z-index:10000`;
+ lista.forEach(m=>{
+ const opt=document.createElement('div');
+ opt.style.cssText='padding:8px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid #eee';
+ opt.innerHTML=`<div style="font-weight:600;color:#333">${m.descripcion}</div><div style="font-size:10px;color:#888">${fmt(m.costoUnitario)} / ${m.unidad||'u.'}${m.proveedor?' · '+m.proveedor:''}</div>`;
+ opt.onmousedown=e=>{e.preventDefault();onPick(m);};
+ box.appendChild(opt);
+ });
+ document.body.appendChild(box);
+}
+function cerrarSugerenciasBox(){document.getElementById('sugerencias-material-box')?.remove();}
+function mostrarSugerenciasCosteo(i){
+ const fila=document.getElementById(`cti-${i}`);
+ const inputEl=fila?.querySelector('.cti-nombre');
+ if(!inputEl)return;
+ renderSugerenciasBox(inputEl,mat=>{
+ inputEl.value=mat.descripcion;
+ actualizarCostoDesdeMaterial(i);
+ cerrarSugerenciasBox();
+ });
+}
+function agregarFilaCosteoMaterial(data){
+ const i=ctIdx++;
+ const cont=document.getElementById('ct-materiales');
+ if(!cont)return;
+ const d=data||{};
+ const div=document.createElement('div');
+ div.className='tabla-fila'; div.id=`cti-${i}`;
+ div.style.cssText='display:grid;grid-template-columns:1fr 50px 75px 75px 75px 28px;gap:6px;align-items:center;margin-bottom:6px';
+ if(d.proveedor)div.dataset.proveedor=d.proveedor;
+ div.innerHTML=`<input type="text" class="cti-nombre" placeholder="Buscar material..." value="${(d.descripcion||'').replace(/"/g,'&quot;')}" oninput="mostrarSugerenciasCosteo(${i});actualizarCostoDesdeMaterial(${i})" onfocus="mostrarSugerenciasCosteo(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
+    <input type="number" class="cti-cant" placeholder="1" step="0.1" value="${d.cantidad||''}" oninput="recalcularCosteoPresup()">
+    <input type="number" class="cti-costo" placeholder="0" step="0.01" value="${d.costoUnitario||''}" oninput="recalcularCosteoPresup()">
+    <span class="total-cell cti-proveedor" style="font-size:10px">${d.proveedor||'—'}</span>
+    <span class="total-cell cti-subtotal">—</span>
+    <button class="del-btn" onclick="document.getElementById('cti-${i}').remove();recalcularCosteoPresup()">✕</button>`;
+ cont.appendChild(div);
+ recalcularCosteoPresup();
+}
+// Al elegir un material del catálogo, autocompleta costo unitario y proveedor (el costo se puede pisar a mano igual).
+function actualizarCostoDesdeMaterial(i){
+ const fila=document.getElementById(`cti-${i}`);
+ if(!fila)return;
+ const nombre=fila.querySelector('.cti-nombre')?.value||'';
+ const mat=buscarMaterialPorNombre(nombre);
+ const spanProv=fila.querySelector('.cti-proveedor');
+ if(mat){
+ const inpCosto=fila.querySelector('.cti-costo');
+ if(inpCosto)inpCosto.value=mat.costoUnitario||0;
+ fila.dataset.materialId=mat.id;
+ fila.dataset.proveedor=mat.proveedor||'';
+ if(spanProv)spanProv.textContent=mat.proveedor||'—';
+ } else {
+ delete fila.dataset.materialId;
+ delete fila.dataset.proveedor;
+ if(spanProv)spanProv.textContent='—';
+ }
+ recalcularCosteoPresup();
+}
+function leerCosteoMateriales(){
+ const filas=[];
+ document.querySelectorAll('#ct-materiales .tabla-fila').forEach(r=>{
+ const descripcion=r.querySelector('.cti-nombre')?.value||'';
+ const cantidad=parseFloat(r.querySelector('.cti-cant')?.value)||0;
+ const costoUnitario=parseFloat(r.querySelector('.cti-costo')?.value)||0;
+ if(!descripcion&&!cantidad&&!costoUnitario)return;
+ filas.push({materialId:r.dataset.materialId?parseInt(r.dataset.materialId):null,descripcion,cantidad,costoUnitario,proveedor:r.dataset.proveedor||'',subtotal:cantidad*costoUnitario});
+ });
+ return filas;
+}
+// Recalcula el resumen de costeo en vivo. Es solo referencia: NUNCA toca los Ítems del presupuesto.
+function recalcularCosteoPresup(){
+ document.querySelectorAll('#ct-materiales .tabla-fila').forEach(r=>{
+ const c=parseFloat(r.querySelector('.cti-cant')?.value)||0;
+ const p=parseFloat(r.querySelector('.cti-costo')?.value)||0;
+ const tot=c*p;
+ const span=r.querySelector('.cti-subtotal');
+ if(span)span.textContent=tot>0?fmt(tot):'—';
+ });
+ const materiales=leerCosteoMateriales();
+ const costoMateriales=materiales.reduce((s,m)=>s+m.subtotal,0);
+ const horas=parseFloat(document.getElementById('fp-horas-est')?.value)||0;
+ const cfg=getCosteoCfg();
+ const costoManoObra=horas*(cfg.costoHoraManoObra||0);
+ const costoDirecto=costoMateriales+costoManoObra;
+ const costoTotal=costoDirecto*(1+(cfg.tasaFija||0));
+ const margenPct=parseFloat(document.getElementById('ct-margen')?.value)||0;
+ const precioSugerido=(margenPct>0&&margenPct<100)?costoTotal/(1-margenPct/100):costoTotal;
+ const resumen=document.getElementById('ct-resumen');
+ if(resumen){
+ resumen.innerHTML=`<div class="res-row"><span class="rl">Costo materiales</span><span class="rv">${fmt(costoMateriales)}</span></div>
+ <div class="res-row"><span class="rl">Costo mano de obra (${horas}h × ${fmt(cfg.costoHoraManoObra||0)})</span><span class="rv">${fmt(costoManoObra)}</span></div>
+ <div class="res-row"><span class="rl">Costo directo</span><span class="rv">${fmt(costoDirecto)}</span></div>
+ <div class="res-row"><span class="rl">+ Tasa fija (${(cfg.tasaFija*100).toFixed(0)}%)</span><span class="rv">${fmt(costoTotal-costoDirecto)}</span></div>
+ <div class="res-row" style="font-weight:700"><span class="rl">Costo total</span><span class="rv">${fmt(costoTotal)}</span></div>
+ <div class="res-row" style="font-weight:700;color:var(--verde2)"><span class="rl">Precio sugerido${margenPct?` (margen ${margenPct}%)`:' (sin margen cargado)'}</span><span class="rv">${fmt(precioSugerido)}</span></div>
+ ${!cfg.costoHoraManoObra?'<p style="font-size:11px;color:var(--naranja);margin-top:6px">⚠️ Todavía no configuraste el costo de mano de obra por hora (Finanzas → Rentabilidad).</p>':''}`;
+ }
+ return{materiales,costoMateriales,horasManoObra:horas,costoManoObra,costoDirecto,tasaFijaAplicada:cfg.tasaFija,costoTotal,margen:margenPct,precioSugerido};
+}
+function renderCosteoExistente(costeo){
+ if(!costeo)return;
+ (costeo.materiales||[]).forEach(m=>agregarFilaCosteoMaterial(m));
+ const inpMargen=document.getElementById('ct-margen');
+ if(inpMargen&&costeo.margen)inpMargen.value=costeo.margen;
+ recalcularCosteoPresup();
+}
+
+
 function agregarFilaCompra(data){
  const i=fcIdx++;
  const cont=document.getElementById('cc-compras'); if(!cont)return;
@@ -1481,16 +1879,85 @@ function calcCC(){
 // ══ MOD 2: Catálogo y Ficha Técnica ══
 function getCatalogo(tipo){return DB.get('cat_'+tipo)||[];}
 function saveCatalogo(tipo,arr){DB.set('cat_'+tipo,arr);}
-function agregarAlCatalogo(tipo,item){const cat=getCatalogo(tipo);if(item&&!cat.includes(item)){cat.push(item);saveCatalogo(tipo,cat);}}
+function agregarAlCatalogo(tipo,item){
+ const cat=getCatalogo(tipo);
+ const val=(item||'').trim();
+ // CORRECCIÓN: evitar duplicados por mayúsculas/espacios ("Pino" vs "pino ")
+ if(val && !cat.some(c=>(c||'').trim().toLowerCase()===val.toLowerCase())){
+ cat.push(val);
+ saveCatalogo(tipo,cat);
+ }
+}
 
 
 function agregarFichaTag(tipo){
- const val=prompt('Agregar '+tipo+':');
- if(!val||!val.trim())return;
- addFichaTagDirecto(tipo,val.trim());
+ if(tipo==='piezas'){abrirModalPiezaFicha();return;}
+ mostrarPromptModal('＋ Agregar herraje','Escribí acá...',val=>addFichaTagDirecto(tipo,val));
+}
+// Ficha Técnica > Despiece: descripción + medida, con cantidad, mostrado como "Nombre = Cantidad".
+function abrirModalPiezaFicha(){
+ document.getElementById('modal-pieza-ficha')?.remove();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-pieza-ficha';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>＋ Agregar pieza (Despiece)</h3>
+    <div class="form-row"><label>Descripción y medida</label><input type="text" id="mpzf-nombre" placeholder="Ej: Laterales 1000x400mm"></div>
+    <div class="form-row"><label>Cantidad</label><input type="number" step="1" id="mpzf-cantidad" placeholder="Ej: 2"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-pieza-ficha').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarPiezaFicha()">Agregar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ setTimeout(()=>document.getElementById('mpzf-nombre')?.focus(),50);
+}
+function confirmarPiezaFicha(){
+ const nombre=(document.getElementById('mpzf-nombre')?.value||'').trim();
+ const cantidad=parseFloat(document.getElementById('mpzf-cantidad')?.value)||0;
+ if(!nombre){alert('Ingresá la descripción de la pieza.');return;}
+ addFichaPiezaTag(nombre,cantidad);
+ document.getElementById('modal-pieza-ficha').remove();
+}
+function addFichaPiezaTag(nombre,cantidad){
+ const cont=document.getElementById('ft-piezas');
+ if(!cont)return;
+ const existente=Array.from(cont.querySelectorAll('.ficha-tag')).some(el=>el.dataset.nombre===nombre);
+ if(existente)return;
+ const span=document.createElement('span');
+ span.className='ficha-tag';
+ span.dataset.nombre=nombre;span.dataset.cantidad=cantidad||0;
+ span.innerHTML=`${nombre} = ${cantidad||0}<span class="ft-del" onclick="this.parentElement.remove()">✕</span>`;
+ cont.appendChild(span);
+}
+// Reemplaza prompt()/window.prompt: en muchos navegadores móviles, cuando la app está agregada
+// a la pantalla de inicio (modo standalone/PWA), prompt() no se muestra y el click parece "sin respuesta".
+function mostrarPromptModal(titulo,placeholder,onConfirmar){
+ document.getElementById('modal-prompt-generico')?.remove();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-prompt-generico';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>${titulo}</h3>
+    <div class="form-row"><input type="text" id="mpg-valor" placeholder="${placeholder||''}"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-prompt-generico').remove()">Cancelar</button>
+      <button class="btn btn-primary" id="mpg-confirmar">Agregar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ const inp=document.getElementById('mpg-valor');
+ const confirmar=()=>{
+ const val=(inp.value||'').trim();
+ document.getElementById('modal-prompt-generico')?.remove();
+ if(val)onConfirmar(val);
+ };
+ document.getElementById('mpg-confirmar').onclick=confirmar;
+ inp.addEventListener('keypress',e=>{if(e.key==='Enter')confirmar();});
+ setTimeout(()=>inp.focus(),50);
 }
 function addFichaTagDirecto(tipo,val){
- const ids={materiales:'ft-materiales',piezas:'ft-piezas',herrajes:'ft-herrajes'};
+ const ids={piezas:'ft-piezas',herrajes:'ft-herrajes'};
  const cont=document.getElementById(ids[tipo]);if(!cont)return;
  const existente=Array.from(cont.querySelectorAll('.ficha-tag')).some(el=>el.dataset.val===val);
  if(existente)return;
@@ -1499,30 +1966,37 @@ function addFichaTagDirecto(tipo,val){
  span.innerHTML=val+'<span class="ft-del" onclick="this.parentElement.remove()">✕</span>';
  cont.appendChild(span);
  agregarAlCatalogo(tipo,val);
- actualizarSugerencias(tipo);
 }
-function actualizarSugerencias(tipo){
- const sugIds={materiales:'ft-mat-sugs'};
- const id=sugIds[tipo];if(!id)return;
- const el=document.getElementById(id);if(!el)return;
- el.innerHTML=getCatalogo(tipo).map(m=>`<span onclick="addFichaTagDirecto('${tipo}','${m.replace(/'/g,"\\'")}')" style="background:rgba(255,255,255,.06);border-radius:6px;padding:4px 8px;font-size:11px;color:rgba(255,255,255,.5);cursor:pointer">${m}</span>`).join('');
-}
+// Ficha Técnica: ya no incluye materiales (esos viven en la tabla única de "📋 Materiales" de más
+// abajo, compartida con el costeo) — acá solo queda Despiece, Herrajes, Tapacanto y Notas.
 function leerFichaTecnica(){
  const leerTags=id=>Array.from(document.querySelectorAll('#'+id+' .ficha-tag')).map(el=>{const clone=el.cloneNode(true);clone.querySelectorAll('.ft-del').forEach(d=>d.remove());return clone.textContent.trim();}).filter(Boolean);
- return{materiales:leerTags('ft-materiales'),piezas:leerTags('ft-piezas'),herrajes:leerTags('ft-herrajes'),tapacanto:document.getElementById('ft-tapacanto')?.value||'',notas:document.getElementById('ft-notas')?.value||''};
+ return{piezas:leerTags('ft-piezas'),herrajes:leerTags('ft-herrajes'),tapacanto:document.getElementById('ft-tapacanto')?.value||'',notas:document.getElementById('ft-notas')?.value||''};
 }
 function renderFichaTecnicaExistente(ft){
  if(!ft)return;
- ['materiales','piezas','herrajes'].forEach(tipo=>{(ft[tipo]||[]).forEach(v=>addFichaTagDirecto(tipo,v));});
+ (ft.piezas||[]).forEach(p=>{
+ if(typeof p==='string')addFichaTagDirecto('piezas',p); // formato viejo (antes de tener cantidad)
+ else addFichaPiezaTag(p.nombre,p.cantidad);
+ });
+ (ft.herrajes||[]).forEach(v=>addFichaTagDirecto('herrajes',v));
  const tap=document.getElementById('ft-tapacanto');if(tap)tap.value=ft.tapacanto||'';
  const not=document.getElementById('ft-notas');if(not)not.value=ft.notas||'';
- // Mostrar sugerencias del catalogo
- actualizarSugerencias('materiales');
 }
 
 
 // ══ GUARDAR ══
+// Fase 11: si el registro cambió en otro dispositivo desde que se abrió el formulario, avisa antes
+// de pisarlo. Devuelve true si hay que CANCELAR el guardado (el usuario eligió revisar primero).
+function hayConflictoYCancelar(tipo,idActual){
+ if(!idActual||!formSnapshotOriginal)return false;
+ const actual=DB.get(tipo).find(i=>i.id===idActual);
+ if(!actual)return false;
+ if(JSON.stringify(actual)===formSnapshotOriginal)return false;
+ return !confirm('⚠️ Este registro fue modificado en otro dispositivo mientras lo estabas editando.\n\nAceptar = guardar igual tus cambios (se pisa lo del otro dispositivo).\nCancelar = no guardar, para revisar primero qué cambió.');
+}
 function guardarPresup(num){
+ if(hayConflictoYCancelar('presupuestos',formId))return;
  const items=[];
  document.querySelectorAll('#fp-items .tabla-fila').forEach(r=>{
  items.push({fecha:r.querySelector('.fpi-fecha')?.value||'',desc:r.querySelector('.fpi-desc')?.value||'',cant:parseFloat(r.querySelector('.fpi-cant')?.value)||0,precio:parseFloat(r.querySelector('.fpi-precio')?.value)||0});
@@ -1533,23 +2007,42 @@ function guardarPresup(num){
  const de=document.getElementById('fp-desc')?.value||'';
  const estado=document.getElementById('fp-estado')?.value||'Pendiente';
  const fichaTecnica=leerFichaTecnica();
+ const costeo=recalcularCosteoPresup();
  const condPago=document.getElementById('fp-condpago')?.value||'contado';
  const perfilCredito=document.getElementById('fp-perfil-credito')?.value||'sinHistorial';
  const cuotasNum=parseInt(document.getElementById('fp-cuotas-num')?.value||2);
+ // CORRECCIÓN: validación mínima — no permitir guardar un presupuesto sin cliente identificable
+ if(!ap.trim() && !no.trim()){
+ alert('⚠️ Falta el apellido o nombre del cliente. Completalo antes de guardar.');
+ return;
+ }
  const tasa=TASAS_CREDITO[perfilCredito];const totalCI=condPago==='credito'?total*Math.pow(1+tasa.pct/100,cuotasNum):0;
- const cuotasCredito=condPago==='credito'?Array.from({length:cuotasNum},()=>totalCI/cuotasNum):[];
- const obj={id:formId||Date.now(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',cuit:document.getElementById('fp-cuit')?.value||'',domicilio:document.getElementById('fp-domicilio')?.value||'',items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',horasEstimadas:parseFloat(document.getElementById('fp-horas-est')?.value)||0,dificultad:document.getElementById('fp-dificultad')?.value||'Simple',notasProduccion:document.getElementById('fp-notas-prod')?.value||'',fichaTecnica,condPago,perfilCredito,cuotasNum,cuotasCredito,nombreArchivo:nomArchivo('presupuestos',num,ap,no,de)};
+ const fechaPresup=document.getElementById('fp-fecha')?.value||hoy();
+ const cuotasCredito=condPago==='credito'?Array.from({length:cuotasNum},(_,i)=>({monto:totalCI/cuotasNum,vencimiento:calcularVencimientoCuota(fechaPresup,i)})):[];
+ const obj={id:formId||DB.nuevoId(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',cuit:document.getElementById('fp-cuit')?.value||'',domicilio:document.getElementById('fp-domicilio')?.value||'',retiraFabrica:document.getElementById('fp-retira-fabrica')?.checked||false,items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',horasEstimadas:parseFloat(document.getElementById('fp-horas-est')?.value)||0,dificultad:document.getElementById('fp-dificultad')?.value||'Simple',notasProduccion:document.getElementById('fp-notas-prod')?.value||'',fichaTecnica,costeo,condPago,perfilCredito,cuotasNum,cuotasCredito,nombreArchivo:nomArchivo('presupuestos',num,ap,no,de),updatedAt:Date.now()};
+ obj.clienteId=buscarOCrearCliente(ap,no,obj.tel);
  const lista=DB.get('presupuestos');
  // MOD 4: Nunca duplicar — si existe formId siempre actualizar el original
  if(formId){
  const idx=lista.findIndex(i=>i.id===formId);
  if(idx>=0){
+ const anterior=lista[idx];
  // Conservar links a OT/CC existentes
- obj.otId=lista[idx].otId;
- obj.ccId=lista[idx].ccId;
+ obj.otId=anterior.otId;
+ obj.ccId=anterior.ccId;
+ obj.createdAt=anterior.createdAt||anterior.id;
+ // CORRECCIÓN: avisar y dejar rastro si se edita el total de un presupuesto ya Aprobado
+ if(anterior.estado==='Aprobado' && anterior.total!==total){
+ if(!confirm(`⚠️ Este presupuesto ya fue Aprobado (y puede tener una Orden de Trabajo vinculada).\nEl total cambiaría de ${fmt(anterior.total)} a ${fmt(total)}.\n¿Confirmás el cambio? Quedará registrado en el historial.`)){
+ return;
+ }
+ obj.historialCambios=[...(anterior.historialCambios||[]),{fecha:hoy(),campo:'total',valorAnterior:anterior.total,valorNuevo:total}];
+ } else {
+ obj.historialCambios=anterior.historialCambios||[];
+ }
  lista[idx]=obj;
- } else lista.push(obj);
- } else lista.push(obj);
+ } else { obj.createdAt=obj.id; lista.push(obj); }
+ } else { obj.createdAt=obj.id; lista.push(obj); }
  DB.set('presupuestos',lista);
  fiIdx=0;
  // MOD 1: Sincronizar OT y CC vinculadas si ya existen
@@ -1562,23 +2055,35 @@ function guardarPresup(num){
  crearOTdesdePresup(obj);
  }catch(e){
  alert('⚠️ No se pudo crear la Orden de Trabajo automáticamente.\nDetalle: '+e.message+'\n\nEl presupuesto quedó guardado como Aprobado igual. Podés crear la Orden manualmente desde Órdenes de Trabajo.');
- volverDeForm(); actualizarStats();
+ DB.set('borrador_presupuesto',[]); volverDeForm(); actualizarStats();
  }
  return;
  }
- volverDeForm(); actualizarStats();
+ DB.set('borrador_presupuesto',[]); volverDeForm(); actualizarStats();
 }
 
 
 // MOD 6: total real a cobrar — si es Crédito de la Casa, usa el total financiado (con interés), no el de contado
+// Crédito de la Casa: por defecto, cada cuota vence el día 10 del mes correspondiente.
+// Compatibilidad: los presupuestos viejos guardaron cuotasCredito como números sueltos (sin fecha).
+function calcularVencimientoCuota(fechaBase,indice){
+ const base=fechaBase?new Date(fechaBase+'T00:00:00'):new Date();
+ const d=new Date(base.getFullYear(),base.getMonth()+indice+1,10);
+ return d.toISOString().split('T')[0];
+}
+function montoCuota(c){return typeof c==='object'&&c!==null?(c.monto||0):(c||0);}
+function fmtVencimientoCuota(c,i){
+ if(typeof c==='object'&&c!==null&&c.vencimiento)return fmtF(c.vencimiento);
+ return `Mes ${i+1}`; // formato viejo, sin fecha real guardada
+}
 function totalFinalPresup(p){
- if(p.condPago==='credito'&&p.cuotasCredito?.length)return p.cuotasCredito.reduce((s,c)=>s+c,0);
+ if(p.condPago==='credito'&&p.cuotasCredito?.length)return p.cuotasCredito.reduce((s,c)=>s+montoCuota(c),0);
  return p.total||0;
 }
 function crearOTdesdePresup(presup){
  const num=DB.nextNum('ordenes');
  const desc=presup.items&&presup.items.length>0?presup.items.map(i=>i.desc).filter(Boolean).join(', '):presup.desc;
- const obj={id:Date.now(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,tel:presup.tel||'',operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:totalFinalPresup(presup),senia:0,pagosOT:[],prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:presup.condPago==='credito'?'💳 Venta con Crédito de la Casa':'',presupOrigen:presup.nombreArchivo,presupId:presup.id,nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:''};
+ const obj={id:DB.nuevoId(),num,fecha:hoy(),apellido:presup.apellido,nombre:presup.nombre,desc:desc||presup.desc,tel:presup.tel||'',operario:'',entrega:'',medidas:'',materiales:presup.items?presup.items.map(i=>`${i.cant}x ${i.desc}`).join('\n'):'',instrucciones:'',costo:totalFinalPresup(presup),senia:0,pagosOT:[],prioridad:presup.prioridad||'Normal',estado:'Pendiente',notas:presup.condPago==='credito'?'💳 Venta con Crédito de la Casa':'',presupOrigen:presup.nombreArchivo,presupId:presup.id,clienteId:presup.clienteId||buscarOCrearCliente(presup.apellido,presup.nombre,presup.tel),nombreArchivo:nomArchivo('ordenes',num,presup.apellido,presup.nombre,desc),imagen:'',createdAt:Date.now(),updatedAt:Date.now()};
  const lista=DB.get('ordenes'); lista.push(obj); DB.set('ordenes',lista);
  // Guardar link otId en el presupuesto
  const listaP=DB.get('presupuestos');
@@ -1590,6 +2095,7 @@ function crearOTdesdePresup(presup){
 
 
 function guardarCC(num){
+ if(hayConflictoYCancelar('cuentas',formId))return;
  const compras=[];
  document.querySelectorAll('#cc-compras .tabla-fila').forEach(r=>{
  compras.push({fecha:r.querySelector('.fcc-fecha')?.value||'',desc:r.querySelector('.fcc-desc')?.value||'',cant:parseFloat(r.querySelector('.fcc-cant')?.value)||0,precio:parseFloat(r.querySelector('.fcc-precio')?.value)||0});
@@ -1601,10 +2107,16 @@ function guardarCC(num){
  const ap=document.getElementById('cc-apellido')?.value||'';
  const no=document.getElementById('cc-nombre')?.value||'';
  const de=document.getElementById('cc-desc')?.value||'';
- const obj={id:formId||Date.now(),num,fecha:document.getElementById('cc-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('cc-tel')?.value||'',compras,pagos,estado:document.getElementById('cc-estado')?.value||'Pendiente',obs:document.getElementById('cc-obs')?.value||'',nombreArchivo:nomArchivo('cuentas',num,ap,no,de)};
+ // CORRECCIÓN: validación mínima — no permitir guardar sin cliente identificable
+ if(!ap.trim() && !no.trim()){
+ alert('⚠️ Falta el apellido o nombre del cliente. Completalo antes de guardar.');
+ return;
+ }
+ const obj={id:formId||DB.nuevoId(),num,fecha:document.getElementById('cc-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('cc-tel')?.value||'',compras,pagos,estado:document.getElementById('cc-estado')?.value||'Pendiente',obs:document.getElementById('cc-obs')?.value||'',nombreArchivo:nomArchivo('cuentas',num,ap,no,de),updatedAt:Date.now()};
+ obj.clienteId=buscarOCrearCliente(ap,no,obj.tel);
  const lista=DB.get('cuentas');
- if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0)lista[idx]=obj;else lista.push(obj);}
- else lista.push(obj);
+ if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0){obj.createdAt=lista[idx].createdAt||lista[idx].id;lista[idx]=obj;}else{obj.createdAt=obj.id;lista.push(obj);}}
+ else {obj.createdAt=obj.id; lista.push(obj);}
  DB.set('cuentas',lista); fcIdx=0; fpIdx=0;
  volverDeForm(); actualizarStats();
 }
@@ -1673,7 +2185,89 @@ function actualizarCapacidadOT(excludeId){
  if(wrap)wrap.style.display='block';
  }
 }
+// ── Calendario/agenda visual para elegir la fecha de entrega de una OT ──
+// Negro = día libre, Verde = día con algo de tiempo disponible, Rojo = día lleno.
+// Usa la misma lógica de carga que ya calcula calcCapacidadOT (respeta el modo Taller/Individual).
+let calOTMes=null, calOTAnio=null, calOTExclude=null;
+function abrirCalendarioOT(excludeId){
+ calOTExclude=excludeId;
+ const actual=document.getElementById('ot-entrega')?.value;
+ const base=actual?new Date(actual+'T00:00:00'):new Date();
+ calOTMes=base.getMonth(); calOTAnio=base.getFullYear();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-calendario-ot';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>📅 Elegir fecha de entrega</h3>
+    <div style="display:flex;gap:10px;font-size:11px;color:var(--gris);margin-bottom:10px;flex-wrap:wrap">
+      <span>⬛ Libre</span><span>🟩 Con lugar</span><span>🟥 Lleno</span>
+    </div>
+    <div id="cal-ot-body"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-calendario-ot').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ renderCalendarioOT();
+}
+function cambiarMesCalendarioOT(delta){
+ calOTMes+=delta;
+ if(calOTMes<0){calOTMes=11;calOTAnio--;}
+ if(calOTMes>11){calOTMes=0;calOTAnio++;}
+ renderCalendarioOT();
+}
+// Horas ya comprometidas ese día puntual, repartidas entre las OT activas cuya ventana de trabajo lo incluye.
+function calcCargaDia(fechaStr,excludeId){
+ const cfg=getProdCfg();
+ const operarioForm=(document.getElementById('ot-operario')?.value||'').trim().toLowerCase();
+ let carga=0;
+ DB.get('ordenes').filter(o=>o.id!==excludeId&&!['Cancelado','Entregado'].includes(o.estado)&&o.entrega&&o.horasEstimadas).forEach(o=>{
+ if(cfg.modo==='individual'){
+ const opO=(o.operario||'').trim().toLowerCase();
+ if(!operarioForm||!opO||operarioForm!==opO)return;
+ }
+ const ventanaO=ventanaTrabajoOT(o.entrega,o.horasEstimadas,cfg.horasDia);
+ if(!ventanaO.includes(fechaStr))return;
+ carga+=o.horasEstimadas/ventanaO.length;
+ });
+ return carga;
+}
+function renderCalendarioOT(){
+ const cfg=getProdCfg();
+ const cont=document.getElementById('cal-ot-body');
+ if(!cont)return;
+ const primerDia=new Date(calOTAnio,calOTMes,1);
+ const nombreMes=primerDia.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+ const diasEnMes=new Date(calOTAnio,calOTMes+1,0).getDate();
+ const offset=(primerDia.getDay()+6)%7; // semana arranca en lunes
+ let celdas='';
+ for(let i=0;i<offset;i++)celdas+='<div></div>';
+ for(let d=1;d<=diasEnMes;d++){
+ const fechaStr=`${calOTAnio}-${String(calOTMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+ const carga=calcCargaDia(fechaStr,calOTExclude);
+ let color='#1a1a1a';
+ if(carga>=cfg.horasDia)color='var(--rojo)';
+ else if(carga>0)color='var(--verde2)';
+ celdas+=`<div onclick="seleccionarDiaCalendarioOT('${fechaStr}')" style="cursor:pointer;text-align:center;padding:8px 0;border-radius:8px;background:${color};color:#fff;font-size:12px;font-weight:600">${d}</div>`;
+ }
+ cont.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <button type="button" onclick="cambiarMesCalendarioOT(-1)" style="border:none;background:var(--crema2);border-radius:8px;padding:4px 10px;cursor:pointer">‹</button>
+    <span style="font-weight:700;text-transform:capitalize">${nombreMes}</span>
+    <button type="button" onclick="cambiarMesCalendarioOT(1)" style="border:none;background:var(--crema2);border-radius:8px;padding:4px 10px;cursor:pointer">›</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:10px;color:var(--gris);text-align:center;margin-bottom:4px">
+    <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${celdas}</div>`;
+}
+function seleccionarDiaCalendarioOT(fechaStr){
+ const inp=document.getElementById('ot-entrega');
+ if(inp)inp.value=fechaStr;
+ document.getElementById('modal-calendario-ot')?.remove();
+ actualizarCapacidadOT(calOTExclude);
+}
 function guardarOT(num){
+ if(hayConflictoYCancelar('ordenes',formId))return;
  const ap=document.getElementById('ot-apellido')?.value||'';
  const no=document.getElementById('ot-nombre')?.value||'';
  const de=document.getElementById('ot-desc')?.value||'';
@@ -1685,6 +2279,12 @@ function guardarOT(num){
  const horasVal=parseFloat(document.getElementById('ot-horas-est')?.value)||0;
  const operarioVal=document.getElementById('ot-operario')?.value||'';
  const estadoVal=document.getElementById('ot-estado')?.value||'Pendiente';
+ // CORRECCIÓN: validación mínima — no permitir guardar sin cliente identificable
+ if(!ap.trim() && !no.trim()){
+ alert('⚠️ Falta el apellido o nombre del cliente. Completalo antes de guardar.');
+ return;
+ }
+ let overrideUsado=false;
  if(!['Cancelado','Entregado'].includes(estadoVal)&&entregaVal&&horasVal){
  const cap=calcCapacidadOT(entregaVal,horasVal,operarioVal,formId);
  const override=document.getElementById('ot-capacidad-override')?.checked;
@@ -1692,13 +2292,36 @@ function guardarOT(num){
  alert(`🔴 No hay capacidad de producción suficiente.\nNecesitás ${cap.necesario}hs y solo hay ${Math.round(cap.disponible)}hs libres en los ${cap.dias} día(s) previos a la entrega (${cfgModoTexto()}).\n\nCambiá la fecha de entrega, revisá otras órdenes, o tildá "Cargar de todas formas" si estás seguro.`);
  return;
  }
+ if(!cap.ok&&override)overrideUsado=true;
  }
- const obj={id:formId||Date.now(),num,fecha:document.getElementById('ot-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('ot-tel')?.value||'',operario:operarioVal,entrega:entregaVal,medidas:document.getElementById('ot-medidas')?.value||'',materiales:document.getElementById('ot-materiales')?.value||'',instrucciones:document.getElementById('ot-instrucciones')?.value||'',costo:parseFloat(document.getElementById('ot-costo')?.value)||0,senia:parseFloat(document.getElementById('ot-senia')?.value)||0,pagosOT,prioridad:document.getElementById('ot-prioridad')?.value||'Normal',estado:estadoVal,notas:document.getElementById('ot-notas')?.value||'',presupOrigen:document.getElementById('ot-presup-origen')?.value||'',inicioFecha:document.getElementById('ot-inicio-fecha')?.value||'',inicioHora:document.getElementById('ot-inicio-hora')?.value||'',finFecha:document.getElementById('ot-fin-fecha')?.value||'',finHora:document.getElementById('ot-fin-hora')?.value||'',horasEstimadas:horasVal,imagen:formImgData,nombreArchivo:nomArchivo('ordenes',num,ap,no,de)};
+ const materialesReales=leerMaterialesOT();
+ const costoRealProduccion=recalcularCostoRealOT();
+ // Fase 6: descontar del stock solo la diferencia contra lo que ya se había descontado antes
+ // (para no descontar de más si se reedita la misma OT varias veces).
+ const anteriorMR=formId?(DB.get('ordenes').find(o=>o.id===formId)?.materialesReales||[]):[];
+ const stockPorMaterial={};
+ anteriorMR.forEach(m=>{if(m.materialId)stockPorMaterial[m.materialId]=(stockPorMaterial[m.materialId]||0)-m.cantidad;});
+ materialesReales.forEach(m=>{if(m.materialId)stockPorMaterial[m.materialId]=(stockPorMaterial[m.materialId]||0)+m.cantidad;});
+ if(Object.keys(stockPorMaterial).length){
+ const materialesLista=getMateriales();
+ let hayCambios=false;
+ Object.entries(stockPorMaterial).forEach(([mid,delta])=>{
+ if(!delta)return;
+ const mat=materialesLista.find(x=>x.id===parseInt(mid));
+ if(mat){mat.stock=(mat.stock||0)-delta;mat.updatedAt=Date.now();hayCambios=true;}
+ });
+ if(hayCambios)DB.set('materiales',materialesLista);
+ }
+ const presupIdVal=parseInt(document.getElementById('ot-presup-id-oculto')?.value)||null;
+ const obj={id:formId||DB.nuevoId(),num,fecha:document.getElementById('ot-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('ot-tel')?.value||'',operario:operarioVal,entrega:entregaVal,medidas:document.getElementById('ot-medidas')?.value||'',materiales:document.getElementById('ot-materiales')?.value||'',instrucciones:document.getElementById('ot-instrucciones')?.value||'',costo:parseFloat(document.getElementById('ot-costo')?.value)||0,senia:parseFloat(document.getElementById('ot-senia')?.value)||0,pagosOT,prioridad:document.getElementById('ot-prioridad')?.value||'Normal',estado:estadoVal,notas:document.getElementById('ot-notas')?.value||'',presupOrigen:document.getElementById('ot-presup-origen')?.value||'',presupId:presupIdVal,materialesReales,costoRealProduccion,inicioFecha:document.getElementById('ot-inicio-fecha')?.value||'',inicioHora:document.getElementById('ot-inicio-hora')?.value||'',finFecha:document.getElementById('ot-fin-fecha')?.value||'',finHora:document.getElementById('ot-fin-hora')?.value||'',horasEstimadas:horasVal,imagen:formImgData,nombreArchivo:nomArchivo('ordenes',num,ap,no,de),updatedAt:Date.now()};
+ obj.clienteId=buscarOCrearCliente(ap,no,obj.tel);
+ // CORRECCIÓN: dejar registro trazable de cuándo se forzó la carga pese a falta de capacidad
+ if(overrideUsado)obj.capacidadOverride={fecha:hoy(),detalle:'Cargada superando la capacidad de producción disponible'};
  const lista=DB.get('ordenes');
- if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0)lista[idx]=obj;else lista.push(obj);}
- else lista.push(obj);
+ if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0){obj.createdAt=lista[idx].createdAt||lista[idx].id;lista[idx]=obj;}else{obj.createdAt=obj.id;lista.push(obj);}}
+ else {obj.createdAt=obj.id; lista.push(obj);}
  DB.set('ordenes',lista); formImgData=''; fopIdx=0;
- volverDeForm(); actualizarStats();
+ DB.set('borrador_ot',[]); volverDeForm(); actualizarStats();
 }
 function cfgModoTexto(){return getProdCfg().modo==='individual'?'por carpintero':'taller general';}
 
@@ -1741,8 +2364,11 @@ function verDetalle(tipo,id){
  html+=`</div>`;
  if(item.condPago==='credito'&&item.cuotasCredito?.length){
  const tasa=TASAS_CREDITO[item.perfilCredito||'sinHistorial'];
- const totalFin=item.cuotasCredito.reduce((s,c)=>s+c,0);
- html+=`<div class="form-card"><h3>💳 Crédito de la Casa</h3><div style="background:var(--azul-cl);border-radius:10px;padding:12px;border:1px solid #b8d0e8"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${tasa.emoji} ${tasa.label} · ${tasa.pct}% mensual</div><div style="display:flex;gap:8px">${item.cuotasCredito.map((c,i)=>`<div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center;border:1px solid #b8d0e8"><div style="font-size:10px;color:var(--gris)">Cuota ${i+1}</div><div style="font-size:14px;font-weight:700;color:var(--azul)">${fmt(c)}</div></div>`).join('')}</div><div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid #b8d0e8;font-weight:700;font-size:13px"><span>Total financiado (a cobrar)</span><span style="color:var(--azul)">${fmt(totalFin)}</span></div></div></div>`;
+ const totalFin=item.cuotasCredito.reduce((s,c)=>s+montoCuota(c),0);
+ html+=`<div class="form-card"><h3>💳 Crédito de la Casa</h3><div style="background:var(--azul-cl);border-radius:10px;padding:12px;border:1px solid #b8d0e8"><div style="font-weight:700;font-size:13px;margin-bottom:8px">${tasa.emoji} ${tasa.label} · ${tasa.pct}% mensual</div><div style="display:flex;gap:8px;flex-wrap:wrap">${item.cuotasCredito.map((c,i)=>`<div style="flex:1;min-width:80px;background:#fff;border-radius:8px;padding:8px;text-align:center;border:1px solid #b8d0e8"><div style="font-size:10px;color:var(--gris)">Cuota ${i+1} · vence ${fmtVencimientoCuota(c,i)}</div><div style="font-size:14px;font-weight:700;color:var(--azul)">${fmt(montoCuota(c))}</div></div>`).join('')}</div><div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid #b8d0e8;font-weight:700;font-size:13px"><span>Total financiado (a cobrar)</span><span style="color:var(--azul)">${fmt(totalFin)}</span></div></div></div>`;
+ }
+ if(item.retiraFabrica){
+ html+=`<div style="background:#FFF3E0;border:1px solid #FFB74D;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#8A5300">📍 Retira de fábrica (Concarán) — no incluye flete</div>`;
  }
  if(item.prioridad||item.horasEstimadas){
  html+=`<div class="form-card"><h3>📋 Info</h3>
@@ -1754,6 +2380,18 @@ function verDetalle(tipo,id){
  ${item.notasProduccion?`<div style="font-size:12px;color:var(--gris);margin-top:4px">${item.notasProduccion}</div>`:''}
       </div>`:''}
       </div>`;
+ }
+ if(item.costeo&&(item.costeo.costoTotal>0)){
+ const c=item.costeo;
+ html+=`<div class="form-card"><h3>💲 Costeo real (referencia interna)</h3>
+      <div class="res-row"><span class="rl">Costo materiales</span><span class="rv">${fmt(c.costoMateriales)}</span></div>
+      <div class="res-row"><span class="rl">Costo mano de obra</span><span class="rv">${fmt(c.costoManoObra)}</span></div>
+      <div class="res-row"><span class="rl">Costo directo</span><span class="rv">${fmt(c.costoDirecto)}</span></div>
+      <div class="res-row"><span class="rl">+ Tasa fija (${((c.tasaFijaAplicada||0)*100).toFixed(0)}%, vigente al guardar)</span><span class="rv">${fmt(c.costoTotal-c.costoDirecto)}</span></div>
+      <div class="res-row" style="font-weight:700"><span class="rl">Costo total</span><span class="rv">${fmt(c.costoTotal)}</span></div>
+      <div class="res-row" style="font-weight:700;color:var(--verde2)"><span class="rl">Precio sugerido${c.margen?' (margen '+c.margen+'%)':''}</span><span class="rv">${fmt(c.precioSugerido)}</span></div>
+      <p style="font-size:10px;color:var(--gris);margin-top:6px">Calculado con los parámetros vigentes al momento de guardar — no se recalcula solo si después cambiás la tasa fija.</p>
+    </div>`;
  }
  }
 
@@ -1795,6 +2433,20 @@ function verDetalle(tipo,id){
  if(item.prioridad)html+=`<div class="res-row"><span class="rl">Prioridad</span><span style="font-weight:600">${item.prioridad}</span></div>`;
  if(item.presupOrigen)html+=`<div class="res-row"><span class="rl">Presupuesto origen</span><span style="font-size:12px;color:var(--naranja)">${item.presupOrigen}</span></div>`;
  html+=`</div>`;
+ if(item.costoRealProduccion&&item.costoRealProduccion.costoTotal>0){
+ const cr=item.costoRealProduccion;
+ const gananciaReal=(item.costo||0)-cr.costoTotal;
+ const margenReal=item.costo>0?(gananciaReal/item.costo*100):null;
+ html+=`<div class="form-card"><h3>🪵 Costo real de producción</h3>
+      <div class="res-row"><span class="rl">Materiales usados</span><span class="rv">${fmt(cr.costoMateriales)}</span></div>
+      <div class="res-row"><span class="rl">Mano de obra (${(cr.horasReales||0).toFixed(1)}h)</span><span class="rv">${fmt(cr.costoManoObra)}</span></div>
+      <div class="res-row" style="font-weight:700"><span class="rl">Costo real total</span><span class="rv">${fmt(cr.costoTotal)}</span></div>
+      ${cr.estimadoComparado?`<div class="res-row" style="border-top:1px dashed var(--crema3);padding-top:8px;margin-top:4px"><span class="rl">Estimado (presupuesto)</span><span class="rv">${fmt(cr.estimadoComparado)}</span></div>
+      <div class="res-row" style="font-weight:700;color:${cr.costoTotal>cr.estimadoComparado?'var(--rojo)':'var(--verde2)'}"><span class="rl">Desvío</span><span class="rv">${cr.costoTotal>cr.estimadoComparado?'+':''}${fmt(cr.costoTotal-cr.estimadoComparado)}</span></div>`:''}
+      ${item.costo>0?`<div class="res-row" style="border-top:1px dashed var(--crema3);padding-top:8px;margin-top:4px"><span class="rl">Precio cobrado</span><span class="rv">${fmt(item.costo)}</span></div>
+      <div class="res-row" style="font-weight:700;color:${gananciaReal>=0?'var(--verde2)':'var(--rojo)'}"><span class="rl">Ganancia real</span><span class="rv">${fmt(gananciaReal)}${margenReal!==null?' ('+margenReal.toFixed(0)+'%)':''}</span></div>`:''}
+    </div>`;
+ }
 
 
  // Estado de cuenta OT
@@ -1851,10 +2503,294 @@ function verDetalle(tipo,id){
 }
 
 
+// ── Búsqueda global (Bloque 5): busca por nombre/descripción en todos los módulos a la vez ──
+function abrirBusquedaGlobal(){
+ document.getElementById('modal-busqueda-global')?.remove();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-busqueda-global';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>🔍 Buscar en toda la app</h3>
+    <div class="form-row"><input type="text" id="bg-input" placeholder="Nombre, descripción..." oninput="renderBusquedaGlobal()"></div>
+    <div id="bg-resultados" style="max-height:340px;overflow-y:auto;margin-top:8px"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-busqueda-global').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ setTimeout(()=>document.getElementById('bg-input')?.focus(),50);
+}
+function renderBusquedaGlobal(){
+ const cont=document.getElementById('bg-resultados');
+ if(!cont)return;
+ const q=(document.getElementById('bg-input')?.value||'').trim().toLowerCase();
+ if(q.length<2){cont.innerHTML='<p style="font-size:12px;color:var(--gris)">Escribí al menos 2 letras.</p>';return;}
+ const cerrar="document.getElementById('modal-busqueda-global').remove();";
+ const resultados=[];
+ DB.get('presupuestos').forEach(p=>{
+ if(`${p.apellido||''} ${p.nombre||''} ${p.desc||''}`.toLowerCase().includes(q))
+ resultados.push({tipo:'📋 Presupuesto',label:`${p.apellido||''} ${p.nombre||''} — ${p.desc||''}`.trim(),onclick:`${cerrar}verDetalle('presupuestos',${p.id})`});
+ });
+ DB.get('cuentas').forEach(p=>{
+ if(`${p.apellido||''} ${p.nombre||''} ${p.desc||''}`.toLowerCase().includes(q))
+ resultados.push({tipo:'💰 Cuenta Corriente',label:`${p.apellido||''} ${p.nombre||''}`.trim(),onclick:`${cerrar}verDetalle('cuentas',${p.id})`});
+ });
+ DB.get('ordenes').forEach(p=>{
+ if(`${p.apellido||''} ${p.nombre||''} ${p.desc||''}`.toLowerCase().includes(q))
+ resultados.push({tipo:'🏭 Orden de Trabajo',label:`OT-${String(p.num).padStart(3,'0')} ${p.apellido||''} ${p.nombre||''}`.trim(),onclick:`${cerrar}verDetalle('ordenes',${p.id})`});
+ });
+ getClientes().forEach(c=>{
+ if(`${c.apellido||''} ${c.nombre||''}`.toLowerCase().includes(q))
+ resultados.push({tipo:'👤 Cliente',label:`${c.apellido||''} ${c.nombre||''}`.trim(),onclick:`${cerrar}verCliente(${c.id})`});
+ });
+ getProveedoresObjs().forEach(pr=>{
+ if((pr.nombre||'').toLowerCase().includes(q))
+ resultados.push({tipo:'📦 Proveedor',label:pr.nombre,onclick:`${cerrar}verProveedor(${pr.id})`});
+ });
+ getMateriales().forEach(m=>{
+ if((m.descripcion||'').toLowerCase().includes(q))
+ resultados.push({tipo:'🪵 Material',label:m.descripcion,onclick:`${cerrar}verMaterial(${m.id})`});
+ });
+ DB.get('pedidos').forEach(p=>{
+ if((p.proveedor||'').toLowerCase().includes(q))
+ resultados.push({tipo:'📬 Pedido',label:`PED-${String(p.num).padStart(3,'0')} ${p.proveedor||''}`,onclick:`${cerrar}verDetallePedido(${p.id})`});
+ });
+ if(!resultados.length){cont.innerHTML='<p style="font-size:12px;color:var(--gris)">Sin resultados.</p>';return;}
+ cont.innerHTML=resultados.slice(0,40).map(r=>`<div class="item-card" style="cursor:pointer;margin-bottom:6px;padding:10px" onclick="${r.onclick}">
+    <div style="font-size:10px;color:var(--gris);text-transform:uppercase;font-weight:600">${r.tipo}</div>
+    <div style="font-size:13px;font-weight:600;color:var(--marron2)">${r.label}</div>
+  </div>`).join('');
+}
 function eliminarItem(tipo,id){
- if(!confirm('¿Eliminar este registro?'))return;
- const lista=DB.get(tipo).filter(i=>i.id!==id);
- DB.set(tipo,lista); volverDeDetalle(); actualizarStats();
+ const listaCompleta=DB.get(tipo);
+ const item=listaCompleta.find(i=>i.id===id);
+ if(!item)return;
+ const lista=listaCompleta.filter(i=>i.id!==id);
+ DB.set(tipo,lista);
+ const pap=DB.get('papelera');
+ const expira=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+ const papId=DB.nuevoId();
+ pap.push({id:papId,tipo,itemId:id,data:item,fecha:hoy(),expira});
+ DB.set('papelera',pap);
+ volverDeDetalle(); actualizarStats();
+ mostrarToastDeshacer('Eliminado. Queda 30 días en la Papelera.',papId);
+}
+// Fase 11: toast de "deshacer" de 5 segundos en vez de un confirm() bloqueante.
+function mostrarToastDeshacer(mensaje,papeleraId){
+ document.getElementById('toast-deshacer')?.remove();
+ const toast=document.createElement('div');
+ toast.id='toast-deshacer';
+ toast.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--marron);color:#fff;padding:12px 18px;border-radius:12px;box-shadow:var(--sombra);z-index:9999;display:flex;align-items:center;gap:12px;font-size:13px;max-width:90vw';
+ toast.innerHTML=`<span>${mensaje}</span><button onclick="deshacerEliminacion(${papeleraId})" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-weight:700;flex-shrink:0">Deshacer</button>`;
+ document.body.appendChild(toast);
+ setTimeout(()=>{if(document.getElementById('toast-deshacer')===toast)toast.remove();},5000);
+}
+function deshacerEliminacion(papeleraId){
+ const pap=getPapelera();
+ const idx=pap.findIndex(p=>p.id===papeleraId);
+ if(idx<0)return;
+ const entrada=pap[idx];
+ const lista=DB.get(entrada.tipo);
+ lista.push(entrada.data);
+ DB.set(entrada.tipo,lista);
+ pap.splice(idx,1);
+ DB.set('papelera',pap);
+ document.getElementById('toast-deshacer')?.remove();
+ actualizarStats();
+}
+// ── Autosave de borradores (Fase 11): guarda cada ~15s mientras se completa un Presupuesto u OT
+// nuevo, para no perder lo cargado si se cierra la app a mitad de camino. Solo local (no sincroniza
+// por Firebase — CLAVES_SYNC no incluye estas claves), y se borra solo al guardar el registro real.
+let autosaveBorradorTimer=null;
+function iniciarAutosaveBorrador(tipo){
+ detenerAutosaveBorrador();
+ autosaveBorradorTimer=setInterval(()=>guardarBorradorActual(tipo),15000);
+}
+function detenerAutosaveBorrador(){
+ if(autosaveBorradorTimer){clearInterval(autosaveBorradorTimer);autosaveBorradorTimer=null;}
+}
+function claveBorrador(tipo){return tipo==='presupuestos'?'borrador_presupuesto':(tipo==='ordenes'?'borrador_ot':null);}
+function guardarBorradorActual(tipo){
+ const clave=claveBorrador(tipo);if(!clave)return;
+ const val=id=>document.getElementById(id)?.value||'';
+ let d;
+ if(tipo==='presupuestos'){
+ const items=Array.from(document.querySelectorAll('#fp-items .tabla-fila')).map(r=>({fecha:r.querySelector('.fpi-fecha')?.value||'',desc:r.querySelector('.fpi-desc')?.value||'',cant:r.querySelector('.fpi-cant')?.value||'',precio:r.querySelector('.fpi-precio')?.value||''}));
+ d={apellido:val('fp-apellido'),nombre:val('fp-nombre'),desc:val('fp-desc'),tel:val('fp-tel'),cuit:val('fp-cuit'),domicilio:val('fp-domicilio'),obs:val('fp-obs'),horasEstimadas:val('fp-horas-est'),notasProduccion:val('fp-notas-prod'),items,guardadoEl:Date.now()};
+ if(!(d.apellido||d.nombre||d.desc||items.some(i=>i.desc)))return;
+ } else if(tipo==='ordenes'){
+ d={apellido:val('ot-apellido'),nombre:val('ot-nombre'),desc:val('ot-desc'),tel:val('ot-tel'),medidas:val('ot-medidas'),instrucciones:val('ot-instrucciones'),notas:val('ot-notas'),guardadoEl:Date.now()};
+ if(!(d.apellido||d.nombre||d.desc))return;
+ } else return;
+ DB.set(clave,[d]);
+}
+function ofrecerRestaurarBorrador(tipo){
+ const clave=claveBorrador(tipo);if(!clave)return;
+ const arr=DB.get(clave);
+ const d=Array.isArray(arr)&&arr[0]?arr[0]:null;
+ if(!d)return;
+ const minutos=Math.round((Date.now()-(d.guardadoEl||0))/60000);
+ document.getElementById('toast-borrador')?.remove();
+ const toast=document.createElement('div');
+ toast.id='toast-borrador';
+ toast.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--marron);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:var(--sombra);z-index:9999;display:flex;align-items:center;gap:10px;font-size:12px;max-width:90vw';
+ toast.innerHTML=`<span>Tenés un borrador sin guardar de hace ${minutos<1?'un momento':minutos+' min'}.</span>
+    <button onclick="restaurarBorrador('${tipo}')" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:700;flex-shrink:0">Restaurar</button>
+    <button onclick="descartarBorrador('${tipo}')" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;flex-shrink:0;font-size:16px">✕</button>`;
+ document.body.appendChild(toast);
+}
+function restaurarBorrador(tipo){
+ const clave=claveBorrador(tipo);
+ const arr=DB.get(clave);
+ const d=Array.isArray(arr)&&arr[0]?arr[0]:null;
+ document.getElementById('toast-borrador')?.remove();
+ if(!d)return;
+ const setv=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
+ if(tipo==='presupuestos'){
+ setv('fp-apellido',d.apellido);setv('fp-nombre',d.nombre);setv('fp-desc',d.desc);setv('fp-tel',d.tel);
+ setv('fp-cuit',d.cuit);setv('fp-domicilio',d.domicilio);setv('fp-obs',d.obs);
+ setv('fp-horas-est',d.horasEstimadas);setv('fp-notas-prod',d.notasProduccion);
+ (d.items||[]).forEach(it=>{if(it.desc)agregarFilaPresup(it);});
+ actualizarNombreArchivo();calcPresup();
+ } else if(tipo==='ordenes'){
+ setv('ot-apellido',d.apellido);setv('ot-nombre',d.nombre);setv('ot-desc',d.desc);setv('ot-tel',d.tel);
+ setv('ot-medidas',d.medidas);setv('ot-instrucciones',d.instrucciones);setv('ot-notas',d.notas);
+ actualizarNombreArchivo();
+ }
+}
+function descartarBorrador(tipo){
+ const clave=claveBorrador(tipo);if(clave)DB.set(clave,[]);
+ document.getElementById('toast-borrador')?.remove();
+}
+function getPapelera(){return DB.get('papelera')||[];}
+function purgarPapelera(){
+ const h=hoy();
+ const pap=getPapelera();
+ const vigentes=pap.filter(p=>!p.expira||p.expira>=h);
+ if(vigentes.length!==pap.length)DB.set('papelera',vigentes);
+}
+function restaurarDePapelera(papId){
+ const pap=getPapelera();
+ const idx=pap.findIndex(p=>p.id===papId);
+ if(idx<0)return;
+ if(!confirm('¿Restaurar este registro a su módulo original?'))return;
+ const entrada=pap[idx];
+ const lista=DB.get(entrada.tipo);
+ lista.push(entrada.data);
+ DB.set(entrada.tipo,lista);
+ pap.splice(idx,1);
+ DB.set('papelera',pap);
+ actualizarStats();
+ renderPapelera();
+}
+function eliminarDefinitivo(papId){
+ if(!confirm('Esto borra el registro para siempre, sin posibilidad de recuperarlo. ¿Continuar?'))return;
+ DB.set('papelera',getPapelera().filter(p=>p.id!==papId));
+ renderPapelera();
+}
+const ETIQUETA_TIPO_PAPELERA={presupuestos:'PRE',cuentas:'CC',ordenes:'OT',pedidos:'PED'};
+function renderPapelera(){
+ const cont=document.getElementById('papelera-content');
+ if(!cont)return;
+ const pap=getPapelera();
+ const badge=document.getElementById('papelera-badge-mas');
+ if(badge)badge.textContent=pap.length;
+ if(!pap.length){cont.innerHTML='<div class="empty-state"><div class="e-ico">🗑️</div><p>La papelera está vacía.</p></div>';return;}
+ cont.innerHTML=pap.slice().reverse().map(p=>{
+  const d=p.data||{};
+  const nombre=(((d.apellido||'')+' '+(d.nombre||'')).trim())||d.proveedor||d.desc||'(sin nombre)';
+  const etiqueta=ETIQUETA_TIPO_PAPELERA[p.tipo]||p.tipo;
+  return `<div class="item-card" style="border-left-color:var(--gris)">
+    <div class="item-top"><span class="item-codigo">${etiqueta}${d.num?'-'+String(d.num).padStart(3,'0'):''}</span><span class="item-fecha">Eliminado ${fmtF(p.fecha)}</span></div>
+    <div class="item-nombre">${nombre}</div>
+    <div class="item-desc">Se elimina definitivamente el ${fmtF(p.expira)}</div>
+    <div class="item-footer" style="gap:8px">
+      <button class="btn btn-verde" style="flex:none;padding:6px 12px;font-size:12px" onclick="restaurarDePapelera(${p.id})">↩️ Restaurar</button>
+      <button class="btn btn-danger" style="flex:none;padding:6px 12px;font-size:12px" onclick="eliminarDefinitivo(${p.id})">🗑 Borrar definitivo</button>
+    </div>
+  </div>`;
+ }).join('');
+}
+
+
+// ══ CLIENTES (entidad real, migrada de forma no destructiva) ══
+function normalizarNombreCliente(ap,no){return `${(ap||'').trim().toLowerCase()}|${(no||'').trim().toLowerCase()}`;}
+function getClientes(){return DB.get('clientes')||[];}
+// Busca un cliente existente por nombre+apellido; si no existe, lo crea. Nunca borra ni pisa datos ya cargados a mano.
+function buscarOCrearCliente(ap,no,tel){
+ ap=(ap||'').trim(); no=(no||'').trim();
+ if(!ap && !no)return null;
+ const clientes=getClientes();
+ const key=normalizarNombreCliente(ap,no);
+ const cli=clientes.find(c=>normalizarNombreCliente(c.apellido,c.nombre)===key);
+ if(cli){
+ if(tel && !cli.telefono){cli.telefono=tel;cli.updatedAt=Date.now();DB.set('clientes',clientes);}
+ return cli.id;
+ }
+ const nuevo={id:DB.nuevoId(),apellido:ap,nombre:no,telefono:tel||'',whatsapp:'',email:'',direccion:'',localidad:'',provincia:'',documento:'',observaciones:'',activo:true,createdAt:Date.now(),updatedAt:Date.now()};
+ clientes.push(nuevo);
+ DB.set('clientes',clientes);
+ return nuevo.id;
+}
+// Migración única, no destructiva: agrupa presupuestos/cuentas/OT existentes por nombre+apellido y les asigna clienteId sin tocar ningún otro campo.
+function migrarClientes(){
+ if(getClientes().length>0)return; // ya se migró o ya se está usando manualmente
+ const fuentes=[...DB.get('presupuestos'),...DB.get('cuentas'),...DB.get('ordenes')];
+ if(!fuentes.some(f=>f.apellido||f.nombre))return; // no hay nada que migrar todavía
+ ['presupuestos','cuentas','ordenes'].forEach(tipo=>{
+ const lista=DB.get(tipo);
+ let cambiado=false;
+ lista.forEach(item=>{
+ if(!item.clienteId){
+ const cid=buscarOCrearCliente(item.apellido,item.nombre,item.tel);
+ if(cid){item.clienteId=cid;cambiado=true;}
+ }
+ });
+ if(cambiado)DB.set(tipo,lista);
+ });
+}
+function renderClientes(){
+ const cont=document.getElementById('clientes-content');
+ if(!cont)return;
+ const filtro=(document.getElementById('buscar-clientes')?.value||'').toLowerCase();
+ let clientes=getClientes().slice().sort((a,b)=>(a.apellido||'').localeCompare(b.apellido||''));
+ if(filtro)clientes=clientes.filter(c=>`${c.apellido} ${c.nombre} ${c.telefono}`.toLowerCase().includes(filtro));
+ if(!clientes.length){cont.innerHTML='<div class="empty-state"><div class="e-ico">👤</div><p>Todavía no hay clientes cargados.</p></div>';return;}
+ cont.innerHTML=clientes.map(c=>{
+ const vinculados=DB.get('presupuestos').filter(p=>p.clienteId===c.id).length+DB.get('cuentas').filter(p=>p.clienteId===c.id).length+DB.get('ordenes').filter(p=>p.clienteId===c.id).length;
+ return `<div class="item-card" onclick="verCliente(${c.id})" style="cursor:pointer">
+    <div class="item-top"><span class="item-codigo">👤</span><span class="item-fecha">${vinculados} registro${vinculados!==1?'s':''}</span></div>
+    <div class="item-nombre">${c.apellido} ${c.nombre}</div>
+    <div class="item-desc">${c.telefono||'Sin teléfono'}</div>
+  </div>`;
+ }).join('');
+}
+function verCliente(clienteId){
+ const c=getClientes().find(x=>x.id===clienteId);
+ if(!c)return;
+ const presus=DB.get('presupuestos').filter(p=>p.clienteId===clienteId);
+ const ccs=DB.get('cuentas').filter(p=>p.clienteId===clienteId);
+ const ots=DB.get('ordenes').filter(p=>p.clienteId===clienteId);
+ const filaLink=(tipo,item,etiqueta)=>`<div class="item-card" style="cursor:pointer;margin-bottom:8px" onclick="document.getElementById('modal-cliente')?.remove();verDetalle('${tipo}',${item.id})">
+    <div class="item-top"><span class="item-codigo">${etiqueta}-${String(item.num).padStart(3,'0')}</span><span class="item-fecha">${item.estado||''}</span></div>
+    <div class="item-desc">${item.desc||''}</div>
+  </div>`;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-cliente';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>👤 ${c.apellido} ${c.nombre}</h3>
+    <p style="font-size:13px;color:var(--gris);margin-bottom:16px">${c.telefono||'Sin teléfono'}</p>
+    ${presus.length?`<p class="section-title">Presupuestos</p>${presus.map(p=>filaLink('presupuestos',p,'PRE')).join('')}`:''}
+    ${ccs.length?`<p class="section-title">Cuentas corrientes</p>${ccs.map(p=>filaLink('cuentas',p,'CC')).join('')}`:''}
+    ${ots.length?`<p class="section-title">Órdenes de trabajo</p>${ots.map(p=>filaLink('ordenes',p,'OT')).join('')}`:''}
+    ${(!presus.length&&!ccs.length&&!ots.length)?'<p style="font-size:13px;color:var(--gris)">Sin registros vinculados todavía.</p>':''}
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-cliente').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
 
 
@@ -1885,6 +2821,9 @@ function imprimirItem(tipo,id){
       <div class="field"><label>Estado</label><span>${item.estado||'Pendiente'}</span></div>
     </div>`;
  }
+ if(tipo==='presupuestos'&&item.retiraFabrica){
+ html+=`<div style="background:#FFF3E0;border:2px solid #FFB74D;border-radius:8px;padding:12px 16px;margin-bottom:10px;font-size:13px;font-weight:600;color:#8A5300">📍 RETIRA DE FÁBRICA (CONCARÁN) — no incluye flete</div>`;
+ }
  if(tipo==='presupuestos'&&item.items?.length){
  const esCred = item.condPago==='credito' && item.cuotasCredito?.length;
  if(esCred){
@@ -1897,7 +2836,7 @@ function imprimirItem(tipo,id){
  const esCredito = item.condPago==='credito' && item.cuotasCredito?.length;
  if(esCredito){
  const nCuotas=item.cuotasCredito.length;
- const totalFinanciado=item.cuotasCredito.reduce((s,c)=>s+c,0);
+ const totalFinanciado=item.cuotasCredito.reduce((s,c)=>s+montoCuota(c),0);
  html+=`</tbody></table>
       <div style="background:#EEF4FB;border:2px solid #1A3A5C;border-radius:8px;padding:16px;margin-top:8px">
         <div style="font-size:13px;font-weight:bold;color:#1A3A5C;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">💳 Venta a Crédito — ${nCuotas} cuotas</div>
@@ -1910,8 +2849,8 @@ function imprimirItem(tipo,id){
           <tbody>
  ${item.cuotasCredito.map((c,i)=>`<tr style="background:${i%2===0?'#fff':'#EEF4FB'}">
             <td style="padding:8px 10px;font-size:13px;font-weight:600">Cuota ${i+1} de ${nCuotas}</td>
-            <td style="padding:8px 10px;font-size:12px;color:#666;text-align:center">Mes ${i+1}</td>
-            <td style="padding:8px 10px;font-size:14px;font-weight:bold;color:#1A3A5C;text-align:right">${fmt(c)}</td>
+            <td style="padding:8px 10px;font-size:12px;color:#666;text-align:center">${fmtVencimientoCuota(c,i)}</td>
+            <td style="padding:8px 10px;font-size:14px;font-weight:bold;color:#1A3A5C;text-align:right">${fmt(montoCuota(c))}</td>
           </tr>`).join('')}
           </tbody>
         </table>
@@ -2151,7 +3090,13 @@ function renderHoras(){
 
 function toggleDiaActivo(i){horasDiaActivo=horasDiaActivo===i?null:i;renderHoras();}
 function selEmpleado(e){horasEmpleado=e;horasDiaActivo=null;renderHoras();}
-function agregarEmpleado(){const n=prompt('Nombre del operario:');if(n&&n.trim()){const l=getEmpleados();if(!l.includes(n.trim())){l.push(n.trim());DB.set('empleados_horas',l);}horasEmpleado=n.trim();renderHoras();}}
+function agregarEmpleado(){
+ mostrarPromptModal('＋ Nuevo operario','Nombre...',n=>{
+ const l=getEmpleados();
+ if(!l.includes(n)){l.push(n);DB.set('empleados_horas',l);}
+ horasEmpleado=n;renderHoras();
+ });
+}
 function updateHorasDia(diaIdx,campo,valor,weekKey){
  const data=getHorasData(horasEmpleado,weekKey);
  data[diaIdx][campo]=valor;
@@ -2162,9 +3107,741 @@ function updateHorasDia(diaIdx,campo,valor,weekKey){
 }
 
 
+// ══ MATERIALES (entidad real, importada desde la planilla Excel de costos) ══
+// Snapshot importado de la planilla Excel (Materias Primas) el 2026-09-11. Formato: [descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2,proveedor]
+const MATERIALES_IMPORT=[
+["Adhesivo vinilico k-1000","kg",81000,97200,null,4418.1818,"HERRAJES OESTE"],
+["BISAGRA BRONZEN CIERRE SUAVE CODO 0","set",1200,1440,1728,1440,"HERRAJES OESTE"],
+["BISAGRA DUCASSE 35 MM PUSH OPEN","set",1000,1200,1440,null,"HERRAJES OESTE"],
+["BISAGRA DUCASSE 35MM CODO 0","set",420,504,604.8,null,"HERRAJES OESTE"],
+["BISAGRA DUCASSE 35MM CODO 18","set",420,504,604.8,604.8,"HERRAJES OESTE"],
+["BISAGRA DUCASSE 35MM CODO 9","set",420,504,604.8,604.8,"HERRAJES OESTE"],
+["BISAGRA DUCASSE CIERRE SUAVE CODO 0","set",1300,1560,1872,1872,"HERRAJES OESTE"],
+["BISAGRA GREENWAY CIERRE SUEVE CODO 0","set",2500,3000,3600,3600,"HERRAJES OESTE"],
+["BISAGRA HAFALE CIERRE SUAVE CODO 0 CON AMORTIGUADOR","set",2900,3480,4176,4176,"HERRAJES OESTE"],
+["BISAGRA LIBRO 51","unidad",300,360,432,432,"HERRAJES OESTE"],
+["BISAGRA TARKEN ECO 35MM","unidad",260,312,374.4,374.4,"HERRAJES OESTE"],
+["BISAGRA TIPO T 4 \"","unidad",1000,1100,1320,1320,"RIBEIRO"],
+["brillo plast secado rapido 1 litro","lt",18599,19528.95,23434.74,18599,"pintueria fox"],
+["BULON 1/4*2, TUERCA 1/4, ARANDELA PLANA 1/4","unidad",200,240,null,240,"CASA RUIZ"],
+["CANTO ABS NOGAL LINCOLN 22mm X 0,4mm","ml",650,715.0,858.0,858.0,"RIBEIRO"],
+["CANTO ALUMINIO H 3000mm X 18mm","ml",4000,4800,5760,5760,"HERRAJES OESTE"],
+["CANTO ALUMUNIO U 3000mm X 18mm","ml",2600,3120,3744,3744,"HERRAJES OESTE"],
+["CANTO BLANCO PREENCOLADO 22mm","ml",6200,7440,669.6,148.8,"HERRAJES OESTE"],
+["Canto Castaño Kentucky Arena ABS 22mm x 0,40mm","ml",650,715.0,897,936,"RIBEIRO"],
+["Canto Castaño Kentucky Arena ABS 23mm x 2,00mm","ml",2000,2200,2760,2880,"RIBEIRO"],
+["Canto Castaño Kentucky Arena ABS 40mm x 0,40mm","ml",1250,1375,1725,1800,"RIBEIRO"],
+["Canto Castaño Kentucky Arena Preencolado 22mm","ml",1000,1100,1380,1440,"RIBEIRO"],
+["Canto Castaño Kentucky Arena Preencolado 50mm","ml",2250,2475,3105,3240,"RIBEIRO"],
+["Canto Cerezo Locarno ABS 22mm x 0,40mm","ml",350,385.0,483,504,"RIBEIRO"],
+["Canto Cerezo Locarno ABS 23mm x 2,00mm","ml",1550,1705.0,2139,2232,"RIBEIRO"],
+["Canto Cerezo Locarno ABS 40mm x 0,40mm","ml",800,880.0,1104,1152,"RIBEIRO"],
+["Canto Coco Bolo ABS 22mm x 0,40mm","ml",550,605,759,792,"RIBEIRO"],
+["Canto NEGRO ABS 22mm x 0,40mm","ml",350,385.0,770.0,770.0,"RIBEIRO"],
+["Canto Pino Aland Blanco ABS 22mm x 0,40mm","ml",650,715.0,897,936,"RIBEIRO"],
+["Canto Pino Aland Blanco ABS 23mm x 2,00mm","ml",2000,2200,2760,2880,"RIBEIRO"],
+["Canto Pino Aland Blanco ABS 40mm x 0,40mm","ml",1200,1320,1656,1728,"RIBEIRO"],
+["Canto Pino Aland Blanco Preencolado 22mm","ml",1000,1100,1380,1440,"RIBEIRO"],
+["Canto Pino Aland Blanco Preencolado 50mm","ml",2200,2420,3036,3168,"RIBEIRO"],
+["Canto Pino Aland Polar ABS 22mm x 0,40mm","ml",300,330,414,432,"RIBEIRO"],
+["Canto Pino Aland Polar ABS 23mm x 2,00mm","ml",1500,1650.0,2070,2160,"RIBEIRO"],
+["Canto Pino Aland Polar ABS 40mm x 0,40mm","ml",1000,1100,1380,1440,"RIBEIRO"],
+["Canto Pino Cascina ABS 22mm x 0,40mm","ml",600,660,828,864,"RIBEIRO"],
+["Canto Pino Cascina ABS 23mm x 2,00mm","ml",1750,1925.0,2415,2520,"RIBEIRO"],
+["Canto Pino Cascina ABS 40mm x 0,40mm","ml",1150,1265,1587,1656,"RIBEIRO"],
+["Canto Pino Cascina Preencolado 22mm","ml",1000,1100,1380,1440,"RIBEIRO"],
+["Canto Pino Cascina Preencolado 50mm","ml",2200,2420,3036,3168,"RIBEIRO"],
+["CANTO PVC SIN ENCOLAR 20MM ROBLE KENDAL NATURAL","ml",21200,23320.0,27984.0,559.68,"RIBEIRO"],
+["CANTO PVC SIN ENCOLAR 40MM ROBLE KENDAL NATURAL","ml",42400,46640.0,55968.0,1119.36,"RIBEIRO"],
+["Canto Roble Bardolino Natural ABS 22mm x 0,40mm","ml",650,715.0,897,936,"RIBEIRO"],
+["Canto Roble Bardolino Natural ABS 23mm x 2,00mm","ml",1950,2145,2691,2808,"RIBEIRO"],
+["Canto Roble Bardolino Natural ABS 40mm x 0,40mm","ml",1200,1320,1656,1728,"RIBEIRO"],
+["Canto Roble Davos Marron Trufa ABS 22mm x 0,40mm","ml",600,660,828,864,"RIBEIRO"],
+["Canto Roble Davos Marron Trufa ABS 23mm x 2,00mm","ml",1150,1265,1587,1656,"RIBEIRO"],
+["Canto Roble Davos Marron Trufa ABS 40mm x 0,40mm","ml",1750,1925.0,2415,2520,"RIBEIRO"],
+["Canto Roble Davos Natural ABS 22mm x 0,40mm","ml",600,660,828,864,"RIBEIRO"],
+["Canto Roble Davos Natural ABS 23mm x 2,00mm","ml",1150,1265,1587,1656,"RIBEIRO"],
+["Canto Roble Davos Natural ABS 40mm x 0,40mm","ml",1750,1925.0,2415,2520,"RIBEIRO"],
+["Canto Roble Davos Natural Preencolado 22mm","ml",900,990.0,1242,1296,"RIBEIRO"],
+["Canto Roble Davos Natural Preencolado 50mm","ml",1800,1980.0,2484,2592,"RIBEIRO"],
+["CANTO ROBLE DENVER MARRON TRUFA 22mm X 0,4mm","ml",600,660,792,792,"RIBEIRO"],
+["CANTO ROBLE KENDAL ENCERADO 22mmX0,4mm","ml",500,550,660,660,"RIBEIRO"],
+["Caño Barral cinc","ml",5000,7500,null,7500,"HERRAJES OESTE"],
+["Cedro x pie","unidad",3500,4200,null,3500,"CASA RUIZ"],
+["cemento de contacto","kg",11500,null,null,11500,"RIBEIRO"],
+["CORREDERA TIPO Z 300","set",1550,1705.0,2046.0,2046.0,"RIBEIRO"],
+["CORREDERA TIPO Z 350","set",1700,1870.0,2244.0,2244.0,"RIBEIRO"],
+["CORREDERA TIPO Z 400","set",1800,1980.0,2376.0,2376.0,"RIBEIRO"],
+["CORREDERA TIPO Z 450","set",2000,2200,2640,2640,"RIBEIRO"],
+["CORREDERA TIPO Z 500","set",2200,2420,2904,2904,"RIBEIRO"],
+["CUBETA HAMILTON","unidad",1400,1680,2016,2016,"HERRAJES OESTE"],
+["CUBETA NEGRO","unidad",800,960,1152,1152,"HERRAJES OESTE"],
+["CUBETA VINTAGE COBRE VIEJO","unidad",680,816,979.2,979.2,"HERRAJES OESTE"],
+["CUBETA VINTAGE ORO VIEJO","unidad",700,840,1008,1008,"HERRAJES OESTE"],
+["Espejo","m²",80000,null,null,null,"alcides villegas"],
+["Fibroplus Blanco 3mm","m²",32000,35200,40480,7652.1739,"RIBEIRO"],
+["HIDRO LACA","lt",37000,44400,null,44400,"pintueria fox"],
+["KIT PLACARD 2 METROS","set",54000,59400.0,71280.0,71280.0,"RIBEIRO"],
+["KIT PLACARD 3 METROS","set",61500,67650,81180,81180,"RIBEIRO"],
+["KIT PLACARD 4 METROS","set",70000,77000,92400,92400,"RIBEIRO"],
+["laca poliuretanica 2k","lt",45000,null,null,45000,"Mercado Libre"],
+["MACHIMBRE 1\" 1RA CALIDAD j&v","m²",26500,null,null,26500,"MADERERA J&V"],
+["MACHIMBRE 1\" 1RA CALIDAD ruiz","m²",12000,null,null,12000,"CASA RUIZ"],
+["MACHIMBRE 1/2","m²",7100,8520,9798,8520,"MADERERA J&V"],
+["MDF CRUDO 12MM","m²",49000,53900.0,61985.0,13475.0,"RIBEIRO"],
+["MDF CRUDO 15MM","m²",60000,66000,75900,16500,"RIBEIRO"],
+["MDF CRUDO 18MM","m²",72000,79200,91080,19800,"RIBEIRO"],
+["MDF CRUDO 3MM","m²",21000,23100.0,26565.0,5775.0,"RIBEIRO"],
+["MDF CRUDO 5,5 MM","m²",29000,31900.0,36685,7975.0,"RIBEIRO"],
+["MEL. BLANCO SOBRE AGLO 18MM","m²",56350,67620,77763,16905,"VILLAFAÑE"],
+["MEL. CASTAÑO KENTOKY ARENA MDF 18mm","m²",99000,108900.0,125235.0,27225.0,"RIBEIRO"],
+["MEL. NEGRO SOBRE AGLO 18MM","m²",84000,92400.0,106260.0,23100.0,"RIBEIRO"],
+["MEL. NOGAL LINCOLN AGLO 18mm","m²",80000,88000,101200,22000,"RIBEIRO"],
+["MEL. ROBLE DENVER MARRON TRUFA MDF 18mm","m²",102300,112530.0,129409.5,28132.5,"RIBEIRO"],
+["MEL. ROBLE KENDAL ENCERADO 18MM MDF","m²",93100,102410.0,117771.5,25602.5,"RIBEIRO"],
+["MEL. ROBLE KENDAL NATURAL AGLO 18MM","m²",72800,80080,92092,20020,"RIBEIRO"],
+["MEL.BLANCO SOBRE AGLO 18MM","m²",82000,90200.0,103730.0,19608.6957,"RIBEIRO"],
+["Melamina Blanca sobre mdf 15","m²",60000,72000,null,15384.6154,"RIBEIRO"],
+["Melamina Castaño Kentucky Arena MDF 5,5mm 183x260","m²",45800,50380.0,57937.0,12595.0,"RIBEIRO"],
+["Melamina Cerezo Locarno MDF 18mm 183x260","m²",87200,95920.0,110308.0,23980.0,"RIBEIRO"],
+["Melamina Coco Bolo AGLO 18mm 183x260","m²",70000,77000,88550,19250,"RIBEIRO"],
+["Melamina Coco Bolo MDF 18mm 183x260","m²",93100,102410.0,117771.5,25602.5,"RIBEIRO"],
+["Melamina Coco Bolo MDF 5,5mm 183x260","m²",44900,49390.0,56798.5,12347.5,"RIBEIRO"],
+["Melamina Fineline Metallic Antracita MDF 18mm 183x260","m²",104500,114950.0,132192.5,28737.5,"RIBEIRO"],
+["Melamina Fineline Metallic Antracita MDF 5,5mm 183x260","m²",46600,51260.0,58949.0,12815.0,"RIBEIRO"],
+["Melamina Nogal del Pacifico Natural MDF 18mm 183x260","m²",99900,109890.0,126373.5,27472.5,"RIBEIRO"],
+["Melamina Nogal del Pacifico Natural MDF 5,5mm 183x260","m²",45800,50380.0,57937.0,12595.0,"RIBEIRO"],
+["Melamina Nogal Lincoln AGLO 18mm 183x260","m²",100000,110000.0,126500.0,27500.0,"RIBEIRO"],
+["Melamina Nogal Lincoln MDF 18mm 183x260","m²",130000,143000,164450,35750,"RIBEIRO"],
+["Melamina Nogal Lincoln MDF 5,5mm 183x260","m²",46600,51260.0,58949.0,12815.0,"RIBEIRO"],
+["Melamina Nogal Warmia Marron MDF 18mm 183x260","m²",93100,102410.0,117771.5,25602.5,"RIBEIRO"],
+["Melamina Nogal Warmia Marron MDF 5,5mm 183x260","m²",44900,49390.0,56798.5,12347.5,"RIBEIRO"],
+["Melamina Pino Aland Blanco MDF 18mm 183x260","m²",99900,109890.0,126373.5,27472.5,"RIBEIRO"],
+["Melamina Pino Aland Blanco MDF 5,5mm 183x260","m²",45800,50380.0,57937.0,12595.0,"RIBEIRO"],
+["Melamina Pino Aland Polar AGLO 18mm 183x260","m²",66900,73590,84628.5,18397.5,"RIBEIRO"],
+["Melamina Pino Aland Polar MDF 18mm 183x260","m²",129000,141900,163185,35475,"RIBEIRO"],
+["Melamina Pino Aland Polar MDF 5,5mm 183x260","m²",43700,48070.0,55280.5,12017.5,"RIBEIRO"],
+["Melamina Pino Cascina MDF 18mm 183x260","m²",95700,105270.0,121060.5,26317.5,"RIBEIRO"],
+["Melamina Pino Cascina MDF 5,5mm 183x260","m²",45800,50380.0,57937.0,12595.0,"RIBEIRO"],
+["Melamina Roble Bardolino Natural MDF 18mm 183x260","m²",95700,105270.0,121060.5,26317.5,"RIBEIRO"],
+["Melamina Roble Bardolino Natural MDF 5,5mm 183x260","m²",45800,50380.0,57937.0,12595.0,"RIBEIRO"],
+["Melamina Roble Davos Marron Trufa MDF 18mm 183x260","m²",95700,105270.0,121060.5,26317.5,"RIBEIRO"],
+["Melamina Roble Davos Marron Trufa MDF 5,5mm 183x260","m²",45400,49940.0,57431.0,12485.0,"RIBEIRO"],
+["Melamina Roble Davos Natural MDF 18mm 183x260","m²",95700,105270.0,121060.5,26317.5,"RIBEIRO"],
+["Melamina Roble Davos Natural MDF 5,5mm 183x260","m²",45400,49940.0,57431.0,12485.0,"RIBEIRO"],
+["Melamina Roble Denver Marron Trufa MDF 18mm 183x260","m²",93100,102410.0,117771.5,25602.5,"RIBEIRO"],
+["Melamina Roble Denver Marron Trufa MDF 5,5mm 183x260","m²",44900,49390.0,56798.5,12347.5,"RIBEIRO"],
+["Melamina Roble Kaiserberg AGLO 18mm 183x260","m²",79600,87560,100694,21890,"RIBEIRO"],
+["Melamina Roble Kaiserberg MDF 18mm 183x260","m²",104400,114840.0,132066,28710.0,"RIBEIRO"],
+["Melamina Roble Kendal Coñac MDF 18mm 183x260","m²",82000,90200.0,103730.0,22550.0,"RIBEIRO"],
+["Melamina Roble Kendal Coñac MDF 5,5mm 183x260","m²",43700,48070.0,55280.5,12017.5,"RIBEIRO"],
+["Melamina Roble Kendal Encerado MDF 18mm 183x260","m²",93100,102410.0,117771.5,25602.5,"RIBEIRO"],
+["Melamina Roble Kendal Encerado MDF 5,5mm 183x260","m²",44900,49390.0,56798.5,12347.5,"RIBEIRO"],
+["Melamina Roble Kendal Natural AGLO 18mm 183x260","m²",66900,73590,84628.5,18397.5,"RIBEIRO"],
+["Melamina Roble Kendal Natural MDF 18mm 183x260","m²",87900,96690.0,111193.5,24172.5,"RIBEIRO"],
+["Melamina Roble Kendal Natural MDF 5,5mm 183x260","m²",44000,48400.0,55660.0,12100.0,"RIBEIRO"],
+["Melamina Roble Lorenzo Arena MDF 5,5mm 183x260","m²",46600,51260.0,58949.0,12815.0,"RIBEIRO"],
+["Melamina Roble Nebraska Gris MDF 18mm 183x260","m²",93100,102410.0,117771.5,25602.5,"RIBEIRO"],
+["Melamina Roble Norwich MDF 18mm 183x260","m²",104400,114840.0,132066,28710.0,"RIBEIRO"],
+["Melamina Roble Norwich MDF 5,5mm 183x260","m²",46600,51260.0,58949.0,12815.0,"RIBEIRO"],
+["Melamina Roble Termo Negro AGLO 18mm 183x260","m²",66900,73590,84628.5,18397.5,"RIBEIRO"],
+["Melamina Roble Termo Negro MDF 18mm 183x260","m²",87200,95920.0,110308.0,23980.0,"RIBEIRO"],
+["Melamina Roble Termo Negro MDF 5,5mm 183x260","m²",43200,47520.0,54648.0,11880.0,"RIBEIRO"],
+["Melamina Roble Vicenza Gris MDF 18mm 183x260","m²",104400,114840.0,132066,28710.0,"RIBEIRO"],
+["Melamina Roble Vicenza Gris MDF 5,5mm 183x260","m²",46600,51260.0,58949.0,12815.0,"RIBEIRO"],
+["Melamina Roble Whiteriver Beige MDF 18mm 183x260","m²",99900,109890.0,126373.5,27472.5,"RIBEIRO"],
+["Melamina Roble Whiteriver Beige MDF 5,5mm 183x260","m²",45800,50380.0,57937.0,12595.0,"RIBEIRO"],
+["Melamina Roble Whiteriver Gris Marron MDF 18mm 183x260","m²",99900,109890.0,126373.5,27472.5,"RIBEIRO"],
+["Melamina Roble Whiteriver Gris Marron MDF 5,5mm 183x260","m²",null,null,0,null,"RIBEIRO"],
+["MOLDURA 114","ml",4480,4928,null,4928,"CASA RUIZ"],
+["Pintura brillo plast secado rapido 1 litro","lt",4480,5376,6451.2,4928,"CASA RUIZ"],
+["pintura CETOL HIDRO ADVANCE CRISTAL SATINADO","lt",38000,5376,12,1344,"pintueria fox"],
+["PINTURA ESMALTE EPOXI AL AGUA","lt",80000,88000,12,22000,"pintueria fox"],
+["pintura esmalte sintetico blanco satinado x4L","lt",46000,80000,null,26000,"pintueria fox"],
+["PINTURA fondo blanco 18 L","lt",85000,89250,12,4722.2222,"pintueria fox"],
+["PINTURA fondo blanco 4 L","lt",85000,102000,12,21250,"pintueria fox"],
+["PINTURA HIDRO LACA 1L","lt",37000,44400,10,44400,"pintueria fox"],
+["Pintura laca poliuretanica 2k","lt",45000,null,7.5,45000,"Mercado Libre"],
+["pintura negra al agua","lt",6000,7200,10,7200,"pintueria fox"],
+["PISTON A GAS 120 DUCASSE","unidad",1800,2160,2592,2592,"HERRAJES OESTE"],
+["PISTON A GAS 60 DUCASSE","unidad",1800,2160,2592,2592,"HERRAJES OESTE"],
+["PISTON A GAS 80 DUCASSE","unidad",1800,2160,2592,2592,"HERRAJES OESTE"],
+["PLACA PINO 3000 mm X 1200mm. 18mm","m²",43000,45150,54180,12541.6667,"GIANTOMASSI"],
+["RETEN A RODILLO","unidad",330,396,475.2,475.2,"HERRAJES OESTE"],
+["servicio de corte","ml",200,240,240,240,"propio"],
+["TABLA 1` PINO PARA PUERTAS 70MM","ml",1560,1716.0,1716.0,1716.0,"CASA RUIZ"],
+["TABLA 1X6*4 EUCALIPTO SIN CEPILLAR","m²",6500,8450,null,10833.3333,"CASA RUIZ"],
+["TABLA ALAMO 1\" X 2,7\" PARA PUERTAS","ml",3250,4225,0,1920.4545,null],
+["TABLERO EUCA 30mm","m²",320000,384000,384000,106666.6667,"PEIRONE"],
+["TELESCOPICA PUSH ON 400","set",9600,11520,13824,13824,"HERRAJES OESTE"],
+["TELESCOPICA PUSH ON 450","set",10500,12600,15120,15120,"HERRAJES OESTE"],
+["TELESCOPICAS LIVIANA 300","set",2800,3080.0,3696.0,3696.0,"RIBEIRO"],
+["TELESCOPICAS LIVIANA 350","set",3300,3630.0,4356.0,4356.0,"RIBEIRO"],
+["TELESCOPICAS LIVIANA 400","set",3700,4070.0,4884.0,4884.0,"RIBEIRO"],
+["TELESCOPICAS LIVIANA 450","set",4200,4620,5544,5544,"RIBEIRO"],
+["TELESCOPICAS LIVIANA 500","set",4700,5170,6204,6204,"RIBEIRO"],
+["TELESCOPICAS PUSH ON 500","set",11200,12320.0,14784.0,14784.0,"RIBEIRO"],
+["TIRADOR BOTON FLOR DE LIZ","unidad",1200,1440,1728,1728,"HERRAJES OESTE"],
+["TIRADOR CRISTAL","unidad",1800,2160,2592,2592,"HERRAJES OESTE"],
+["TIRADOR CUBETA FLOR DE LIZ","unidad",3800,4560,5472,5472,"HERRAJES OESTE"],
+["TIRADOR DE MADERA","unidad",700,840,1008,840,"HERRAJES OESTE"],
+["TIRADOR JUPITER","unidad",880,1056,1267.2,1267.2,"HERRAJES OESTE"],
+["TIRADOR MANIJA OBERA 128MM",null,2800,3360,null,3360,null],
+["TIRADOR MANIJON J DE PEGAR","ml",14000,15400.0,17710,5903.3333,"RIBEIRO"],
+["TIRADOR PERLADO BLANCO","unidad",800,880.0,1056.0,1056.0,"RIBEIRO"],
+["TIRADOR PERLADO NEGRO","unidad",800,880.0,1056.0,352.0,"RIBEIRO"],
+["TIRADOR PUENTE 125","unidad",1000,1200,1380,1380,"HERRAJES OESTE"],
+["TIRADOR VINTAGE VICTORIANO","unidad",1100,1320,1584,1584,"HERRAJES OESTE"],
+["TIRADOR VOLCABLE","unidad",1160,1392,1670.4,1670.4,"HERRAJES OESTE"],
+["TIRANTE 2X2","ml",2400,2640,2640,2640,"CASA RUIZ"],
+["tirante 2x4","ml",3000,3300.0,3300.0,3300.0,"CASA RUIZ"],
+["tirante 2x6","ml",19700,21670,21670,5159.5238,"CASA RUIZ"],
+["TIRANTE 3X3","ml",13000,14300.0,16445,5481.6667,"MADERERA J&V"],
+["tornillos 1 1/2","unidad",20,24,27.6,24,null],
+["tornillos 1 1/4","unidad",15,18,38.4,18,"HERRAJES OESTE"],
+["tornillos 2","unidad",25,30,28.8,30,"HERRAJES OESTE"],
+["tornillos 5/8","unidad",6,7.2,48,7.2,"HERRAJES OESTE"],
+["vidrio 3mm","m²",40000,42000,42000,42000,"alcides villegas"],
+["XX MADERA",null,200000,200000,200000,200000,null],
+["XX PINTURA",null,110000,110000,110000,110000,null],
+["Melamina Roble Nebraska Natural MDF 5,5mm","m²",55000,66000,null,14347.8261,null],
+["ruedas marineras","unidad",1150,1380,null,1380,null],
+["TABLA 1` PINO PARA PUERTAS 90MM","ml",1680,2016,null,2016,"Rio cuarto"]
+];
+function normalizarNombreMaterial(n){return(n||'').trim().toLowerCase();}
+function getMateriales(){return DB.get('materiales')||[];}
+function buscarMaterialPorNombre(nombre){
+ const key=normalizarNombreMaterial(nombre);
+ return getMateriales().find(m=>normalizarNombreMaterial(m.descripcion)===key)||null;
+}
+// Importación única, no destructiva: si ya existen materiales cargados (importados o agregados a mano)
+// no vuelve a correr. Cada material queda vinculado a su proveedor (se crea o reutiliza la entidad Proveedor).
+function migrarMateriales(){
+ if(getMateriales().length>0)return; // ya importado o ya se está usando manualmente
+ const lista=MATERIALES_IMPORT.map(f=>{
+ const[descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2,proveedor]=f;
+ return{
+ id:DB.nuevoId(),
+ descripcion,unidad:unidad||'',
+ costoUnitario:costoUnitario||0,
+ costoConEnvio:costoConEnvio||0,
+ precioVenta:precioVenta||0,
+ precioPorM2:precioPorM2||0,
+ stock:0,
+ proveedor:proveedor||'',
+ proveedorId:proveedor?buscarOCrearProveedor(proveedor):null,
+ activo:true,
+ origen:'planilla',
+ createdAt:Date.now(),updatedAt:Date.now()
+ };
+ });
+ DB.set('materiales',lista);
+}
+function renderMateriales(){
+ const cont=document.getElementById('materiales-content');
+ if(!cont)return;
+ const filtro=(document.getElementById('buscar-materiales')?.value||'').toLowerCase();
+ let lista=getMateriales().slice().sort((a,b)=>(a.descripcion||'').localeCompare(b.descripcion||''));
+ if(filtro)lista=lista.filter(m=>`${m.descripcion} ${m.proveedor}`.toLowerCase().includes(filtro));
+ let html='<button class="btn btn-secondary" style="width:100%;margin-bottom:10px" onclick="abrirModalMaterialForm(null)">＋ Nuevo material</button>';
+ if(!lista.length){html+='<div class="empty-state"><div class="e-ico">🪵</div><p>Todavía no hay materiales cargados.</p></div>';cont.innerHTML=html;return;}
+ html+=lista.map(m=>{
+ const stock=m.stock||0;
+ const stockTxt=stock<=0?`<span style="color:var(--rojo);font-weight:700">⚠ Sin stock</span>`:`Stock: ${stock} ${m.unidad||'u.'}`;
+ return`<div class="item-card" onclick="verMaterial(${m.id})" style="cursor:pointer">
+    <div class="item-top"><span class="item-codigo">🪵 ${m.unidad||''}</span><span class="item-fecha">${m.proveedor||'Sin proveedor'}</span></div>
+    <div class="item-nombre">${m.descripcion}</div>
+    <div class="item-desc">${fmt(m.costoUnitario)} / ${m.unidad||'u.'} · ${stockTxt}</div>
+  </div>`;}).join('');
+ cont.innerHTML=html;
+}
+function verMaterial(materialId){
+ const m=getMateriales().find(x=>x.id===materialId);
+ if(!m)return;
+ const stock=m.stock||0;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-material';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>🪵 ${m.descripcion}</h3>
+    <p style="font-size:13px;color:var(--gris);margin-bottom:12px">Unidad: ${m.unidad||'—'}</p>
+    <div class="res-row"><span class="rl">Costo unitario</span><span class="rv">${fmt(m.costoUnitario)}</span></div>
+    <div class="res-row"><span class="rl">Costo con envío</span><span class="rv">${fmt(m.costoConEnvio)}</span></div>
+    ${m.precioVenta?`<div class="res-row"><span class="rl">Precio de venta</span><span class="rv">${fmt(m.precioVenta)}</span></div>`:''}
+    ${m.precioPorM2?`<div class="res-row"><span class="rl">Precio por m²/unidad</span><span class="rv">${fmt(m.precioPorM2)}</span></div>`:''}
+    <div class="res-row"><span class="rl">Proveedor</span><span class="rv">${m.proveedor||'Sin asignar'}</span></div>
+    <div class="res-row" style="font-weight:700"><span class="rl">Stock actual</span><span class="rv" style="color:${stock<=0?'var(--rojo)':'var(--verde2)'}">${stock} ${m.unidad||'u.'}</span></div>
+    <div class="btn-row" style="margin-top:16px">
+      ${m.proveedorId?`<button class="btn btn-secondary" onclick="document.getElementById('modal-material').remove();verProveedor(${m.proveedorId})">Ver proveedor</button>`:''}
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-material').remove();abrirModalCompraMaterial(${m.id})">📦 Registrar compra</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-material').remove();abrirModalMaterialForm(${m.id})">✏️ Editar</button>
+      <button class="btn btn-primary" onclick="document.getElementById('modal-material').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+// Registrar una compra de material: suma stock, opcionalmente actualiza el costo, y lo deja
+// asentado en Finanzas como un egreso real (Fase 6: Compras y stock).
+function abrirModalCompraMaterial(materialId){
+ const m=getMateriales().find(x=>x.id===materialId);
+ if(!m)return;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-compra-material';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>📦 Registrar compra — ${m.descripcion}</h3>
+    <p style="font-size:12px;color:var(--gris);margin-bottom:10px">Stock actual: ${m.stock||0} ${m.unidad||'u.'}</p>
+    <div class="form-row"><label>Cantidad comprada</label><input type="number" step="0.01" id="mcm-cant" placeholder="Ej: 10"></div>
+    <div class="form-row"><label>Costo unitario pagado</label><input type="number" step="0.01" id="mcm-costo" value="${m.costoUnitario||''}"></div>
+    <div class="form-row"><label>Medio de pago</label><select id="mcm-medio"><option value="banco">Banco/Transferencia</option><option value="efectivo">Efectivo</option></select></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-compra-material').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCompraMaterial(${materialId})">Registrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarCompraMaterial(materialId){
+ const cantidad=parseFloat(document.getElementById('mcm-cant')?.value)||0;
+ const costoNuevo=parseFloat(document.getElementById('mcm-costo')?.value)||0;
+ const medio=document.getElementById('mcm-medio')?.value||'banco';
+ if(cantidad<=0){alert('Ingresá una cantidad mayor a 0.');return;}
+ const lista=getMateriales();
+ const m=lista.find(x=>x.id===materialId);
+ if(!m)return;
+ m.stock=(m.stock||0)+cantidad;
+ if(costoNuevo>0)m.costoUnitario=costoNuevo;
+ m.updatedAt=Date.now();
+ DB.set('materiales',lista);
+ if(costoNuevo>0){
+ registrarMovimiento('egreso',medio,'proveedores',cantidad*costoNuevo,`Compra: ${cantidad} ${m.unidad||''} de ${m.descripcion}`,`material:${materialId}`);
+ }
+ document.getElementById('modal-compra-material').remove();
+ renderMateriales();
+}
+// Alta/edición manual de un material — vos decidís cuándo actualizar el precio.
+function abrirModalMaterialForm(materialId){
+ const m=materialId?getMateriales().find(x=>x.id===materialId):null;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-material-form';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>🪵 ${m?'Editar material':'Nuevo material'}</h3>
+    <div class="form-row"><label>Descripción</label><input type="text" id="mmf-desc" value="${(m?.descripcion||'').replace(/"/g,'&quot;')}"></div>
+    <div class="form-row"><label>Unidad</label><input type="text" id="mmf-unidad" value="${m?.unidad||''}" placeholder="Ej: m2, unidad, kg"></div>
+    <div class="form-row"><label>Costo unitario</label><input type="number" step="0.01" id="mmf-costo" value="${m?.costoUnitario||''}"></div>
+    <div class="form-row"><label>Costo con envío</label><input type="number" step="0.01" id="mmf-envio" value="${m?.costoConEnvio||''}"></div>
+    <div class="form-row"><label>Precio de venta</label><input type="number" step="0.01" id="mmf-venta" value="${m?.precioVenta||''}"></div>
+    <div class="form-row"><label>Stock actual</label><input type="number" step="0.01" id="mmf-stock" value="${m?.stock||''}" placeholder="Ej: 20"></div>
+    <div class="form-row"><label>Proveedor</label><input type="text" id="mmf-prov" list="proveedores-datalist-form" value="${m?.proveedor||''}"></div>
+    <datalist id="proveedores-datalist-form">${getProveedores().map(n=>`<option value="${(n||'').replace(/"/g,'&quot;')}">`).join('')}</datalist>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-material-form').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMaterialForm(${m?m.id:'null'})">Guardar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarMaterialForm(materialId){
+ const descripcion=(document.getElementById('mmf-desc')?.value||'').trim();
+ if(!descripcion){alert('La descripción es obligatoria.');return;}
+ const unidad=document.getElementById('mmf-unidad')?.value||'';
+ const costoUnitario=parseFloat(document.getElementById('mmf-costo')?.value)||0;
+ const costoConEnvio=parseFloat(document.getElementById('mmf-envio')?.value)||0;
+ const precioVenta=parseFloat(document.getElementById('mmf-venta')?.value)||0;
+ const stock=parseFloat(document.getElementById('mmf-stock')?.value)||0;
+ const provNombre=(document.getElementById('mmf-prov')?.value||'').trim();
+ const lista=getMateriales();
+ if(materialId){
+ const m=lista.find(x=>x.id===materialId);
+ if(m){
+ m.descripcion=descripcion;m.unidad=unidad;m.costoUnitario=costoUnitario;m.costoConEnvio=costoConEnvio;m.precioVenta=precioVenta;m.stock=stock;
+ m.proveedor=provNombre;m.proveedorId=provNombre?buscarOCrearProveedor(provNombre):null;m.updatedAt=Date.now();
+ }
+ } else {
+ lista.push({id:DB.nuevoId(),descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2:0,stock,
+ proveedor:provNombre,proveedorId:provNombre?buscarOCrearProveedor(provNombre):null,activo:true,origen:'manual',createdAt:Date.now(),updatedAt:Date.now()});
+ }
+ DB.set('materiales',lista);
+ document.getElementById('modal-material-form').remove();
+ renderMateriales();
+}
+
+
+// ══ PERSONAL (empleados y el dueño) — retiros y asistencia ══
+// Entidad real, migrada de forma no destructiva desde la lista de nombres de Banco de Horas.
+function normalizarNombrePersonal(n){return(n||'').trim().toLowerCase();}
+function getPersonalObjs(){
+ const arr=DB.get('personal');
+ return(arr.length&&typeof arr[0]==='object')?arr:[];
+}
+function migrarPersonal(){
+ const actual=DB.get('personal');
+ if(actual.length&&actual[0]&&typeof actual[0]==='object'&&actual[0].id)return; // ya migrado
+ const nombres=getEmpleados(); // lista de nombres de Banco de Horas (compat)
+ const objetos=nombres.filter(Boolean).map(n=>({
+ id:DB.nuevoId(),nombre:n,rango:'',sueldoBase:0,esDueno:false,activo:true,
+ retiros:[],asistencia:[],createdAt:Date.now(),updatedAt:Date.now()
+ }));
+ DB.set('personal',objetos);
+}
+function buscarOCrearPersonal(nombre){
+ nombre=(nombre||'').trim();
+ if(!nombre)return null;
+ const lista=getPersonalObjs();
+ const key=normalizarNombrePersonal(nombre);
+ const existente=lista.find(p=>normalizarNombrePersonal(p.nombre)===key);
+ if(existente)return existente.id;
+ const nuevo={id:DB.nuevoId(),nombre,rango:'',sueldoBase:0,esDueno:false,activo:true,retiros:[],asistencia:[],createdAt:Date.now(),updatedAt:Date.now()};
+ lista.push(nuevo);
+ DB.set('personal',lista);
+ return nuevo.id;
+}
+function enEsteMesFecha(f){return f&&f.slice(0,7)===hoy().slice(0,7);}
+function renderPersonal(){
+ const cont=document.getElementById('personal-content');
+ if(!cont)return;
+ const filtro=(document.getElementById('buscar-personal')?.value||'').toLowerCase();
+ let lista=getPersonalObjs().slice().sort((a,b)=>(b.esDueno?1:0)-(a.esDueno?1:0)||(a.nombre||'').localeCompare(b.nombre||''));
+ if(filtro)lista=lista.filter(p=>`${p.nombre} ${p.rango||''}`.toLowerCase().includes(filtro));
+ let html='<button class="btn btn-secondary" style="width:100%;margin-bottom:10px" onclick="abrirModalPersonalForm(null)">＋ Nueva persona</button>';
+ if(!lista.length){html+='<div class="empty-state"><div class="e-ico">🧑‍💼</div><p>Todavía no hay personal cargado.</p></div>';cont.innerHTML=html;return;}
+ html+=lista.map(p=>{
+ const retiradoMes=(p.retiros||[]).filter(r=>enEsteMesFecha(r.fecha)).reduce((s,r)=>s+(r.monto||0),0);
+ const saldo=(p.sueldoBase||0)-retiradoMes;
+ return`<div class="item-card" onclick="verPersonal(${p.id})" style="cursor:pointer">
+    <div class="item-top"><span class="item-codigo">${p.esDueno?'👑 Dueño':(p.rango||'🧑‍💼')}</span><span class="item-fecha">Saldo: ${fmt(saldo)}</span></div>
+    <div class="item-nombre">${p.nombre}</div>
+    <div class="item-desc">Sueldo base: ${fmt(p.sueldoBase||0)} · Retirado este mes: ${fmt(retiradoMes)}</div>
+  </div>`;
+ }).join('');
+ cont.innerHTML=html;
+}
+function verPersonal(personalId){
+ const p=getPersonalObjs().find(x=>x.id===personalId);
+ if(!p)return;
+ const retirosMes=(p.retiros||[]).filter(r=>enEsteMesFecha(r.fecha));
+ const retiradoMes=retirosMes.reduce((s,r)=>s+(r.monto||0),0);
+ const saldo=(p.sueldoBase||0)-retiradoMes;
+ const asistMes=(p.asistencia||[]).filter(a=>enEsteMesFecha(a.fecha));
+ const faltas=asistMes.filter(a=>a.tipo==='falta').length;
+ const tardes=asistMes.filter(a=>a.tipo==='tarde').length;
+ const medias=asistMes.filter(a=>a.tipo==='media').length;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-personal';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>${p.esDueno?'👑':'🧑‍💼'} ${p.nombre}</h3>
+    <p style="font-size:13px;color:var(--gris);margin-bottom:12px">${p.rango||'Sin rango'}${p.esDueno?' · Dueño':''}</p>
+    <div class="res-row"><span class="rl">Sueldo base</span><span class="rv">${fmt(p.sueldoBase||0)}</span></div>
+    <div class="res-row"><span class="rl">Retirado este mes</span><span class="rv">${fmt(retiradoMes)}</span></div>
+    <div class="res-row" style="font-weight:700"><span class="rl">Saldo pendiente del mes</span><span class="rv" style="color:${saldo<0?'var(--rojo)':'var(--verde2)'}">${fmt(saldo)}</span></div>
+    <p class="section-title">Asistencia este mes</p>
+    <div class="res-row"><span class="rl">Faltas</span><span class="rv">${faltas}</span></div>
+    <div class="res-row"><span class="rl">Llegadas tarde</span><span class="rv">${tardes}</span></div>
+    <div class="res-row"><span class="rl">Medias jornadas</span><span class="rv">${medias}</span></div>
+    <div class="btn-row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('modal-personal').remove();abrirModalRetiroPersonal(${p.id})">🔻 Registrar retiro</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('modal-personal').remove();abrirModalAsistenciaPersonal(${p.id})">📋 Asistencia</button>
+    </div>
+    ${(p.retiros||[]).length?`<p class="section-title">Últimos retiros</p>${p.retiros.slice(-5).reverse().map(r=>`<div class="res-row"><span class="rl">${fmtF(r.fecha)}${r.motivo?' · '+r.motivo:''}</span><span class="rv">${fmt(r.monto)}</span></div>`).join('')}`:''}
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-personal').remove();abrirModalPersonalForm(${p.id})">✏️ Editar</button>
+      <button class="btn btn-primary" onclick="document.getElementById('modal-personal').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+function abrirModalPersonalForm(personalId){
+ const p=personalId?getPersonalObjs().find(x=>x.id===personalId):null;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-personal-form';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>🧑‍💼 ${p?'Editar persona':'Nueva persona'}</h3>
+    <div class="form-row"><label>Nombre</label><input type="text" id="mpe-nombre" value="${(p?.nombre||'').replace(/"/g,'&quot;')}"></div>
+    <div class="form-row"><label>Rango / rol</label><input type="text" id="mpe-rango" value="${p?.rango||''}" placeholder="Ej: Carpintero, Ayudante..."></div>
+    <div class="form-row"><label>Sueldo base</label><input type="number" step="1" id="mpe-sueldo" value="${p?.sueldoBase||''}"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer">
+      <input type="checkbox" id="mpe-dueno" ${p?.esDueno?'checked':''}>
+      <span style="font-size:12px">👑 Es el dueño (los retiros van a la caja de Sueldo Propietario, no a Mano de Obra)</span>
+    </label>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-personal-form').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPersonalForm(${p?p.id:'null'})">Guardar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarPersonalForm(personalId){
+ const nombre=(document.getElementById('mpe-nombre')?.value||'').trim();
+ if(!nombre){alert('El nombre es obligatorio.');return;}
+ const rango=document.getElementById('mpe-rango')?.value||'';
+ const sueldoBase=parseFloat(document.getElementById('mpe-sueldo')?.value)||0;
+ const esDueno=document.getElementById('mpe-dueno')?.checked||false;
+ const lista=getPersonalObjs();
+ if(personalId){
+ const p=lista.find(x=>x.id===personalId);
+ if(p){p.nombre=nombre;p.rango=rango;p.sueldoBase=sueldoBase;p.esDueno=esDueno;p.updatedAt=Date.now();}
+ } else {
+ const key=normalizarNombrePersonal(nombre);
+ if(lista.find(x=>normalizarNombrePersonal(x.nombre)===key)){alert('Ya existe una persona con ese nombre.');return;}
+ lista.push({id:DB.nuevoId(),nombre,rango,sueldoBase,esDueno,activo:true,retiros:[],asistencia:[],createdAt:Date.now(),updatedAt:Date.now()});
+ }
+ DB.set('personal',lista);
+ document.getElementById('modal-personal-form').remove();
+ renderPersonal();
+}
+// Retiro: "hoy me pide dinero y no es fecha de cobro" — se anota y se descuenta del sueldo de esa
+// persona. Si es el dueño, el movimiento financiero cae en "retiro_propietario" (caja de Sueldo
+// Propietario); si es un empleado, cae en "sueldos" (descuenta de la caja de Mano de Obra).
+function abrirModalRetiroPersonal(personalId){
+ const p=getPersonalObjs().find(x=>x.id===personalId);
+ if(!p)return;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-retiro-personal';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>🔻 Registrar retiro — ${p.nombre}</h3>
+    <div class="form-row"><label>Fecha</label><input type="date" id="mrp-fecha" value="${hoy()}"></div>
+    <div class="form-row"><label>Monto</label><input type="number" step="1" id="mrp-monto" placeholder="Ej: 50000"></div>
+    <div class="form-row"><label>Motivo (opcional)</label><input type="text" id="mrp-motivo" placeholder="Ej: adelanto"></div>
+    <div class="form-row"><label>Medio de pago</label><select id="mrp-medio"><option value="efectivo">Efectivo</option><option value="banco">Banco/Transferencia</option></select></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-retiro-personal').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarRetiroPersonal(${personalId})">Registrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarRetiroPersonal(personalId){
+ const fecha=document.getElementById('mrp-fecha')?.value||hoy();
+ const monto=parseFloat(document.getElementById('mrp-monto')?.value)||0;
+ const motivo=document.getElementById('mrp-motivo')?.value||'';
+ const medio=document.getElementById('mrp-medio')?.value||'efectivo';
+ if(monto<=0){alert('Ingresá un monto mayor a 0.');return;}
+ const lista=getPersonalObjs();
+ const p=lista.find(x=>x.id===personalId);
+ if(!p)return;
+ if(!p.retiros)p.retiros=[];
+ p.retiros.push({id:DB.nuevoId(),fecha,monto,motivo});
+ p.updatedAt=Date.now();
+ DB.set('personal',lista);
+ registrarMovimiento('egreso',medio,p.esDueno?'retiro_propietario':'sueldos',monto,`Retiro ${p.nombre}${motivo?' · '+motivo:''}`,`personal:${personalId}`);
+ document.getElementById('modal-retiro-personal').remove();
+ renderPersonal();
+}
+function abrirModalAsistenciaPersonal(personalId){
+ const p=getPersonalObjs().find(x=>x.id===personalId);
+ if(!p)return;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-asistencia-personal';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>📋 Asistencia — ${p.nombre}</h3>
+    <div class="form-row"><label>Fecha</label><input type="date" id="map-fecha" value="${hoy()}"></div>
+    <div class="form-row"><label>Tipo</label><select id="map-tipo">
+      <option value="falta">Falta</option>
+      <option value="tarde">Llegada tarde</option>
+      <option value="media">Media jornada</option>
+    </select></div>
+    <div class="form-row"><label>Notas (opcional)</label><input type="text" id="map-notas"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-asistencia-personal').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarAsistenciaPersonal(${personalId})">Registrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarAsistenciaPersonal(personalId){
+ const fecha=document.getElementById('map-fecha')?.value||hoy();
+ const tipo=document.getElementById('map-tipo')?.value||'falta';
+ const notas=document.getElementById('map-notas')?.value||'';
+ const lista=getPersonalObjs();
+ const p=lista.find(x=>x.id===personalId);
+ if(!p)return;
+ if(!p.asistencia)p.asistencia=[];
+ p.asistencia.push({id:DB.nuevoId(),fecha,tipo,notas});
+ p.updatedAt=Date.now();
+ DB.set('personal',lista);
+ document.getElementById('modal-asistencia-personal').remove();
+ renderPersonal();
+}
+
+
 // ══ PEDIDOS A PROVEEDORES ══
 const PROVEEDORES_DEFAULT=['Tomás Ribeiro','Maderas JIM','Maderera Nico','Herrajes Nuevo Oeste','Casa Ruiz'];
-function getProveedores(){const p=DB.get('proveedores');return p.length?p:PROVEEDORES_DEFAULT;}
+
+// ── Proveedores (entidad real, migrada de forma no destructiva desde la lista de nombres) ──
+function normalizarNombreProveedor(n){return(n||'').trim().toLowerCase();}
+function getProveedoresObjs(){
+ const arr=DB.get('proveedores');
+ return(arr.length&&typeof arr[0]==='object')?arr:[];
+}
+// Compat: el resto de la app (chips y <select> de Pedidos) sigue esperando un array de strings.
+function getProveedores(){
+ const objs=getProveedoresObjs();
+ if(objs.length)return objs.map(o=>o.nombre);
+ const p=DB.get('proveedores');
+ return p.length?p:PROVEEDORES_DEFAULT;
+}
+// Busca un proveedor existente por nombre; si no existe, lo crea. Nunca borra ni pisa datos ya cargados a mano.
+function buscarOCrearProveedor(nombre){
+ nombre=(nombre||'').trim();
+ if(!nombre)return null;
+ const lista=getProveedoresObjs();
+ const key=normalizarNombreProveedor(nombre);
+ const existente=lista.find(p=>normalizarNombreProveedor(p.nombre)===key);
+ if(existente)return existente.id;
+ const nuevo={id:DB.nuevoId(),nombre,codigo:'',telefono:'',notas:'',activo:true,createdAt:Date.now(),updatedAt:Date.now()};
+ lista.push(nuevo);
+ DB.set('proveedores',lista);
+ return nuevo.id;
+}
+// Migración única, no destructiva: convierte la lista de nombres (o los defaults) + los nombres
+// ya usados en pedidos en entidades con id, y les asigna proveedorId a los pedidos existentes.
+function migrarProveedores(){
+ const actual=DB.get('proveedores');
+ if(actual.length&&actual[0]&&typeof actual[0]==='object'&&actual[0].id)return; // ya migrado
+ // CORRECCIÓN: agrupar por nombre normalizado (no por string exacto) para no duplicar
+ // un mismo proveedor escrito con distintas mayúsculas/espacios en distintos pedidos.
+ const vistos=new Map(); // key normalizada -> nombre canónico (primera aparición)
+ const agregar=n=>{n=(n||'').trim();if(!n)return;const key=normalizarNombreProveedor(n);if(!vistos.has(key))vistos.set(key,n);};
+ (actual.length?actual:PROVEEDORES_DEFAULT).forEach(agregar);
+ DB.get('pedidos').forEach(p=>agregar(p.proveedor));
+ const objetos=[...vistos.values()].map(n=>({id:DB.nuevoId(),nombre:n,codigo:'',telefono:'',notas:'',activo:true,createdAt:Date.now(),updatedAt:Date.now()}));
+ DB.set('proveedores',objetos);
+ const pedidos=DB.get('pedidos');
+ let cambiado=false;
+ pedidos.forEach(p=>{
+ if(!p.proveedorId&&p.proveedor){
+ const key=normalizarNombreProveedor(p.proveedor);
+ const obj=objetos.find(o=>normalizarNombreProveedor(o.nombre)===key);
+ if(obj){p.proveedorId=obj.id;cambiado=true;}
+ }
+ });
+ if(cambiado)DB.set('pedidos',pedidos);
+}
+function renderProveedores(){
+ const cont=document.getElementById('proveedores-content');
+ if(!cont)return;
+ const filtro=(document.getElementById('buscar-proveedores')?.value||'').toLowerCase();
+ let lista=getProveedoresObjs().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+ if(filtro)lista=lista.filter(p=>`${p.nombre} ${p.telefono} ${p.codigo||''}`.toLowerCase().includes(filtro));
+ let html=`<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn btn-secondary" style="flex:1" onclick="abrirModalProveedorForm(null)">＋ Nuevo</button><button class="btn btn-secondary" style="flex:1" onclick="abrirModalFusionarProveedores()">🔀 Unificar</button></div>`;
+ if(!lista.length){html+='<div class="empty-state"><div class="e-ico">📦</div><p>Todavía no hay proveedores cargados.</p></div>';cont.innerHTML=html;return;}
+ html+=lista.map(p=>{
+ const vinculados=DB.get('pedidos').filter(pe=>pe.proveedorId===p.id).length;
+ return`<div class="item-card" onclick="verProveedor(${p.id})" style="cursor:pointer">
+    <div class="item-top"><span class="item-codigo">${p.codigo?'🏷️ '+p.codigo:'📦'}</span><span class="item-fecha">${vinculados} pedido${vinculados!==1?'s':''}</span></div>
+    <div class="item-nombre">${p.nombre}</div>
+    <div class="item-desc">${p.telefono||'Sin teléfono'}</div>
+  </div>`;
+ }).join('');
+ cont.innerHTML=html;
+}
+function verProveedor(proveedorId){
+ const p=getProveedoresObjs().find(x=>x.id===proveedorId);
+ if(!p)return;
+ const pedidos=DB.get('pedidos').filter(pe=>pe.proveedorId===proveedorId);
+ const filaLink=(item)=>`<div class="item-card" style="cursor:pointer;margin-bottom:8px" onclick="document.getElementById('modal-proveedor')?.remove();verDetallePedido(${item.id})">
+    <div class="item-top"><span class="item-codigo">PED-${String(item.num).padStart(3,'0')}</span><span class="item-fecha">${item.estado||''}</span></div>
+    <div class="item-desc">${fmtF(item.fecha)}</div>
+  </div>`;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-proveedor';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>📦 ${p.nombre}</h3>
+    <p style="font-size:13px;color:var(--gris);margin-bottom:16px">${p.codigo?'Código: '+p.codigo+' · ':''}${p.telefono||'Sin teléfono'}${p.notas?' · '+p.notas:''}</p>
+    ${pedidos.length?`<p class="section-title">Pedidos</p>${pedidos.map(filaLink).join('')}`:'<p style="font-size:13px;color:var(--gris)">Sin pedidos vinculados todavía.</p>'}
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-proveedor').remove();abrirModalProveedorForm(${p.id})">✏️ Editar</button>
+      <button class="btn btn-primary" onclick="document.getElementById('modal-proveedor').remove()">Cerrar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+// Alta/edición manual de un proveedor, con código propio.
+function abrirModalProveedorForm(proveedorId){
+ const p=proveedorId?getProveedoresObjs().find(x=>x.id===proveedorId):null;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-proveedor-form';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>📦 ${p?'Editar proveedor':'Nuevo proveedor'}</h3>
+    <div class="form-row"><label>Nombre</label><input type="text" id="mpf-nombre" value="${(p?.nombre||'').replace(/"/g,'&quot;')}"></div>
+    <div class="form-row"><label>Código</label><input type="text" id="mpf-codigo" value="${p?.codigo||''}" placeholder="Ej: PROV-01"></div>
+    <div class="form-row"><label>Teléfono</label><input type="text" id="mpf-tel" value="${p?.telefono||''}"></div>
+    <div class="form-row"><label>Notas</label><input type="text" id="mpf-notas" value="${p?.notas||''}"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-proveedor-form').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProveedorForm(${p?p.id:'null'})">Guardar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarProveedorForm(proveedorId){
+ const nombre=(document.getElementById('mpf-nombre')?.value||'').trim();
+ if(!nombre){alert('El nombre es obligatorio.');return;}
+ const codigo=(document.getElementById('mpf-codigo')?.value||'').trim();
+ const telefono=(document.getElementById('mpf-tel')?.value||'').trim();
+ const notas=(document.getElementById('mpf-notas')?.value||'').trim();
+ const lista=getProveedoresObjs();
+ if(proveedorId){
+ const p=lista.find(x=>x.id===proveedorId);
+ if(p){p.nombre=nombre;p.codigo=codigo;p.telefono=telefono;p.notas=notas;p.updatedAt=Date.now();}
+ } else {
+ const key=normalizarNombreProveedor(nombre);
+ if(lista.find(x=>normalizarNombreProveedor(x.nombre)===key)){alert('Ya existe un proveedor con ese nombre.');return;}
+ lista.push({id:DB.nuevoId(),nombre,codigo,telefono,notas,activo:true,createdAt:Date.now(),updatedAt:Date.now()});
+ }
+ DB.set('proveedores',lista);
+ document.getElementById('modal-proveedor-form').remove();
+ renderProveedores();
+}
+// Unificar dos proveedores que en realidad son el mismo (ej. cargados con nombres distintos):
+// todo lo vinculado al segundo (pedidos, materiales) pasa al primero, y el segundo se borra.
+function abrirModalFusionarProveedores(){
+ const lista=getProveedoresObjs().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+ if(lista.length<2){alert('Necesitás al menos dos proveedores cargados para poder unificar.');return;}
+ const opts=lista.map(p=>`<option value="${p.id}">${p.nombre}${p.codigo?' ('+p.codigo+')':''}</option>`).join('');
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';
+ overlay.id='modal-fusionar-prov';
+ overlay.innerHTML=`<div class="modal-box">
+    <h3>🔀 Unificar proveedores</h3>
+    <p style="font-size:12px;color:var(--gris);margin-bottom:10px">El segundo se borra. Todos sus pedidos y materiales vinculados pasan al primero.</p>
+    <div class="form-row"><label>Mantener</label><select id="mfp-a">${opts}</select></div>
+    <div class="form-row"><label>Fusionar y borrar</label><select id="mfp-b">${opts}</select></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-fusionar-prov').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="fusionarProveedores()">Unificar</button>
+    </div>
+  </div>`;
+ document.body.appendChild(overlay);
+}
+function fusionarProveedores(){
+ const idA=parseInt(document.getElementById('mfp-a').value);
+ const idB=parseInt(document.getElementById('mfp-b').value);
+ if(idA===idB){alert('Elegí dos proveedores distintos.');return;}
+ const lista=getProveedoresObjs();
+ const a=lista.find(p=>p.id===idA), b=lista.find(p=>p.id===idB);
+ if(!a||!b)return;
+ if(!confirm(`Se va a borrar "${b.nombre}" y todo lo suyo (pedidos, materiales) va a pasar a "${a.nombre}". ¿Confirmás?`))return;
+ const pedidos=DB.get('pedidos');
+ pedidos.forEach(pe=>{if(pe.proveedorId===idB){pe.proveedorId=idA;pe.proveedor=a.nombre;}});
+ DB.set('pedidos',pedidos);
+ const materiales=DB.get('materiales');
+ materiales.forEach(m=>{if(m.proveedorId===idB){m.proveedorId=idA;m.proveedor=a.nombre;}});
+ DB.set('materiales',materiales);
+ DB.set('proveedores',lista.filter(p=>p.id!==idB));
+ document.getElementById('modal-fusionar-prov').remove();
+ renderProveedores();
+}
 
 
 function renderPedidos(){
@@ -2201,14 +3878,10 @@ function verPedidosProveedor(prov){
 
 
 function agregarProveedor(){
- const n=prompt('Nombre del proveedor:');
- if(n&&n.trim()){
- const lista=DB.get('proveedores');
- const base=getProveedores();
- const todos=[...new Set([...base,...lista,n.trim()])];
- DB.set('proveedores',todos);
+ mostrarPromptModal('＋ Nuevo proveedor','Nombre...',n=>{
+ buscarOCrearProveedor(n);
  renderPedidos();
- }
+ });
 }
 
 
@@ -2272,10 +3945,11 @@ function guardarPedido(num){
  document.querySelectorAll('#ped-items .tabla-fila').forEach(r=>{
  items.push({desc:r.querySelector('.pit-desc')?.value||'',cant:parseFloat(r.querySelector('.pit-cant')?.value)||1,precio:parseFloat(r.querySelector('.pit-precio')?.value)||0,estado:'Pendiente'});
  });
- const obj={id:formId||Date.now(),num,fecha:document.getElementById('ped-fecha')?.value||hoy(),proveedor:document.getElementById('ped-prov')?.value||'',notas:document.getElementById('ped-notas')?.value||'',items,estado:'Pendiente'};
+ const nombreProv=document.getElementById('ped-prov')?.value||'';
+ const obj={id:formId||DB.nuevoId(),num,fecha:document.getElementById('ped-fecha')?.value||hoy(),proveedor:nombreProv,proveedorId:buscarOCrearProveedor(nombreProv),notas:document.getElementById('ped-notas')?.value||'',items,estado:'Pendiente',updatedAt:Date.now()};
  const lista=DB.get('pedidos');
  if(formId){const idx=lista.findIndex(i=>i.id===formId);if(idx>=0)lista[idx]=obj;else lista.push(obj);}
- else lista.push(obj);
+ else{obj.createdAt=Date.now();lista.push(obj);}
  DB.set('pedidos',lista); piIdx=0;
  volverDeForm();
 }
@@ -2443,6 +4117,16 @@ function calcHorasOT(fechaI, horaI, fechaF, horaF){
  return `${horas}h ${mins}m`;
  }catch(e){return '—';}
 }
+// Igual que calcHorasOT pero en horas decimales, para poder multiplicar por el costo de mano de obra.
+function calcHorasOTDecimal(fechaI, horaI, fechaF, horaF){
+ if(!fechaI||!fechaF) return 0;
+ try{
+ const inicio = new Date(`${fechaI}T${horaI||'00:00'}`);
+ const fin = new Date(`${fechaF}T${horaF||'00:00'}`);
+ const diff = fin - inicio;
+ return diff>0?diff/3600000:0;
+ }catch(e){return 0;}
+}
 function actualizarHorasOT(){
  const fi=document.getElementById('ot-inicio-fecha')?.value;
  const hi=document.getElementById('ot-inicio-hora')?.value;
@@ -2453,6 +4137,96 @@ function actualizarHorasOT(){
  const box=document.getElementById('ot-horas-calc');
  if(el)el.textContent=resultado;
  if(box)box.style.display=(fi&&ff)?'block':'none';
+ recalcularCostoRealOT();
+}
+// ── Producción y mano de obra (Fase 5): materiales realmente usados + costo real de la OT ──
+let otmIdx=0;
+function mostrarSugerenciasOT(i){
+ const fila=document.getElementById(`otmi-${i}`);
+ const inputEl=fila?.querySelector('.otmi-nombre');
+ if(!inputEl)return;
+ renderSugerenciasBox(inputEl,mat=>{
+ inputEl.value=mat.descripcion;
+ actualizarCostoDesdeMaterialOT(i);
+ cerrarSugerenciasBox();
+ });
+}
+function agregarFilaMaterialOT(data){
+ const i=otmIdx++;
+ const cont=document.getElementById('otm-materiales');
+ if(!cont)return;
+ const d=data||{};
+ const div=document.createElement('div');
+ div.className='tabla-fila'; div.id=`otmi-${i}`;
+ div.style.cssText='display:grid;grid-template-columns:1fr 55px 85px 85px 28px;gap:6px;align-items:center;margin-bottom:6px';
+ if(d.materialId)div.dataset.materialId=d.materialId;
+ div.innerHTML=`<input type="text" class="otmi-nombre" placeholder="Buscar material..." value="${(d.descripcion||'').replace(/"/g,'&quot;')}" oninput="mostrarSugerenciasOT(${i});actualizarCostoDesdeMaterialOT(${i})" onfocus="mostrarSugerenciasOT(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
+    <input type="number" class="otmi-cant" placeholder="1" step="0.1" value="${d.cantidad||''}" oninput="recalcularCostoRealOT()">
+    <input type="number" class="otmi-costo" placeholder="0" step="0.01" value="${d.costoUnitario||''}" oninput="recalcularCostoRealOT()">
+    <span class="total-cell otmi-subtotal">—</span>
+    <button class="del-btn" onclick="document.getElementById('otmi-${i}').remove();recalcularCostoRealOT()">✕</button>`;
+ cont.appendChild(div);
+ recalcularCostoRealOT();
+}
+function actualizarCostoDesdeMaterialOT(i){
+ const fila=document.getElementById(`otmi-${i}`);
+ if(!fila)return;
+ const nombre=fila.querySelector('.otmi-nombre')?.value||'';
+ const mat=buscarMaterialPorNombre(nombre);
+ if(mat){
+ const inpCosto=fila.querySelector('.otmi-costo');
+ if(inpCosto)inpCosto.value=mat.costoUnitario||0;
+ fila.dataset.materialId=mat.id;
+ } else {
+ delete fila.dataset.materialId;
+ }
+ recalcularCostoRealOT();
+}
+function leerMaterialesOT(){
+ const filas=[];
+ document.querySelectorAll('#otm-materiales .tabla-fila').forEach(r=>{
+ const descripcion=r.querySelector('.otmi-nombre')?.value||'';
+ const cantidad=parseFloat(r.querySelector('.otmi-cant')?.value)||0;
+ const costoUnitario=parseFloat(r.querySelector('.otmi-costo')?.value)||0;
+ if(!descripcion&&!cantidad&&!costoUnitario)return;
+ filas.push({materialId:r.dataset.materialId?parseInt(r.dataset.materialId):null,descripcion,cantidad,costoUnitario,subtotal:cantidad*costoUnitario});
+ });
+ return filas;
+}
+// Recalcula el costo real de producción en vivo y lo compara contra lo que se había estimado
+// en el presupuesto de origen (si lo hay). Es solo referencia — no cambia el Precio total cobrado.
+function recalcularCostoRealOT(excludePresupId){
+ document.querySelectorAll('#otm-materiales .tabla-fila').forEach(r=>{
+ const c=parseFloat(r.querySelector('.otmi-cant')?.value)||0;
+ const p=parseFloat(r.querySelector('.otmi-costo')?.value)||0;
+ const tot=c*p;
+ const span=r.querySelector('.otmi-subtotal');
+ if(span)span.textContent=tot>0?fmt(tot):'—';
+ });
+ const materiales=leerMaterialesOT();
+ const costoMateriales=materiales.reduce((s,m)=>s+m.subtotal,0);
+ const horasReales=calcHorasOTDecimal(document.getElementById('ot-inicio-fecha')?.value,document.getElementById('ot-inicio-hora')?.value,document.getElementById('ot-fin-fecha')?.value,document.getElementById('ot-fin-hora')?.value);
+ const cfg=getCosteoCfg();
+ const costoManoObra=horasReales*(cfg.costoHoraManoObra||0);
+ const costoTotal=costoMateriales+costoManoObra;
+ const presupIdStr=document.getElementById('ot-presup-id-oculto')?.value;
+ const presup=presupIdStr?DB.get('presupuestos').find(p=>p.id===parseInt(presupIdStr)):null;
+ const estimado=presup?.costeo;
+ const cont=document.getElementById('otm-resumen');
+ if(cont){
+ cont.innerHTML=`<div class="res-row"><span class="rl">Costo materiales reales</span><span class="rv">${fmt(costoMateriales)}</span></div>
+ <div class="res-row"><span class="rl">Costo mano de obra real (${horasReales.toFixed(1)}h × ${fmt(cfg.costoHoraManoObra||0)})</span><span class="rv">${fmt(costoManoObra)}</span></div>
+ <div class="res-row" style="font-weight:700"><span class="rl">Costo real de producción</span><span class="rv">${fmt(costoTotal)}</span></div>
+ ${estimado?`<div class="res-row" style="border-top:1px dashed var(--crema3);padding-top:8px;margin-top:4px"><span class="rl">Costo estimado (del presupuesto)</span><span class="rv">${fmt(estimado.costoDirecto)}</span></div>
+ <div class="res-row" style="font-weight:700;color:${costoTotal>estimado.costoDirecto?'var(--rojo)':'var(--verde2)'}"><span class="rl">Desvío</span><span class="rv">${costoTotal>estimado.costoDirecto?'+':''}${fmt(costoTotal-estimado.costoDirecto)}</span></div>`
+ :(materiales.length||horasReales?'<p style="font-size:11px;color:var(--gris);margin-top:6px">Esta OT no tiene un presupuesto de origen con costeo, así que no hay estimado para comparar.</p>':'')}
+ ${!cfg.costoHoraManoObra?'<p style="font-size:11px;color:var(--naranja);margin-top:6px">⚠️ Todavía no configuraste el costo de mano de obra por hora (Finanzas → Rentabilidad).</p>':''}`;
+ }
+ return{materiales,costoMateriales,horasReales,costoManoObra,costoTotal,estimadoComparado:estimado?.costoDirecto??null,calculadoEl:Date.now()};
+}
+function renderMaterialesRealesExistentes(materialesReales){
+ (materialesReales||[]).forEach(m=>agregarFilaMaterialOT(m));
+ recalcularCostoRealOT();
 }
 
 
@@ -2469,7 +4243,7 @@ function verificarPresupuestosVencidos(){
  const diasTranscurridos = Math.floor((hoyMs - fechaMs) / (1000*60*60*24));
  if(diasTranscurridos >= 45){
  vencidos++;
- return {...p, estado:'Rechazado', fechaVencimiento: new Date().toISOString().split('T')[0]};
+ return {...p, estado:'Rechazado', estadoAnterior:p.estado, vencidoAutomatico:true, fechaVencimiento: new Date().toISOString().split('T')[0]};
  }
  return p;
  });
@@ -2486,6 +4260,7 @@ function verificarPresupuestosVencidos(){
 const CATEGORIAS_PAGO={
  proveedores:{label:'Proveedores',emoji:'📦'},
  sueldos:{label:'Sueldos',emoji:'👷'},
+ retiro_propietario:{label:'Retiro Propietario',emoji:'🧑‍💼'},
  alquiler:{label:'Alquiler',emoji:'🏠'},
  impuestos:{label:'Impuestos',emoji:'🧾'},
  servicios:{label:'Servicios',emoji:'💡'},
@@ -2510,10 +4285,10 @@ function setFinCfg(cfg){DB.set('finanzas_config',[cfg]);}
 
 // ── Movimientos (ingresos/egresos) ──
 function getMovimientos(){return DB.get('movimientos')||[];}
-function registrarMovimiento(tipo,medio,categoria,monto,concepto,origen){
+function registrarMovimiento(tipo,medio,categoria,monto,concepto,origen,estructura,prevPagado){
  monto=parseFloat(monto)||0;
  if(monto<=0)return false;
- const mov={id:Date.now()+Math.floor(Math.random()*1000),fecha:hoy(),tipo,medio,categoria:categoria||'',concepto:concepto||'',monto,origen:origen||''};
+ const mov={id:DB.nuevoId(),fecha:hoy(),tipo,medio,categoria:categoria||'',concepto:concepto||'',monto,origen:origen||''};
  const lista=getMovimientos();
  lista.push(mov);
  DB.set('movimientos',lista);
@@ -2523,7 +4298,138 @@ function registrarMovimiento(tipo,medio,categoria,monto,concepto,origen){
  if(esBanco)cfg.saldoBanco=(cfg.saldoBanco||0)+delta;
  else cfg.saldoEfectivo=(cfg.saldoEfectivo||0)+delta;
  setFinCfg(cfg);
- return true;
+ distribuirFondos(tipo,categoria,monto,estructura,prevPagado);
+ // CORRECCIÓN: devolver el id del movimiento para poder enlazarlo desde el pago que lo originó
+ return mov.id;
+}
+// Deriva la estructura económica de ESE presupuesto (snapshot congelado al guardarlo): además de los
+// % (para cuando no se puede armar la cascada), devuelve los montos absolutos en el orden de
+// prioridad Materia Prima → Mano de Obra → Costos Globales → Ganancia, para repartir en cascada.
+function estructuraEconomicaPresup(presup){
+ const c=presup?.costeo;
+ if(!c||!c.precioSugerido||c.precioSugerido<=0)return null;
+ const base=c.precioSugerido;
+ const sizeMP=c.costoMateriales||0;
+ const sizeMO=c.costoManoObra||0;
+ const sizeGlobales=Math.max(0,(c.costoTotal||0)-(c.costoDirecto||0));
+ const sizeUtilidad=Math.max(0,base-(c.costoTotal||0));
+ return{
+ pctMateriaPrima:sizeMP/base*100,
+ pctManoObra:sizeMO/base*100,
+ pctGlobales:sizeGlobales/base*100,
+ pctUtilidad:sizeUtilidad/base*100,
+ tamanos:[sizeMP,sizeMO,sizeGlobales,sizeUtilidad]
+ };
+}
+// ── Fondos internos (Fase 8, corregido dos veces): 4 sobres derivados de CADA presupuesto
+// (MP/MO/Globales/Utilidad) — no de un % único de fábrica. El % general solo se usa como resguardo
+// cuando el presupuesto de origen no tiene costeo cargado.
+// Sueldo Propietario es AHORA UNA CAJA APARTE, propia: se llena con un % de la Utilidad de cada
+// cobro (no de la venta total, porque el sueldo sale de la ganancia, no del costo de materiales/MO).
+// Sirve para comparar "cuánto te corresponde según lo que se vendió" contra "cuánto retirás de
+// verdad": si retirás menos de lo que se acumuló, queda superávit ahí; si retirás más, esta caja
+// queda en negativo — señal de que estás sacando de más, a costa de las otras cajas.
+function getFondosCfg(){
+ const arr=DB.get('fondos_config');
+ const base={pctMateriaPrima:0,pctManoObra:0,pctGlobales:0,pctUtilidad:0,pctSueldoSobreUtilidad:0,saldoMateriaPrima:0,saldoManoObra:0,saldoGlobales:0,saldoUtilidad:0,saldoSueldoPropietario:0,retiradoPropietarioAcum:0};
+ if(Array.isArray(arr)&&arr[0])return{...base,...arr[0]};
+ return base;
+}
+function setFondosCfg(cfg){DB.set('fondos_config',[cfg]);}
+function setPorcentajesFondos(mp,mo,gl,ut,sp){
+ mp=parseFloat(mp)||0;mo=parseFloat(mo)||0;gl=parseFloat(gl)||0;ut=parseFloat(ut)||0;sp=parseFloat(sp)||0;
+ const cfg=getFondosCfg();
+ cfg.pctMateriaPrima=mp;cfg.pctManoObra=mo;cfg.pctGlobales=gl;cfg.pctUtilidad=ut;cfg.pctSueldoSobreUtilidad=sp;
+ setFondosCfg(cfg);
+ return mp+mo+gl+ut;
+}
+// Cada ingreso se reparte según la estructura propia del presupuesto de origen (si la OT/CC la trae);
+// si no hay estructura propia, se usa el % general como resguardo. De la porción que cae en Utilidad,
+// un % configurable (pctSueldoSobreUtilidad) se separa aparte, a la caja de Sueldo Propietario.
+// Los egresos descuentan del sobre que corresponda; "retiro_propietario" ahora sale de ESA caja propia.
+function distribuirFondos(tipo,categoria,monto,estructura,prevPagado){
+ const cfg=getFondosCfg();
+ if(tipo==='ingreso'){
+ let mpMonto,moMonto,globalesMonto,utilidadBrutaMonto;
+ if(estructura&&estructura.tamanos&&prevPagado!==undefined&&prevPagado!==null){
+ // Cascada por prioridad: primero se cubre Materia Prima, después Mano de Obra, después
+ // Costos Globales, y recién lo que sobra (una vez cubierto todo lo anterior) es Ganancia.
+ // Así, una seña parcial prioriza materiales/mano de obra antes de reconocer ganancia — y si
+ // el saldo final llega recién con la entrega (mes siguiente), ahí se termina de reconocer el resto.
+ const partes=waterfallDistribucion(prevPagado,monto,estructura.tamanos);
+ mpMonto=partes[0];moMonto=partes[1];globalesMonto=partes[2];utilidadBrutaMonto=partes[3];
+ } else {
+ const pct=estructura||{pctMateriaPrima:cfg.pctMateriaPrima,pctManoObra:cfg.pctManoObra,pctGlobales:cfg.pctGlobales,pctUtilidad:cfg.pctUtilidad};
+ mpMonto=monto*((pct.pctMateriaPrima||0)/100);
+ moMonto=monto*((pct.pctManoObra||0)/100);
+ globalesMonto=monto*((pct.pctGlobales||0)/100);
+ utilidadBrutaMonto=monto*((pct.pctUtilidad||0)/100);
+ }
+ cfg.saldoMateriaPrima=(cfg.saldoMateriaPrima||0)+mpMonto;
+ cfg.saldoManoObra=(cfg.saldoManoObra||0)+moMonto;
+ cfg.saldoGlobales=(cfg.saldoGlobales||0)+globalesMonto;
+ const montoSueldo=utilidadBrutaMonto*((cfg.pctSueldoSobreUtilidad||0)/100);
+ cfg.saldoUtilidad=(cfg.saldoUtilidad||0)+(utilidadBrutaMonto-montoSueldo);
+ cfg.saldoSueldoPropietario=(cfg.saldoSueldoPropietario||0)+montoSueldo;
+ } else if(tipo==='egreso'){
+ if(categoria==='proveedores')cfg.saldoMateriaPrima=(cfg.saldoMateriaPrima||0)-monto;
+ else if(categoria==='sueldos')cfg.saldoManoObra=(cfg.saldoManoObra||0)-monto;
+ else if(categoria==='retiro_propietario'){
+ cfg.saldoSueldoPropietario=(cfg.saldoSueldoPropietario||0)-monto;
+ cfg.retiradoPropietarioAcum=(cfg.retiradoPropietarioAcum||0)+monto;
+ }
+ else cfg.saldoGlobales=(cfg.saldoGlobales||0)-monto;
+ }
+ setFondosCfg(cfg);
+}
+// Reparte un pago de $monto que cae en el tramo [prevPagado, prevPagado+monto] del total acumulado
+// pagado en esa OT, entre 4 "escalones" de tamaño fijo (tamanos, en orden de prioridad). Lo que
+// sobra por encima de la suma de los 4 tamaños (sobrepago) se suma como Ganancia extra.
+function waterfallDistribucion(prevPagado,monto,tamanos){
+ const nuevoPagado=prevPagado+monto;
+ const resultado=[0,0,0,0];
+ let acumInicio=0;
+ for(let i=0;i<4;i++){
+ const acumFin=acumInicio+(tamanos[i]||0);
+ const solapaInicio=Math.max(prevPagado,acumInicio);
+ const solapaFin=Math.min(nuevoPagado,acumFin);
+ if(solapaFin>solapaInicio)resultado[i]=solapaFin-solapaInicio;
+ acumInicio=acumFin;
+ }
+ if(nuevoPagado>acumInicio)resultado[3]+=(nuevoPagado-acumInicio); // sobrepago -> ganancia extra
+ return resultado;
+}
+function abrirModalFondos(){
+ const cfg=getFondosCfg();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay'; overlay.id='modal-fondos';
+ overlay.innerHTML=`<div class="modal-box">
+ <h3>🏺 Configurar sobres de Fondos</h3>
+ <p style="font-size:12px;color:var(--gris);margin-bottom:10px">MP/MO/Globales/Utilidad: resguardo general, solo se usa cuando un cobro no tiene un presupuesto de origen con costeo cargado. Tienen que sumar 100%.</p>
+ <div class="form-row"><label>Materia Prima (%)</label><input type="number" step="1" id="mf-mp" value="${cfg.pctMateriaPrima}"></div>
+ <div class="form-row"><label>Mano de Obra (%)</label><input type="number" step="1" id="mf-mo" value="${cfg.pctManoObra}"></div>
+ <div class="form-row"><label>Costos Globales/Estructura (%)</label><input type="number" step="1" id="mf-gl" value="${cfg.pctGlobales}"></div>
+ <div class="form-row"><label>Utilidad (%)</label><input type="number" step="1" id="mf-ut" value="${cfg.pctUtilidad}"></div>
+ <p style="font-size:12px;color:var(--gris);margin:14px 0 10px;border-top:1px solid var(--crema3);padding-top:10px">Sueldo Propietario: caja aparte. Este % se separa DE LA UTILIDAD de cada cobro (no de la venta total) — es lo que te corresponde según lo que se vendió, para comparar contra lo que retirás de verdad.</p>
+ <div class="form-row"><label>Sueldo Propietario (% de la Utilidad)</label><input type="number" step="1" id="mf-sp" value="${cfg.pctSueldoSobreUtilidad}"></div>
+ <div class="btn-row" style="margin-top:16px">
+ <button class="btn btn-secondary" onclick="document.getElementById('modal-fondos').remove()">Cancelar</button>
+ <button class="btn btn-primary" onclick="guardarPorcentajesFondos()">Guardar</button>
+ </div>
+ </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarPorcentajesFondos(){
+ const suma=setPorcentajesFondos(
+ document.getElementById('mf-mp')?.value,
+ document.getElementById('mf-mo')?.value,
+ document.getElementById('mf-gl')?.value,
+ document.getElementById('mf-ut')?.value,
+ document.getElementById('mf-sp')?.value
+ );
+ document.getElementById('modal-fondos').remove();
+ renderFinanzas();
+ if(Math.round(suma)!==100)alert(`Ojo: MP+MO+Globales+Utilidad suman ${suma}%, no 100%. Los cobros sin presupuesto de origen no se van a repartir del todo entre esos 4 sobres.`);
 }
 
 
@@ -2636,10 +4542,94 @@ function calcRentabilidad(){
  const movs=getMovimientos().filter(m=>m.tipo==='egreso'&&enEsteMes(m.fecha));
  const materiales=movs.filter(m=>m.categoria==='proveedores').reduce((s,m)=>s+m.monto,0);
  const manoObra=movs.filter(m=>m.categoria==='sueldos').reduce((s,m)=>s+m.monto,0);
- const gastosFijos=movs.filter(m=>!['proveedores','sueldos'].includes(m.categoria)).reduce((s,m)=>s+m.monto,0);
+ // CORRECCIÓN: el retiro del propietario no es un costo de producción — se muestra aparte y no reduce la ganancia del negocio
+ const retiroPropietario=movs.filter(m=>m.categoria==='retiro_propietario').reduce((s,m)=>s+m.monto,0);
+ const gastosFijos=movs.filter(m=>!['proveedores','sueldos','retiro_propietario'].includes(m.categoria)).reduce((s,m)=>s+m.monto,0);
  const ganancia=facturacion-materiales-manoObra-gastosFijos;
  const margen=facturacion>0?(ganancia/facturacion*100):0;
- return{facturacion,materiales,manoObra,gastosFijos,ganancia,margen};
+ return{facturacion,materiales,manoObra,gastosFijos,retiroPropietario,ganancia,margen};
+}
+// ── Costeo: tasa fija de aplicación de costos indirectos ──
+// Parámetro editable a mano (nunca se recalcula solo) que se va a aplicar sobre
+// Costos Directos (materia prima + mano de obra) cuando exista el motor de costeo real.
+// El panel de referencia (gastos fijos/indirectos reales mes a mes) es solo informativo:
+// sirve para decidir CUÁNDO conviene ajustar la tasa, pero no se aplica automático al precio.
+function getCosteoCfg(){
+ const arr=DB.get('costeo_config');
+ const base={tasaFija:0.5,costoHoraManoObra:0,historial:[]};
+ if(Array.isArray(arr)&&arr[0])return{...base,...arr[0]};
+ return base;
+}
+function setCosteoCfg(cfg){DB.set('costeo_config',[cfg]);}
+function setTasaFija(nuevoValor,motivo){
+ nuevoValor=parseFloat(nuevoValor);
+ if(isNaN(nuevoValor)||nuevoValor<0)return false;
+ const cfg=getCosteoCfg();
+ const historial=cfg.historial||[];
+ historial.push({fecha:hoy(),campo:'tasaFija',valorAnterior:cfg.tasaFija,valorNuevo:nuevoValor,motivo:motivo||''});
+ cfg.tasaFija=nuevoValor;
+ cfg.historial=historial;
+ setCosteoCfg(cfg);
+ return true;
+}
+// Costo por hora de mano de obra directa: lo tenés que cargar vos (no lo inventamos) — se usa
+// junto con las Horas estimadas de cada presupuesto para calcular el costo de mano de obra real.
+function setCostoHoraManoObra(nuevoValor,motivo){
+ nuevoValor=parseFloat(nuevoValor);
+ if(isNaN(nuevoValor)||nuevoValor<0)return false;
+ const cfg=getCosteoCfg();
+ const historial=cfg.historial||[];
+ historial.push({fecha:hoy(),campo:'costoHoraManoObra',valorAnterior:cfg.costoHoraManoObra,valorNuevo:nuevoValor,motivo:motivo||''});
+ cfg.costoHoraManoObra=nuevoValor;
+ cfg.historial=historial;
+ setCosteoCfg(cfg);
+ return true;
+}
+// Gastos fijos+indirectos reales por mes (misma definición que "Gastos fijos" en
+// calcRentabilidad: todo egreso que no sea proveedores, sueldos ni retiro propietario).
+function calcGastosFijosPorMes(n){
+ n=n||6;
+ const movs=getMovimientos().filter(m=>m.tipo==='egreso'&&!['proveedores','sueldos','retiro_propietario'].includes(m.categoria));
+ const porMes={};
+ movs.forEach(m=>{
+ if(!m.fecha)return;
+ const d=new Date(m.fecha);
+ const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+ porMes[key]=(porMes[key]||0)+(parseFloat(m.monto)||0);
+ });
+ return Object.keys(porMes).sort().slice(-n).map(k=>({mes:k,total:porMes[k]}));
+}
+function abrirModalTasaFija(){
+ const cfg=getCosteoCfg();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay'; overlay.id='modal-tasa-fija';
+ overlay.innerHTML=`<div class="modal-box">
+ <h3>⚖️ Parámetros de costeo</h3>
+ <p style="font-size:12px;color:var(--gris);margin-bottom:10px">Se usan al calcular el "Precio sugerido" de cada presupuesto. Mirá el panel de gastos fijos reales antes de decidir.</p>
+ <div class="form-row"><label>Tasa fija sobre costos directos (ej: 0.5 = 50%)</label><input type="number" step="0.01" id="mtf-valor" value="${cfg.tasaFija}"></div>
+ <div class="form-row"><label>Costo de mano de obra por hora ($)</label><input type="number" step="1" id="mtf-mo" value="${cfg.costoHoraManoObra}" placeholder="Ej: 8000"></div>
+ <div class="form-row"><label>Motivo del cambio</label><input type="text" id="mtf-motivo" placeholder="Ej: subieron los costos fijos"></div>
+ <div class="btn-row" style="margin-top:16px">
+ <button class="btn btn-secondary" onclick="document.getElementById('modal-tasa-fija').remove()">Cancelar</button>
+ <button class="btn btn-primary" onclick="guardarTasaFija()">Guardar</button>
+ </div>
+ </div>`;
+ document.body.appendChild(overlay);
+}
+function guardarTasaFija(){
+ const v=document.getElementById('mtf-valor').value;
+ const vmo=document.getElementById('mtf-mo').value;
+ const motivo=document.getElementById('mtf-motivo').value;
+ const cfgAntes=getCosteoCfg();
+ let ok=true;
+ if(parseFloat(v)!==cfgAntes.tasaFija)ok=setTasaFija(v,motivo)&&ok;
+ if(parseFloat(vmo)!==cfgAntes.costoHoraManoObra)ok=setCostoHoraManoObra(vmo,motivo)&&ok;
+ if(ok){
+ document.getElementById('modal-tasa-fija').remove();
+ renderFinanzas();
+ }else{
+ alert('Ingresá valores válidos (0 o mayor).');
+ }
 }
 function calcAlertas(){
  const alertas=[];
@@ -2681,6 +4671,9 @@ function renderEstadoNegocio(){
  return new Date(f).setHours(0,0,0,0)<new Date().setHours(0,0,0,0);
  }).length;
  const entregasHoy=ots.filter(o=>(o.entrega||o.fechaEntrega)===hoyStr).length;
+ const materialesList=getMateriales();
+ const totalMateriales=materialesList.length;
+ const sinStock=materialesList.filter(m=>(m.stock||0)<=0).length;
  cont.innerHTML=`<div class="form-card" style="margin-bottom:14px">
  <h3>📊 Estado del negocio</h3>
  <div class="res-row"><span class="rl">💵 Caja</span><span class="rv">${fmt(cfg.saldoEfectivo||0)}</span></div>
@@ -2697,12 +4690,19 @@ function renderEstadoNegocio(){
  </div>
  </div>
  <div class="form-card" style="margin-bottom:14px">
- <h3>🪵 Producción</h3>
+ <h3>🪵 Producción (OT)</h3>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
  <div style="background:var(--crema);border-radius:10px;padding:10px;cursor:pointer" onclick="irA('ordenes')"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">Pendientes</div><div style="font-size:18px;font-weight:700;color:var(--marron2)">${pendientes}</div></div>
  <div style="background:var(--crema);border-radius:10px;padding:10px;cursor:pointer" onclick="irA('ordenes')"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">En fabricación</div><div style="font-size:18px;font-weight:700;color:var(--azul)">${enFabricacion}</div></div>
  <div style="background:${atrasadas>0?'var(--rojo-cl)':'var(--crema)'};border-radius:10px;padding:10px;cursor:pointer" onclick="irA('ordenes')"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">Atrasadas</div><div style="font-size:18px;font-weight:700;color:var(--rojo)">${atrasadas}</div></div>
  <div style="background:var(--crema);border-radius:10px;padding:10px;cursor:pointer" onclick="irA('ordenes')"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">Entregas hoy</div><div style="font-size:18px;font-weight:700;color:var(--verde2)">${entregasHoy}</div></div>
+ </div>
+ </div>
+ <div class="form-card" style="margin-bottom:14px">
+ <h3>📦 Stock de materiales</h3>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+ <div style="background:var(--crema);border-radius:10px;padding:10px;cursor:pointer" onclick="irA('materiales')"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">Materiales cargados</div><div style="font-size:18px;font-weight:700;color:var(--marron2)">${totalMateriales}</div></div>
+ <div style="background:${sinStock>0?'var(--rojo-cl)':'var(--crema)'};border-radius:10px;padding:10px;cursor:pointer" onclick="irA('materiales')"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">Sin stock</div><div style="font-size:18px;font-weight:700;color:var(--rojo)">${sinStock}</div></div>
  </div>
  </div>`;
 }
@@ -2875,9 +4875,10 @@ function guardarCobroCC(ccId){
  const idx=lista.findIndex(c=>c.id===ccId);
  if(idx<0)return;
  if(!lista[idx].pagos)lista[idx].pagos=[];
- lista[idx].pagos.push({fecha,forma:MEDIOS_PAGO[medio],monto});
+ const movId=registrarMovimiento('ingreso',medio,'',monto,`Cobro CC-${String(lista[idx].num).padStart(3,'0')} ${lista[idx].apellido||''} ${lista[idx].nombre||''}`,`CC-${lista[idx].num}`);
+ // CORRECCIÓN: cada pago tiene ID propio y queda enlazado al movimiento financiero correspondiente
+ lista[idx].pagos.push({id:DB.nuevoId(),fecha,forma:MEDIOS_PAGO[medio],monto,movimientoId:movId});
  DB.set('cuentas',lista);
- registrarMovimiento('ingreso',medio,'',monto,`Cobro CC-${String(lista[idx].num).padStart(3,'0')} ${lista[idx].apellido||''} ${lista[idx].nombre||''}`,`CC-${lista[idx].num}`);
  document.getElementById('modal-cobro-cc')?.remove();
  actualizarStats();
  renderFinanzas();
@@ -3072,9 +5073,25 @@ function guardarMovimientoModal(tipo){
 }
 
 
+// Fase 9: rentabilidad real por OT (comparando lo cobrado contra el costo real de producción).
+function calcRentabilidadPorOT(){
+ return DB.get('ordenes')
+ .filter(o=>o.costoRealProduccion&&o.costoRealProduccion.costoTotal>0&&o.costo>0)
+ .map(o=>{
+ const costoReal=o.costoRealProduccion.costoTotal;
+ const ganancia=o.costo-costoReal;
+ return{id:o.id,num:o.num,cliente:`${o.apellido||''} ${o.nombre||''}`.trim(),desc:o.desc||'',costo:o.costo,costoReal,ganancia,margen:ganancia/o.costo*100};
+ })
+ .sort((a,b)=>b.margen-a.margen);
+}
 function renderFinRenta(){
  const r=calcRentabilidad();
  const cfg=getFinCfg();
+ const cfgCosteo=getCosteoCfg();
+ const cfgFondos=getFondosCfg();
+ const gastosPorMes=calcGastosFijosPorMes(6);
+ const historialTasa=(cfgCosteo.historial||[]).slice(-5).reverse();
+ const rentabOT=calcRentabilidadPorOT();
  const meta=cfg.metaVentas||0;
  const pct=meta>0?Math.min(100,Math.round(r.facturacion/meta*100)):0;
  const presupsMes=DB.get('presupuestos').filter(p=>enEsteMes(p.fecha));
@@ -3124,16 +5141,67 @@ function renderFinRenta(){
  ['Proveedores pend.',provPend]
  ].map(([l,v])=>`<div style="background:var(--crema);border-radius:10px;padding:10px"><div style="font-size:9px;color:var(--gris);text-transform:uppercase;font-weight:600">${l}</div><div style="font-size:14px;font-weight:700;color:var(--marron2);margin-top:2px">${v}</div></div>`).join('')}
  </div>
+ </div>
+ <div class="form-card"><h3>⚖️ Parámetros de costeo</h3>
+ <div class="res-row"><span class="rl">Tasa fija sobre costos directos</span><span class="rv">${(cfgCosteo.tasaFija*100).toFixed(0)}%</span></div>
+ <div class="res-row"><span class="rl">Costo de mano de obra por hora</span><span class="rv">${cfgCosteo.costoHoraManoObra?fmt(cfgCosteo.costoHoraManoObra):'⚠️ Sin configurar'}</span></div>
+ <p style="font-size:11px;color:var(--gris);margin:4px 0 10px">Los ajustás vos a mano, cuando decidas — nunca se recalculan solos. Se usan para el "Precio sugerido" de cada presupuesto nuevo.</p>
+ <button class="btn btn-secondary" style="width:100%" onclick="abrirModalTasaFija()">✏️ Ajustar parámetros</button>
+ ${historialTasa.length?`<div style="margin-top:12px"><div style="font-size:10px;color:var(--gris);text-transform:uppercase;font-weight:600;margin-bottom:4px">Últimos cambios</div>
+ ${historialTasa.map(h=>{
+ const esMO=h.campo==='costoHoraManoObra';
+ const fv=x=>esMO?fmt(x):(x*100).toFixed(0)+'%';
+ return`<div style="font-size:11px;color:var(--marron2);padding:4px 0;border-bottom:1px solid var(--crema2)">${fmtF(h.fecha)} · ${esMO?'Costo hora MO':'Tasa fija'}: ${fv(h.valorAnterior)} → ${fv(h.valorNuevo)}${h.motivo?' · '+h.motivo:''}</div>`;
+ }).join('')}
+ </div>`:''}
+ </div>
+ <div class="form-card"><h3>📊 Gastos fijos+indirectos reales (referencia)</h3>
+ <p style="font-size:11px;color:var(--gris);margin-bottom:8px">Solo informativo, para saber cuándo conviene ajustar la tasa — no se aplica automático al precio.</p>
+ ${gastosPorMes.length?gastosPorMes.map(g=>`<div class="res-row"><span class="rl">${g.mes}</span><span class="rv">${fmt(g.total)}</span></div>`).join(''):'<p style="font-size:12px;color:var(--gris)">Todavía no hay suficientes movimientos registrados como para mostrar esta referencia.</p>'}
+ </div>
+ <div class="form-card"><h3>📈 Rentabilidad real por OT</h3>
+ <p style="font-size:11px;color:var(--gris);margin-bottom:8px">Comparando lo cobrado contra el costo real de producción de cada OT (solo las que ya tienen materiales/horas reales cargados).</p>
+ ${rentabOT.length?`
+ ${rentabOT.slice(0,3).map(o=>`<div class="res-row"><span class="rl">OT-${String(o.num).padStart(3,'0')} ${o.cliente}</span><span class="rv" style="color:${o.margen>=0?'var(--verde2)':'var(--rojo)'}">${o.margen.toFixed(0)}%</span></div>`).join('')}
+ ${rentabOT.length>4?`<p style="font-size:10px;color:var(--gris);text-transform:uppercase;font-weight:600;margin:8px 0 2px">Menor rentabilidad</p>${rentabOT.slice(-3).reverse().map(o=>`<div class="res-row"><span class="rl">OT-${String(o.num).padStart(3,'0')} ${o.cliente}</span><span class="rv" style="color:${o.margen>=0?'var(--verde2)':'var(--rojo)'}">${o.margen.toFixed(0)}%</span></div>`).join('')}`:''}
+ `:'<p style="font-size:12px;color:var(--gris)">Todavía no hay OTs con costo real y precio cargados para comparar.</p>'}
+ </div>
+ <div class="form-card"><h3>🏺 Fondos (sobres internos)</h3>
+ <p style="font-size:11px;color:var(--gris);margin-bottom:8px">No mueven plata real de tu banco/efectivo. Cada cobro se reparte según la estructura propia del presupuesto que lo originó (materiales/mano de obra/tasa fija/margen de ESE trabajo); el % de acá abajo es solo un resguardo para cobros sin presupuesto con costeo.</p>
+ <div class="res-row"><span class="rl">📐 Materia Prima</span><span class="rv" style="color:${cfgFondos.saldoMateriaPrima<0?'var(--rojo)':'var(--marron2)'}">${fmt(cfgFondos.saldoMateriaPrima)}</span></div>
+ <div class="res-row"><span class="rl">🔨 Mano de Obra</span><span class="rv" style="color:${cfgFondos.saldoManoObra<0?'var(--rojo)':'var(--marron2)'}">${fmt(cfgFondos.saldoManoObra)}</span></div>
+ <div class="res-row"><span class="rl">🏗️ Costos Globales/Estructura</span><span class="rv" style="color:${cfgFondos.saldoGlobales<0?'var(--rojo)':'var(--marron2)'}">${fmt(cfgFondos.saldoGlobales)}</span></div>
+ <div class="res-row"><span class="rl">💰 Utilidad</span><span class="rv" style="color:${cfgFondos.saldoUtilidad<0?'var(--rojo)':'var(--verde2)'}">${fmt(cfgFondos.saldoUtilidad)}</span></div>
+ <p style="font-size:10px;color:var(--gris);margin:6px 0">Resguardo general: MP ${cfgFondos.pctMateriaPrima}% · MO ${cfgFondos.pctManoObra}% · Globales ${cfgFondos.pctGlobales}% · Utilidad ${cfgFondos.pctUtilidad}%</p>
+ <button class="btn btn-secondary" style="width:100%" onclick="abrirModalFondos()">✏️ Configurar sobres</button>
+ ${(cfgFondos.pctMateriaPrima+cfgFondos.pctManoObra+cfgFondos.pctGlobales+cfgFondos.pctUtilidad)===0?'<p style="font-size:11px;color:var(--naranja);margin-top:6px">⚠️ Todavía no configuraste el % de resguardo — los cobros sin presupuesto de origen no se van a repartir.</p>':''}
+ </div>
+ <div class="form-card" style="border-left:4px solid #8B5CF6"><h3>🧑 Sueldo Propietario (caja aparte)</h3>
+ <p style="font-size:11px;color:var(--gris);margin-bottom:8px">Se llena con el ${cfgFondos.pctSueldoSobreUtilidad}% de la Utilidad de cada cobro — es lo que te corresponde según lo que se vendió. Comparalo contra lo que retirás de verdad.</p>
+ <div class="res-row" style="font-weight:700"><span class="rl">Te corresponde según ventas</span><span class="rv" style="color:${cfgFondos.saldoSueldoPropietario<0?'var(--rojo)':'var(--verde2)'}">${fmt(cfgFondos.saldoSueldoPropietario)}</span></div>
+ <div class="res-row"><span class="rl">Retirado en total (histórico)</span><span class="rv">${fmt(cfgFondos.retiradoPropietarioAcum)}</span></div>
+ ${cfgFondos.saldoSueldoPropietario<0
+ ?'<p style="font-size:11px;color:var(--rojo);margin-top:6px">⚠️ Retiraste más de lo que las ventas generaron para tu sueldo — ese excedente está saliendo de las otras cajas (Materia Prima, Mano de Obra o Globales).</p>'
+ :'<p style="font-size:11px;color:var(--verde2);margin-top:6px">✓ Hay superávit: las ventas generaron más de lo que retiraste hasta ahora.</p>'}
  </div>`;
  return html;
 }
 
 
 // ══ INIT ══
-verificarPresupuestosVencidos();
-actualizarStats();
+// Cada paso envuelto por separado: si alguno falla (ej: almacenamiento restringido), no debe
+// impedir que el resto de la app arranque igual.
+function initSeguro(fn,nombre){try{fn();}catch(e){console.warn('Fallo al iniciar '+nombre+':',e);}}
+initSeguro(verificarPresupuestosVencidos,'verificarPresupuestosVencidos');
+initSeguro(migrarClientes,'migrarClientes');
+initSeguro(migrarProveedores,'migrarProveedores');
+initSeguro(migrarMateriales,'migrarMateriales');
+initSeguro(migrarPersonal,'migrarPersonal');
+initSeguro(purgarPapelera,'purgarPapelera');
+initSeguro(()=>{const b=document.getElementById('papelera-badge-mas');if(b)b.textContent=getPapelera().length;},'badge papelera');
+initSeguro(actualizarStats,'actualizarStats');
 // Iniciar Firebase cuando el DOM esté listo
-window.addEventListener('load', ()=>{ initFirebase(); iniciarSyncFirebase(); });
+window.addEventListener('load', ()=>{ initSeguro(initFirebase,'initFirebase'); initSeguro(iniciarSyncFirebase,'iniciarSyncFirebase'); });
 </script>
 </body>
 </html>
