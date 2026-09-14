@@ -518,8 +518,16 @@ function iniciarSyncFirebase(){
  fbDB.ref('muebleria/'+k).on('value', snap=>{
  const val = snap.val();
  const datos = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+ // CORRECCIÓN: si Firebase todavía no tiene nada guardado en esta clave (primer dispositivo que
+ // sincroniza después de una migración nueva, ej: Materiales) pero acá ya hay datos locales
+ // recién migrados, no hay que pisarlos con el vacío de Firebase — al revés: subir lo local.
+ // Si no, la migración desaparece apenas Firebase termina de conectar.
+ if(datos.length===0 && Array.isArray(_cache[k]) && _cache[k].length>0){
+ fbDB.ref('muebleria/'+k).set(_cache[k]).catch(e=>console.warn('Error subiendo datos locales a Firebase:',e));
+ return;
+ }
  _cache[k] = datos;
- localStorage.setItem('mc_'+k, JSON.stringify(datos));
+ try{localStorage.setItem('mc_'+k, JSON.stringify(datos));}catch(e){}
  // Refrescar pantalla actual si corresponde
  try{
  if(pantalla==='presupuestos'&&k==='presupuestos')renderLista('presupuestos');
@@ -1453,10 +1461,14 @@ function buildFormPresup(num,item){
   </div>
   <div class="form-card" style="border-left:4px solid var(--verde2);background:var(--crema)">
     <h3>📋 Materiales <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(una sola lista: ficha técnica + costeo)</span></h3>
-    <div class="tabla-header" style="grid-template-columns:1fr 50px 75px 75px 75px 28px;font-size:10px">
+    <div style="overflow-x:auto">
+    <div style="min-width:520px">
+    <div class="tabla-header" style="grid-template-columns:180px 55px 80px 110px 85px 30px;font-size:10px">
       <span>Material</span><span>Cant</span><span>$/u.</span><span>Proveedor</span><span>Subtotal</span><span></span>
     </div>
     <div id="ct-materiales"></div>
+    </div>
+    </div>
     <button class="add-row-btn" onclick="agregarFilaCosteoMaterial()">＋ Agregar material</button>
     <div class="form-row" style="margin-top:10px"><label>Margen de ganancia sobre este producto (%)</label><input type="number" id="ct-margen" step="1" placeholder="Ej: 30" oninput="recalcularCosteoPresup()"></div>
     <div id="ct-resumen" style="margin-top:10px"></div>
@@ -1577,10 +1589,14 @@ function buildFormOT(num,item){
   </div>
   <div class="form-card" style="border-left:4px solid var(--azul);background:var(--azul-cl)">
     <h3 style="color:var(--azul)">🪵 Materiales realmente usados <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(uso interno)</span></h3>
-    <div class="tabla-header" style="grid-template-columns:1fr 55px 85px 85px 28px">
+    <div style="overflow-x:auto">
+    <div style="min-width:420px">
+    <div class="tabla-header" style="grid-template-columns:180px 55px 85px 85px 30px">
       <span>Material</span><span>Cant</span><span>$/u.</span><span>Subtotal</span><span></span>
     </div>
     <div id="otm-materiales"></div>
+    </div>
+    </div>
     <button class="add-row-btn" onclick="agregarFilaMaterialOT()">＋ Agregar material</button>
     <div id="otm-resumen" style="margin-top:10px"></div>
   </div>
@@ -1731,7 +1747,7 @@ function agregarFilaCosteoMaterial(data){
  const d=data||{};
  const div=document.createElement('div');
  div.className='tabla-fila'; div.id=`cti-${i}`;
- div.style.cssText='display:grid;grid-template-columns:1fr 50px 75px 75px 75px 28px;gap:6px;align-items:center;margin-bottom:6px';
+ div.style.cssText='display:grid;grid-template-columns:180px 55px 80px 110px 85px 30px;gap:6px;align-items:center;margin-bottom:6px';
  if(d.proveedor)div.dataset.proveedor=d.proveedor;
  div.innerHTML=`<input type="text" class="cti-nombre" placeholder="Buscar material..." value="${(d.descripcion||'').replace(/"/g,'&quot;')}" oninput="mostrarSugerenciasCosteo(${i});actualizarCostoDesdeMaterial(${i})" onfocus="mostrarSugerenciasCosteo(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
     <input type="number" class="cti-cant" placeholder="1" step="0.1" value="${d.cantidad||''}" oninput="recalcularCosteoPresup()">
@@ -4158,7 +4174,7 @@ function agregarFilaMaterialOT(data){
  const d=data||{};
  const div=document.createElement('div');
  div.className='tabla-fila'; div.id=`otmi-${i}`;
- div.style.cssText='display:grid;grid-template-columns:1fr 55px 85px 85px 28px;gap:6px;align-items:center;margin-bottom:6px';
+ div.style.cssText='display:grid;grid-template-columns:180px 55px 85px 85px 30px;gap:6px;align-items:center;margin-bottom:6px';
  if(d.materialId)div.dataset.materialId=d.materialId;
  div.innerHTML=`<input type="text" class="otmi-nombre" placeholder="Buscar material..." value="${(d.descripcion||'').replace(/"/g,'&quot;')}" oninput="mostrarSugerenciasOT(${i});actualizarCostoDesdeMaterialOT(${i})" onfocus="mostrarSugerenciasOT(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
     <input type="number" class="otmi-cant" placeholder="1" step="0.1" value="${d.cantidad||''}" oninput="recalcularCostoRealOT()">
