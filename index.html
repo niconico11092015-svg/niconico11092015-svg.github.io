@@ -1310,15 +1310,18 @@ function pdfFooter(){
 
 // ══ FORM ══
 let formTipo='', formId=null, formItems=[], formCompras=[], formPagos=[], formImgData='';
-// Fase 11: detección de conflictos de sincronización — guarda una "foto" del registro tal como
-// estaba al abrir el formulario, para poder avisar si otro dispositivo lo cambió mientras lo editabas.
-let formSnapshotOriginal=null;
+// Fase 11: detección de conflictos de sincronización — guarda cuándo se modificó por última vez
+// el registro al abrir el formulario, para avisar si otro dispositivo lo cambió mientras lo editabas.
+// CORRECCIÓN: comparar por "updatedAt" (no por el JSON completo) — comparar el registro entero era
+// demasiado sensible: un simple refresco de sincronización de Firebase (sin que nadie cambiara nada)
+// podía reordenar el JSON y disparar una falsa alarma de conflicto.
+let formSnapshotUpdatedAt=null;
 function abrirForm(tipo, id){
  formTipo=tipo; formId=id;
  formItems=[]; formCompras=[]; formPagos=[]; formImgData='';
  const esEdicion=id!==null;
  const item=esEdicion?DB.get(tipo).find(i=>i.id===id):null;
- formSnapshotOriginal=item?JSON.stringify(item):null;
+ formSnapshotUpdatedAt=item?.updatedAt||null;
  const num=esEdicion?(item?.num||1):DB.nextNum(tipo);
  const titulos={presupuestos:esEdicion?'Editar Presupuesto':'Nuevo Presupuesto',cuentas:esEdicion?'Editar Cuenta':'Nueva Cuenta Corriente',ordenes:esEdicion?'Editar Orden':'Nueva Orden de Trabajo'};
  document.getElementById('form-title').textContent=titulos[tipo];
@@ -2004,11 +2007,13 @@ function renderFichaTecnicaExistente(ft){
 // ══ GUARDAR ══
 // Fase 11: si el registro cambió en otro dispositivo desde que se abrió el formulario, avisa antes
 // de pisarlo. Devuelve true si hay que CANCELAR el guardado (el usuario eligió revisar primero).
+// Compara por "updatedAt" (que solo cambia cuando alguien guarda de verdad), no por el JSON entero —
+// así un simple refresco de sincronización no dispara una falsa alarma.
 function hayConflictoYCancelar(tipo,idActual){
- if(!idActual||!formSnapshotOriginal)return false;
+ if(!idActual||!formSnapshotUpdatedAt)return false;
  const actual=DB.get(tipo).find(i=>i.id===idActual);
- if(!actual)return false;
- if(JSON.stringify(actual)===formSnapshotOriginal)return false;
+ if(!actual||!actual.updatedAt)return false;
+ if(actual.updatedAt===formSnapshotUpdatedAt)return false;
  return !confirm('⚠️ Este registro fue modificado en otro dispositivo mientras lo estabas editando.\n\nAceptar = guardar igual tus cambios (se pisa lo del otro dispositivo).\nCancelar = no guardar, para revisar primero qué cambió.');
 }
 function guardarPresup(num){
