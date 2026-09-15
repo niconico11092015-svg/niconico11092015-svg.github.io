@@ -553,6 +553,18 @@ function iniciarSyncFirebase(){
 }
 
 
+// Firebase Realtime Database rechaza (con excepción) cualquier valor "undefined" en el objeto que
+// se guarda — reemplaza cada undefined por null, recursivamente, antes de mandar cualquier cosa.
+function limpiarUndefinedParaFirebase(valor){
+ if(valor===undefined)return null;
+ if(Array.isArray(valor))return valor.map(limpiarUndefinedParaFirebase);
+ if(valor&&typeof valor==='object'){
+ const limpio={};
+ for(const k in valor)limpio[k]=limpiarUndefinedParaFirebase(valor[k]);
+ return limpio;
+ }
+ return valor;
+}
 const DB={
  get(k){
  // Priorizar cache de Firebase, fallback a localStorage
@@ -569,13 +581,15 @@ const DB={
  if(fbDB){
  if(CLAVES_SYNC.includes(k)){
  actualizarIndicadorSync('syncing');
- fbDB.ref('muebleria/'+k).set(v)
+ // CORRECCIÓN: Firebase rechaza cualquier valor "undefined" (ej: un otId que nunca se asignó)
+ // y corta todo el guardado. Se sanea antes de mandar, convirtiendo undefined -> null.
+ fbDB.ref('muebleria/'+k).set(limpiarUndefinedParaFirebase(v))
  .then(()=>actualizarIndicadorSync(ultimoEstadoConexion))
  .catch(e=>{console.warn('Firebase set error:',e);actualizarIndicadorSync('error');});
  } else if(k.startsWith('horas_')){
  const subkey = k.replace('horas_','');
  actualizarIndicadorSync('syncing');
- fbDB.ref('muebleria/horas/'+subkey).set(v)
+ fbDB.ref('muebleria/horas/'+subkey).set(limpiarUndefinedParaFirebase(v))
  .then(()=>actualizarIndicadorSync(ultimoEstadoConexion))
  .catch(e=>{console.warn('Firebase horas error:',e);actualizarIndicadorSync('error');});
  }
@@ -2014,9 +2028,22 @@ function hayConflictoYCancelar(tipo,idActual){
  const actual=DB.get(tipo).find(i=>i.id===idActual);
  if(!actual||!actual.updatedAt)return false;
  if(actual.updatedAt===formSnapshotUpdatedAt)return false;
- return !confirm('⚠️ Este registro fue modificado en otro dispositivo mientras lo estabas editando.\n\nAceptar = guardar igual tus cambios (se pisa lo del otro dispositivo).\nCancelar = no guardar, para revisar primero qué cambió.');
+ const seguirIgual=confirm('⚠️ Este registro fue modificado en otro dispositivo mientras lo estabas editando.\n\nAceptar = guardar igual tus cambios (se pisa lo del otro dispositivo).\nCancelar = no guardar, para revisar primero qué cambió.');
+ if(!seguirIgual){
+ alert('No se guardó nada. Revisá el registro (puede que se haya actualizado desde otro dispositivo) y volvé a intentar.');
+ return true;
+ }
+ return false;
 }
 function guardarPresup(num){
+ try{
+ guardarPresupInterno(num);
+ }catch(e){
+ alert('⚠️ No se pudo guardar el presupuesto.\nDetalle técnico: '+e.message+'\n\nNada se guardó — no perdiste lo que tenías cargado. Sacale una foto a este mensaje y avisame.');
+ console.error('Error en guardarPresup:',e);
+ }
+}
+function guardarPresupInterno(num){
  if(hayConflictoYCancelar('presupuestos',formId))return;
  const items=[];
  document.querySelectorAll('#fp-items .tabla-fila').forEach(r=>{
@@ -2049,12 +2076,13 @@ function guardarPresup(num){
  if(idx>=0){
  const anterior=lista[idx];
  // Conservar links a OT/CC existentes
- obj.otId=anterior.otId;
- obj.ccId=anterior.ccId;
+ obj.otId=anterior.otId||null;
+ obj.ccId=anterior.ccId||null;
  obj.createdAt=anterior.createdAt||anterior.id;
  // CORRECCIÓN: avisar y dejar rastro si se edita el total de un presupuesto ya Aprobado
  if(anterior.estado==='Aprobado' && anterior.total!==total){
  if(!confirm(`⚠️ Este presupuesto ya fue Aprobado (y puede tener una Orden de Trabajo vinculada).\nEl total cambiaría de ${fmt(anterior.total)} a ${fmt(total)}.\n¿Confirmás el cambio? Quedará registrado en el historial.`)){
+ alert('No se guardó nada. El total no cambió.');
  return;
  }
  obj.historialCambios=[...(anterior.historialCambios||[]),{fecha:hoy(),campo:'total',valorAnterior:anterior.total,valorNuevo:total}];
@@ -2116,6 +2144,14 @@ function crearOTdesdePresup(presup){
 
 
 function guardarCC(num){
+ try{
+ guardarCCInterno(num);
+ }catch(e){
+ alert('⚠️ No se pudo guardar la Cuenta Corriente.\nDetalle técnico: '+e.message+'\n\nNada se guardó — no perdiste lo que tenías cargado. Sacale una foto a este mensaje y avisame.');
+ console.error('Error en guardarCC:',e);
+ }
+}
+function guardarCCInterno(num){
  if(hayConflictoYCancelar('cuentas',formId))return;
  const compras=[];
  document.querySelectorAll('#cc-compras .tabla-fila').forEach(r=>{
@@ -2288,6 +2324,14 @@ function seleccionarDiaCalendarioOT(fechaStr){
  actualizarCapacidadOT(calOTExclude);
 }
 function guardarOT(num){
+ try{
+ guardarOTInterno(num);
+ }catch(e){
+ alert('⚠️ No se pudo guardar la Orden de Trabajo.\nDetalle técnico: '+e.message+'\n\nNada se guardó — no perdiste lo que tenías cargado. Sacale una foto a este mensaje y avisame.');
+ console.error('Error en guardarOT:',e);
+ }
+}
+function guardarOTInterno(num){
  if(hayConflictoYCancelar('ordenes',formId))return;
  const ap=document.getElementById('ot-apellido')?.value||'';
  const no=document.getElementById('ot-nombre')?.value||'';
