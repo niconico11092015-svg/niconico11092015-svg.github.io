@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mueblería Conca">
 <title>La Mueblería Conca</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#4A2C0A">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-180.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -469,15 +473,24 @@ const firebaseConfig = {
 
 // Init Firebase con verificación
 let fbDB = null;
-let ultimoEstadoConexion='ok';
-// Bloque 5: ☁ sincronizado, ⚠ sin conexión/error, ⌁ guardando en este momento.
+// Arranca en "off" hasta que Firebase confirme la conexión real (.info/connected): así, nada se manda
+// a la nube "a ciegas" antes de saber si hay señal — se guarda local y se sincroniza al conectar.
+let ultimoEstadoConexion='off';
+// ☁ sincronizado, ⚠ sin conexión/error (con contador de cambios pendientes), ⌁ guardando en este momento.
 function actualizarIndicadorSync(estado){
  if(estado==='ok'||estado==='off')ultimoEstadoConexion=estado;
  const el=document.getElementById('sync-indicator');
  if(!el)return;
- const mapa={ok:['☁️','Sincronizado con la nube'],off:['⚠️','Sin conexión — se está guardando solo en este dispositivo'],error:['⚠️','Error al sincronizar — revisá la conexión'],syncing:['⌁','Guardando...']};
+ const n=contarPendientes();
+ const mapa={ok:['☁️','Sincronizado con la nube'],off:['⚠️',n?`Sin conexión — ${n} cambio(s) guardados en este dispositivo; se suben solos cuando vuelva la señal`:'Sin conexión — se está guardando solo en este dispositivo'],error:['⚠️','Error al sincronizar — se reintenta solo'],syncing:['⌁','Guardando...']};
  const par=mapa[estado]||mapa.ok;
  el.textContent=par[0]; el.title=par[1];
+ if(n&&(estado==='off'||estado==='error')){
+  const b=document.createElement('span');
+  b.textContent=n;
+  b.style.cssText='position:absolute;top:-5px;right:-5px;background:#EF4444;color:#fff;border-radius:10px;font-size:9px;font-weight:700;min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;padding:0 3px';
+  el.appendChild(b);
+ }
 }
 function initFirebase(){
  try{
@@ -507,48 +520,192 @@ const _cache = {};
 const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config','papelera','contadores','clientes','costeo_config','materiales','fondos_config','personal','agenda_notas'];
 
 
+// ══ OFFLINE / COLA DE CAMBIOS PENDIENTES ══
+// Cada colección guardada sin conexión (o cuyo envío falló) queda marcada como "pendiente" en el propio
+// teléfono (localStorage), así que sobrevive aunque cierres la app. Al volver la señal, en vez de pisar
+// la nube con la lista completa, se lee lo que hay en la nube, se FUSIONA registro por registro y recién
+// ahí se sube. Valores de la marca: 1 = envío directo en curso, 2 = cambios sin subir (requieren fusión).
+const CLAVE_PENDIENTES='mc__pendientes_sync';
+let _pendientes=null;
+const _seqEscritura={};
+function getPendientes(){
+ if(_pendientes===null){
+  try{_pendientes=JSON.parse(localStorage.getItem(CLAVE_PENDIENTES)||'{}')||{};}catch(e){_pendientes={};}
+  // Recién abierta la app no hay ningún envío "en curso": lo que haya quedado marcado sin confirmar
+  // (ej: se cerró la app antes de subir) hay que fusionarlo, no mandarlo a ciegas.
+  Object.keys(_pendientes).forEach(k=>{_pendientes[k]=2;});
+ }
+ return _pendientes;
+}
+function marcarPendiente(k,valor){
+ const p=getPendientes();
+ if(valor)p[k]=valor; else delete p[k];
+ try{localStorage.setItem(CLAVE_PENDIENTES,JSON.stringify(p));}catch(e){}
+}
+function contarPendientes(){return Object.values(getPendientes()).filter(v=>v===2).length;}
+
+function esPrimitivo(x){return x===null||['string','number','boolean'].includes(typeof x);}
+// Fusiona la lista de la nube (remoto) con la de este dispositivo (local):
+//  · registros con "id": se conservan los de ambos lados; si el mismo registro está en los dos, gana el
+//    guardado más reciente (updatedAt); en empate gana el local (es el cambio hecho sin conexión)
+//  · lo que ya está en la Papelera (borrado en cualquiera de los dos dispositivos) no se "resucita"
+//  · contadores de numeración: se queda con el mayor de cada uno
+//  · listas de textos (catálogos): unión sin repetir
+//  · configuraciones (un solo objeto sin id): gana lo local, que es lo que se cambió sin conexión
+function fusionarColeccion(k,remoto,local,papelera){
+ remoto=Array.isArray(remoto)?remoto.filter(x=>x!==null&&x!==undefined):[];
+ local=Array.isArray(local)?local.filter(x=>x!==null&&x!==undefined):[];
+ if(k==='contadores'){
+  const a=(remoto[0]&&typeof remoto[0]==='object')?remoto[0]:{};
+  const b=(local[0]&&typeof local[0]==='object')?local[0]:{};
+  const out={...a};
+  Object.keys(b).forEach(x=>{out[x]=Math.max(Number(out[x])||0,Number(b[x])||0);});
+  return [out];
+ }
+ const conId=arr=>arr.every(x=>x&&typeof x==='object'&&x.id!==undefined&&x.id!==null);
+ if(conId(remoto)&&conId(local)){
+  const mapa=new Map();
+  remoto.forEach(r=>mapa.set(r.id,r));
+  local.forEach(l=>{
+   const r=mapa.get(l.id);
+   if(!r||(l.updatedAt||0)>=(r.updatedAt||0))mapa.set(l.id,l);
+  });
+  let out=Array.from(mapa.values());
+  if(k!=='papelera'&&Array.isArray(papelera)){
+   const borrados=new Set(papelera.filter(p=>p&&p.tipo===k).map(p=>p.itemId));
+   if(borrados.size)out=out.filter(x=>!borrados.has(x.id));
+  }
+  return out;
+ }
+ if(remoto.every(esPrimitivo)&&local.every(esPrimitivo))return Array.from(new Set([...remoto,...local]));
+ return local.length?local:remoto;
+}
+
+// Lectura fresca de la nube por REST (no usa la caché interna de Firebase, que puede estar desactualizada
+// justo después de reconectar). Si REST falla, cae a la lectura normal del SDK.
+async function leerRemoto(ruta){
+ let val;
+ try{
+  const r=await fetch(firebaseConfig.databaseURL+'/'+ruta+'.json?_='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('REST '+r.status);
+  val=await r.json();
+ }catch(e){
+  const snap=await fbDB.ref(ruta).once('value');
+  val=snap.val();
+ }
+ return val?(Array.isArray(val)?val:Object.values(val)).filter(x=>x!==null&&x!==undefined):[];
+}
+function conTimeout(promesa,ms){
+ return Promise.race([promesa,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+}
+function refrescarPantallaPorClave(k){
+ try{
+  if(pantalla==='presupuestos'&&k==='presupuestos')renderLista('presupuestos');
+  if(pantalla==='cuentas'&&k==='cuentas')renderLista('cuentas');
+  if(pantalla==='ordenes'&&k==='ordenes')renderOrdenes();
+  if(pantalla==='cobros')renderCobros();
+  if(pantalla==='pedidos'&&k==='pedidos')renderPedidos();
+  if(pantalla==='home'){actualizarStats();renderEstadoNegocio();}
+  if(pantalla==='finanzas')renderFinanzas();
+ }catch(e){}
+}
+function mostrarToastSync(msg){
+ try{
+  document.getElementById('toast-sync')?.remove();
+  const t=document.createElement('div');
+  t.id='toast-sync';
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--verde);color:#fff;padding:12px 18px;border-radius:12px;box-shadow:var(--sombra);z-index:9999;font-size:13px;max-width:90vw;text-align:center';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4500);
+ }catch(e){}
+}
+let _sincronizando=false,_resincronizar=false,_timerSync=null;
+function programarSyncPendientes(ms){
+ if(_sincronizando){_resincronizar=true;return;}
+ clearTimeout(_timerSync);
+ _timerSync=setTimeout(sincronizarPendientes,ms||300);
+}
+async function sincronizarPendientes(){
+ if(_sincronizando||!fbDB||ultimoEstadoConexion!=='ok')return;
+ const claves=Object.keys(getPendientes());
+ if(!claves.length)return;
+ _sincronizando=true;
+ actualizarIndicadorSync('syncing');
+ let subidos=0,fallo=false;
+ try{
+  // Papelera de la nube + la local: sirve para no resucitar registros ya eliminados en algún dispositivo.
+  let papRemota=[];
+  if(claves.some(k=>k!=='papelera'&&!k.startsWith('horas_'))){
+   try{papRemota=await leerRemoto('muebleria/papelera');}catch(e){}
+  }
+  const papUnion=[...papRemota,...(DB.get('papelera')||[])];
+  for(const k of claves){
+   const esHoras=k.startsWith('horas_');
+   const ruta=esHoras?'muebleria/horas/'+k.slice(6):'muebleria/'+k;
+   let remoto=[];
+   if(!esHoras){
+    try{remoto=await leerRemoto(ruta);}catch(e){fallo=true;continue;}
+   }
+   // Desde acá hasta el set no hay ningún "await": lo local no puede cambiar en el medio.
+   const local=DB.get(k);
+   const fusion=esHoras?local:fusionarColeccion(k,remoto,local,papUnion);
+   const miSeq=_seqEscritura[k]||0;
+   _cache[k]=fusion;
+   try{localStorage.setItem('mc_'+k,JSON.stringify(fusion));}catch(e){}
+   try{
+    await conTimeout(fbDB.ref(ruta).set(limpiarUndefinedParaFirebase(fusion)),20000);
+    if((_seqEscritura[k]||0)===miSeq)marcarPendiente(k,false);
+    subidos++;
+   }catch(e){fallo=true;console.warn('No se pudo subir',k,e);}
+   refrescarPantallaPorClave(k);
+  }
+ }catch(e){fallo=true;console.warn('Error en sincronizarPendientes:',e);}
+ _sincronizando=false;
+ actualizarIndicadorSync(fallo?'error':ultimoEstadoConexion);
+ if(subidos&&!fallo)mostrarToastSync('☁️ Se sincronizaron los cambios hechos sin conexión');
+ if(_resincronizar){_resincronizar=false;programarSyncPendientes();}
+}
+
+// Sincronización en tiempo real — escucha cambios de Firebase
 function iniciarSyncFirebase(){
  if(!fbDB){ console.warn('Firebase no disponible, sin sync en tiempo real'); actualizarIndicadorSync('off'); return; }
- // Bloque 5: indicador visual de conexión real (no un simple intento de guardado) usando el
- // path especial de Firebase que refleja la conexión de verdad.
+ // Indicador visual de conexión real (path especial de Firebase). Al conectar, sube lo que haya quedado pendiente.
  fbDB.ref('.info/connected').on('value',snap=>{
- actualizarIndicadorSync(snap.val()?'ok':'off');
+  const conectado=!!snap.val();
+  actualizarIndicadorSync(conectado?'ok':'off');
+  if(conectado)programarSyncPendientes(1000);
  });
+ window.addEventListener('online',()=>programarSyncPendientes(1500));
+ // Red de seguridad: si algo quedó pendiente (ej: un error momentáneo), reintenta solo cada tanto.
+ setInterval(()=>{if(contarPendientes()>0&&ultimoEstadoConexion==='ok')programarSyncPendientes();},45000);
  CLAVES_SYNC.forEach(k=>{
- fbDB.ref('muebleria/'+k).on('value', snap=>{
- const val = snap.val();
- const datos = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
- // CORRECCIÓN: si Firebase todavía no tiene nada guardado en esta clave (primer dispositivo que
- // sincroniza después de una migración nueva, ej: Materiales) pero acá ya hay datos locales
- // recién migrados, no hay que pisarlos con el vacío de Firebase — al revés: subir lo local.
- // Si no, la migración desaparece apenas Firebase termina de conectar.
- if(datos.length===0 && Array.isArray(_cache[k]) && _cache[k].length>0){
- fbDB.ref('muebleria/'+k).set(_cache[k]).catch(e=>console.warn('Error subiendo datos locales a Firebase:',e));
- return;
- }
- _cache[k] = datos;
- try{localStorage.setItem('mc_'+k, JSON.stringify(datos));}catch(e){}
- // Refrescar pantalla actual si corresponde
- try{
- if(pantalla==='presupuestos'&&k==='presupuestos')renderLista('presupuestos');
- if(pantalla==='cuentas'&&k==='cuentas')renderLista('cuentas');
- if(pantalla==='ordenes'&&k==='ordenes')renderOrdenes();
- if(pantalla==='cobros')renderCobros();
- if(pantalla==='pedidos'&&k==='pedidos')renderPedidos();
- if(pantalla==='home'){actualizarStats();renderEstadoNegocio();}
- if(pantalla==='finanzas')renderFinanzas();
- }catch(e){}
- });
+  fbDB.ref('muebleria/'+k).on('value', snap=>{
+   const val = snap.val();
+   const datos = val ? (Array.isArray(val) ? val : Object.values(val)) : [];
+   // Hay cambios hechos en este dispositivo que todavía no se subieron: NO pisarlos con lo de la nube.
+   // sincronizarPendientes() los fusiona con la nube y los sube.
+   if(getPendientes()[k]===2)return;
+   // Si Firebase todavía no tiene nada en esta clave (primer dispositivo que sincroniza una migración nueva)
+   // pero acá ya hay datos locales, no hay que pisarlos con el vacío: al revés, subir lo local.
+   if(datos.length===0 && Array.isArray(_cache[k]) && _cache[k].length>0){
+    fbDB.ref('muebleria/'+k).set(limpiarUndefinedParaFirebase(_cache[k])).catch(e=>console.warn('Error subiendo datos locales a Firebase:',e));
+    return;
+   }
+   _cache[k] = datos;
+   try{localStorage.setItem('mc_'+k, JSON.stringify(datos));}catch(e){}
+   refrescarPantallaPorClave(k);
+  });
  });
  // Horas — escucha todo el nodo horas
- if(!fbDB) return;
  fbDB.ref('muebleria/horas').on('value', snap=>{
- const val = snap.val()||{};
- Object.keys(val).forEach(k=>{
- _cache['horas_'+k] = val[k];
- localStorage.setItem('mc_horas_'+k, JSON.stringify(val[k]));
- });
- try{if(pantalla==='horas')renderHoras();}catch(e){}
+  const val = snap.val()||{};
+  Object.keys(val).forEach(k=>{
+   if(getPendientes()['horas_'+k]===2)return;
+   _cache['horas_'+k] = val[k];
+   try{localStorage.setItem('mc_horas_'+k, JSON.stringify(val[k]));}catch(e){}
+  });
+  try{if(pantalla==='horas')renderHoras();}catch(e){}
  });
 }
 
@@ -572,28 +729,42 @@ const DB={
  try{return JSON.parse(localStorage.getItem('mc_'+k)||'[]');}catch(e){return[];}
  },
  set(k,v){
- // Guardar local inmediatamente (para que la UI responda rápido). Si localStorage está bloqueado
- // (ej: abriendo el archivo directo con file:// en el celular, o modo privado), no debe cortar el
- // resto del arranque de la app — sigue funcionando con la copia en memoria (_cache) igual.
- _cache[k]=v;
- try{localStorage.setItem('mc_'+k,JSON.stringify(v));}catch(e){console.warn('localStorage no disponible, sigo solo en memoria:',e);}
- // Guardar en Firebase (si está disponible)
- if(fbDB){
- if(CLAVES_SYNC.includes(k)){
- actualizarIndicadorSync('syncing');
- // CORRECCIÓN: Firebase rechaza cualquier valor "undefined" (ej: un otId que nunca se asignó)
- // y corta todo el guardado. Se sanea antes de mandar, convirtiendo undefined -> null.
- fbDB.ref('muebleria/'+k).set(limpiarUndefinedParaFirebase(v))
- .then(()=>actualizarIndicadorSync(ultimoEstadoConexion))
- .catch(e=>{console.warn('Firebase set error:',e);actualizarIndicadorSync('error');});
- } else if(k.startsWith('horas_')){
- const subkey = k.replace('horas_','');
- actualizarIndicadorSync('syncing');
- fbDB.ref('muebleria/horas/'+subkey).set(limpiarUndefinedParaFirebase(v))
- .then(()=>actualizarIndicadorSync(ultimoEstadoConexion))
- .catch(e=>{console.warn('Firebase horas error:',e);actualizarIndicadorSync('error');});
- }
- }
+  // Guardar local inmediatamente (para que la UI responda rápido). Si localStorage está bloqueado
+  // (ej: abriendo el archivo directo con file:// en el celular, o modo privado), no debe cortar el
+  // resto del arranque de la app — sigue funcionando con la copia en memoria (_cache) igual.
+  const esSync=CLAVES_SYNC.includes(k), esHoras=k.startsWith('horas_');
+  let cambio=true;
+  if(esSync||esHoras){try{cambio=JSON.stringify(this.get(k))!==JSON.stringify(v);}catch(e){}}
+  _cache[k]=v;
+  try{localStorage.setItem('mc_'+k,JSON.stringify(v));}catch(e){console.warn('localStorage no disponible, sigo solo en memoria:',e);}
+  if(!esSync&&!esHoras)return;
+  const ruta=esSync?'muebleria/'+k:'muebleria/horas/'+k.replace('horas_','');
+  const sucio=getPendientes()[k]===2;
+  if(!cambio&&!sucio)return; // nada nuevo que subir
+  const miSeq=(_seqEscritura[k]=(_seqEscritura[k]||0)+1);
+  const enLinea=!!fbDB&&ultimoEstadoConexion==='ok';
+  // Sin conexión (o con cambios anteriores sin subir): se guarda solo acá, marcado como pendiente, y se
+  // fusiona con la nube al volver la señal. No se manda a Firebase "a ciegas" porque pisaría lo que
+  // hayan cargado Sofía u otro dispositivo mientras tanto.
+  if(sucio||!enLinea){
+   marcarPendiente(k,2);
+   if(enLinea)programarSyncPendientes(); else actualizarIndicadorSync('off');
+   return;
+  }
+  marcarPendiente(k,1);
+  actualizarIndicadorSync('syncing');
+  // Firebase rechaza cualquier valor "undefined" (ej: un otId que nunca se asignó) y corta todo el
+  // guardado. Se sanea antes de mandar, convirtiendo undefined -> null.
+  fbDB.ref(ruta).set(limpiarUndefinedParaFirebase(v))
+   .then(()=>{
+    if(_seqEscritura[k]===miSeq&&getPendientes()[k]===1)marcarPendiente(k,false);
+    actualizarIndicadorSync(ultimoEstadoConexion);
+   })
+   .catch(e=>{
+    console.warn('Firebase set error:',k,e);
+    marcarPendiente(k,2);
+    actualizarIndicadorSync('error');
+   });
  },
  nextNum(k){
   const cont=this.get('contadores');
@@ -4107,7 +4278,7 @@ function sincronizarTodoAFirebase(){
 
 
 function exportarDatos(){
- const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config'];
+ const claves=CLAVES_SYNC;
  const datos={};
  claves.forEach(k=>{datos[k]=DB.get(k);});
  Object.keys(localStorage).forEach(k=>{
@@ -4128,11 +4299,11 @@ function importarDatos(input){
  reader.onload=e=>{
  try{
  const datos=JSON.parse(e.target.result);
- const claves=['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config'];
+ const claves=CLAVES_SYNC;
  let importados=0;
  Object.keys(datos).forEach(k=>{
  if(claves.includes(k)){DB.set(k,datos[k]);importados++;}
- else if(k.startsWith('horas_')){localStorage.setItem('mc_'+k,JSON.stringify(datos[k]));importados++;}
+ else if(k.startsWith('horas_')){DB.set(k,datos[k]);importados++;}
  });
  actualizarStats();
  alert('✅ Datos importados correctamente. '+importados+' registros restaurados.');
@@ -5267,6 +5438,10 @@ initSeguro(()=>{const b=document.getElementById('papelera-badge-mas');if(b)b.tex
 initSeguro(actualizarStats,'actualizarStats');
 // Iniciar Firebase cuando el DOM esté listo
 window.addEventListener('load', ()=>{ initSeguro(initFirebase,'initFirebase'); initSeguro(iniciarSyncFirebase,'iniciarSyncFirebase'); });
+// App instalable y disponible sin conexión: el service worker guarda la app y sus librerías en el teléfono.
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+ window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Service worker no registrado:',e));});
+}
 </script>
 </body>
 </html>
