@@ -244,7 +244,8 @@ body{background:white;}
  <button class="menu-card" onclick="irA('finanzas')" style="grid-column:1/-1;background:linear-gradient(135deg,var(--marron),var(--marron2))"><div class="mc-ico" style="filter:brightness(3)">💼</div><div class="mc-label" style="color:#fff">Administración / Finanzas</div></button>
  <button class="menu-card" onclick="irA('ventas')"><div class="mc-ico">💵</div><div class="mc-label">Ventas</div></button>
  <button class="menu-card" onclick="irA('gastos')"><div class="mc-ico">🧾</div><div class="mc-label">Compras y Gastos</div></button>
- <button class="menu-card" onclick="irA('mas')" style="grid-column:1/-1"><div class="mc-ico">☰</div><div class="mc-label">Ver todo (Más)</div></button>
+ <button class="menu-card" onclick="irA('precios')"><div class="mc-ico">💲</div><div class="mc-label">Lista de precios</div></button>
+ <button class="menu-card" onclick="irA('mas')"><div class="mc-ico">☰</div><div class="mc-label">Ver todo (Más)</div></button>
  </div>
  <p class="section-title">Datos</p>
  <div style="display:flex;gap:10px;margin-bottom:10px">
@@ -307,6 +308,22 @@ body{background:white;}
 
 
 <!-- MATERIALES -->
+<!-- LISTA DE PRECIOS -->
+<div id="screen-precios" class="screen">
+ <div class="topbar"><div class="topbar-icon">💲</div><div><h1>Lista de precios</h1><p>Costo y precio de cada producto</p></div></div>
+ <div class="content">
+ <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar producto o código..." id="buscar-precios" oninput="renderPrecios()"></div>
+ <div id="precios-content"></div>
+ </div>
+ <button class="fab" onclick="abrirProducto()">＋</button>
+</div>
+
+<!-- PRODUCTO (receta) -->
+<div id="screen-producto" class="screen">
+ <div class="topbar"><button class="topbar-back" onclick="irA('precios')">←</button><div class="topbar-icon">💲</div><div><h1>Producto</h1><p>Receta, costo y precios</p></div></div>
+ <div class="content" id="producto-content"></div>
+</div>
+
 <!-- VENTAS -->
 <div id="screen-ventas" class="screen">
  <div class="topbar"><div class="topbar-icon">💵</div><div><h1>Ventas</h1><p>Lo que entra por ventas directas</p></div></div>
@@ -376,6 +393,7 @@ body{background:white;}
  <button class="menu-card" onclick="irA('ventas')"><div class="mc-ico">💵</div><div class="mc-label">Ventas</div></button>
  <button class="menu-card" onclick="irA('gastos')"><div class="mc-ico">🧾</div><div class="mc-label">Compras y Gastos</div></button>
  <button class="menu-card" onclick="abrirEquilibrio()"><div class="mc-ico">📈</div><div class="mc-label">Resultado y equilibrio</div></button>
+ <button class="menu-card" onclick="irA('precios')"><div class="mc-ico">💲</div><div class="mc-label">Lista de precios</div></button>
  <button class="menu-card" onclick="irA('dashboard')"><div class="mc-ico">📊</div><div class="mc-label">Dashboard Analytics</div></button>
  </div>
  <p class="section-title">Datos</p>
@@ -542,7 +560,7 @@ const _cache = {};
 
 
 // Sincronización en tiempo real — escucha cambios de Firebase
-const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config','papelera','contadores','clientes','costeo_config','materiales','fondos_config','personal','agenda_notas','gastos','ventas'];
+const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config','papelera','contadores','clientes','costeo_config','materiales','fondos_config','personal','agenda_notas','gastos','ventas','productos'];
 
 
 // ══ OFFLINE / COLA DE CAMBIOS PENDIENTES ══
@@ -634,6 +652,7 @@ function refrescarPantallaPorClave(k){
   if(pantalla==='finanzas')renderFinanzas();
   if(pantalla==='gastos'&&k==='gastos')renderGastos();
   if(pantalla==='ventas'&&k==='ventas')renderVentas();
+  if(pantalla==='precios'&&['productos','materiales','costeo_config'].includes(k))renderPrecios();
  }catch(e){}
 }
 function mostrarToastSync(msg){
@@ -1430,13 +1449,361 @@ function renderFinEquilibrio(){
 }
 
 
+// ══ CÁLCULO DE PRECIOS (reemplaza "Cálculo Precios" y "precios venta" de la planilla) ══
+// Cada producto tiene su receta (materiales con cantidad + horas de mano de obra). Nada de lo calculado se guarda:
+// costos y precios se recalculan siempre con el Costo de los Materiales, la Tasa fija y el costo por hora de HOY,
+// así que cambiar un precio de material actualiza la lista sola. Lo que sí se guarda es el "precio vigente" (el que
+// vos decidís fijar), para poder comparar contra lo recalculado sin que los precios se muevan solos.
+const PRECIOS_UMBRAL_DESFASE=0.03;
+let preciosFiltro='todos',prodEditId=null,prmIdx=0,prhIdx=0,_factoresUso=null;
+function getProductos(){return DB.get('productos')||[];}
+
+// Precio de un material "por unidad de uso" (m², ml, unidad...). La planilla usaba la columna "$ POR M2 / UNIDAD",
+// que sale del costo unitario × un factor propio de cada material (envío, IVA, m² por placa...). Ese factor se
+// conserva: si cambiás el Costo unitario del material en Materiales, el precio de uso se actualiza solo.
+function factoresUsoPlanilla(){
+ if(_factoresUso)return _factoresUso;
+ _factoresUso={};
+ MATERIALES_IMPORT.forEach(r=>{
+  const c=r[2],envio=r[3],porM2=r[5];
+  if(!(c>0))return;
+  _factoresUso[normalizarNombreMaterial(r[0])]=porM2>0?porM2/c:(envio>0?envio/c:1);
+ });
+ return _factoresUso;
+}
+function precioUsoMaterial(m){
+ const f=factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
+ if(f&&m.costoUnitario>0)return m.costoUnitario*f;
+ if(m.precioPorM2>0)return m.precioPorM2;
+ if(m.costoConEnvio>0)return m.costoConEnvio;
+ return m.costoUnitario||0;
+}
+function materialesIndice(){
+ const porId=new Map(),porNombre=new Map();
+ getMateriales().forEach(m=>{porId.set(m.id,m);const k=normalizarNombreMaterial(m.descripcion);if(!porNombre.has(k))porNombre.set(k,m);});
+ return{porId,porNombre};
+}
+function resolverLinea(l,idx){
+ return((l.materialId!=null&&idx.porId.get(l.materialId))||idx.porNombre.get(normalizarNombreMaterial(l.descripcion))||null);
+}
+function calcProducto(p,cfg,idx){
+ cfg=cfg||getCosteoCfg();idx=idx||materialesIndice();
+ let mp=0;const lineas=[],faltan=[];
+ (p.receta||[]).forEach(l=>{
+  const m=resolverLinea(l,idx);
+  const pu=m?precioUsoMaterial(m):0;
+  const cant=parseFloat(l.cantidad)||0;
+  if(!m)faltan.push(l.descripcion+' (no está en Materiales)');
+  else if(!(pu>0))faltan.push(l.descripcion+' (sin precio)');
+  mp+=cant*pu;
+  lineas.push({descripcion:l.descripcion,cantidad:cant,unidad:m?m.unidad:(l.unidad||''),pu,sub:cant*pu,material:m});
+ });
+ const horaMO=cfg.costoHoraManoObra||0;
+ let horas=0;
+ (p.mano||[]).forEach(x=>{horas+=(parseFloat(x.horas)||0)*(parseFloat(x.operarios)||0);});
+ const mo=horas*horaMO,directo=mp+mo,tasa=cfg.tasaFija||0,costo=directo*(1+tasa);
+ const conMargen=m=>(m>0&&m<100)?costo/(1-m/100):costo;
+ const mMin=p.margenMinorista>0?p.margenMinorista:cfg.margenMinorista,mMay=p.margenMayorista>0?p.margenMayorista:cfg.margenMayorista;
+ const min=conMargen(mMin),may=conMargen(mMay),combo=conMargen(cfg.margenCombo);
+ return{mp,mo,horas,directo,tasa,fijos:directo*tasa,costo,min,may,combo,mMin,mMay,
+  cuota3:min*(1+(cfg.recargo3Cuotas||0)/100)/3,cuota6:min*(1+(cfg.recargo6Cuotas||0)/100)/6,lineas,faltan};
+}
+// Diferencia entre lo calculado hoy y el precio vigente (minorista). null si no hay vigente.
+function desfaseProducto(p,c){return(p.vigente&&p.vigente.min>0)?c.min/p.vigente.min-1:null;}
+function fmtPct(x){return(x>=0?'+':'−')+Math.abs(x*100).toFixed(0)+'%';}
+
+function renderPrecios(){
+ const cont=document.getElementById('precios-content');
+ if(!cont)return;
+ const cfg=getCosteoCfg(),idx=materialesIndice();
+ const q=(document.getElementById('buscar-precios')?.value||'').trim().toLowerCase();
+ const todos=getProductos().filter(p=>p.activo!==false).map(p=>({p,c:calcProducto(p,cfg,idx)}));
+ const desact=todos.filter(x=>{const d=desfaseProducto(x.p,x.c);return d!==null&&Math.abs(d)>=PRECIOS_UMBRAL_DESFASE;});
+ const faltan=todos.filter(x=>x.c.faltan.length);
+ let html='';
+ if(!cfg.costoHoraManoObra)html+=`<div class="item-card" style="border-left-color:var(--naranja);margin-bottom:12px"><div class="item-nombre">⚠️ Falta el costo de mano de obra por hora</div>
+  <div class="item-desc" style="white-space:normal">Sin eso los costos no incluyen mano de obra. Tu planilla usaba $4.861 por hora.</div>
+  <div class="btn-row" style="margin-top:8px"><button class="btn btn-primary" onclick="usarCostoHoraPlanilla()">Usar $4.861</button><button class="btn btn-secondary" onclick="abrirModalAjustesPrecios()">Otro valor</button></div></div>`;
+ if(!todos.length){
+  html+=`<div class="empty-state"><div class="e-ico">💲</div><p>Todavía no hay productos.<br>Importá el catálogo de la planilla o creá uno con ＋.</p></div>
+   <div class="btn-row"><label class="btn btn-azul" style="text-align:center;cursor:pointer;display:block">📥 Importar catálogo de la planilla<input type="file" accept=".json" style="display:none" onchange="importarCatalogoProductos(this)"></label></div>`;
+  cont.innerHTML=html;return;
+ }
+ html+=`<div class="stats-grid" style="margin-bottom:12px">
+  <div class="stat-card presup"><div class="s-num">${todos.length}</div><div class="s-label">Productos</div></div>
+  <div class="stat-card ot" onclick="preciosSetFiltro('desactualizados')"><div class="s-num">${desact.length}</div><div class="s-label">Con precio desactualizado</div></div></div>
+  <div class="btn-row" style="margin-bottom:12px"><button class="btn btn-secondary" onclick="abrirModalAjustesPrecios()">⚙️ Márgenes y tasas</button><button class="btn btn-primary" onclick="abrirFijarTodos()">📌 Fijar precios</button></div>`;
+ const chips=[['todos','Todos'],['lista','En lista de precios'],['desactualizados','Desactualizados'],['faltantes','Sin precio de material']];
+ html+=`<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px">${chips.map(c=>`<button class="presup-tab${preciosFiltro===c[0]?' active':''}" onclick="preciosSetFiltro('${c[0]}')">${c[1]}${c[0]==='faltantes'&&faltan.length?' ('+faltan.length+')':''}</button>`).join('')}</div>`;
+ let lista=todos.slice();
+ if(preciosFiltro==='lista')lista=lista.filter(x=>x.p.enLista);
+ else if(preciosFiltro==='desactualizados')lista=desact.slice();
+ else if(preciosFiltro==='faltantes')lista=faltan.slice();
+ if(q)lista=lista.filter(x=>((x.p.nombre||'')+' '+(x.p.codigo||'')).toLowerCase().includes(q));
+ lista.sort((a,b)=>(a.p.nombre||'').localeCompare(b.p.nombre||''));
+ if(!lista.length)html+='<div class="empty-state"><div class="e-ico">🔎</div><p>No hay productos para mostrar con este filtro.</p></div>';
+ else html+=`<div class="lista">${lista.map(({p,c})=>{
+  const d=desfaseProducto(p,c);
+  const vig=p.vigente&&p.vigente.min>0?`Vigente ${fmt(p.vigente.min)} · ${p.vigente.fecha&&p.vigente.fecha!=='planilla'?fmtF(p.vigente.fecha):'de la planilla'}`:'Sin precio vigente';
+  return `<div class="item-card" style="border-left-color:${c.faltan.length?'var(--rojo)':(d!==null&&Math.abs(d)>=PRECIOS_UMBRAL_DESFASE?'var(--naranja)':'var(--verde2)')}" onclick="abrirProducto(${p.id})">
+   <div class="item-top"><span class="item-codigo">${gastoEsc(p.codigo||'')}</span><span class="item-fecha">costo ${fmt(c.costo)}</span></div>
+   <div class="item-nombre">${gastoEsc(p.nombre)}</div>
+   <div class="item-desc">Minorista <b>${fmt(c.min)}</b> · Mayorista <b>${fmt(c.may)}</b></div>
+   <div class="item-footer"><span style="font-size:11px;color:var(--gris)">${vig}</span><span>
+    ${d!==null&&Math.abs(d)>=PRECIOS_UMBRAL_DESFASE?`<span class="item-badge ${d>0?'badge-env':'badge-ok'}">${d>0?'⬆':'⬇'} ${fmtPct(d)}</span> `:''}${c.faltan.length?'<span class="item-badge badge-rojo">Falta precio</span>':''}</span></div></div>`;}).join('')}</div>`;
+ html+=`<div class="form-card" style="margin-top:16px"><h3>🧰 Herramientas</h3><div class="btn-row">
+  <label class="btn btn-azul" style="text-align:center;cursor:pointer;display:block">📥 Importar catálogo<input type="file" accept=".json" style="display:none" onchange="importarCatalogoProductos(this)"></label>
+  <button class="btn btn-secondary" onclick="exportarListaPreciosCSV()">📄 Exportar lista (CSV)</button></div></div>`;
+ cont.innerHTML=html;
+}
+function preciosSetFiltro(f){preciosFiltro=f;renderPrecios();}
+function usarCostoHoraPlanilla(){setCostoHoraManoObra(4861.11,'Valor usado en la planilla (Mano de Obra)');renderPrecios();}
+
+// ── Ajustes: márgenes, recargos, tasa fija y costo por hora ──
+function abrirModalAjustesPrecios(){
+ const cfg=getCosteoCfg();
+ const campo=(id,label,val,ayuda)=>`<div class="form-row"><label>${label}</label><input type="number" step="0.01" id="${id}" value="${val}">${ayuda?`<div style="font-size:10px;color:var(--gris);margin-top:3px">${ayuda}</div>`:''}</div>`;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';overlay.id='modal-ajustes-precios';
+ overlay.innerHTML=`<div class="modal-box"><h3>⚙️ Márgenes y tasas</h3>
+  ${campo('ap-min','Margen minorista (%)',cfg.margenMinorista,'Precio = costo ÷ (1 − margen)')}
+  ${campo('ap-may','Margen mayorista (%)',cfg.margenMayorista)}
+  ${campo('ap-combo','Margen combos (%)',cfg.margenCombo)}
+  ${campo('ap-c3','Recargo 3 cuotas (%)',cfg.recargo3Cuotas)}
+  ${campo('ap-c6','Recargo 6 cuotas (%)',cfg.recargo6Cuotas)}
+  ${campo('ap-tasa','Tasa fija (%)',Math.round((cfg.tasaFija||0)*10000)/100,'Costos indirectos aplicados sobre materiales + mano de obra')}
+  ${campo('ap-hora','Costo de mano de obra por hora ($)',cfg.costoHoraManoObra||0)}
+  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="document.getElementById('modal-ajustes-precios').remove()">Cancelar</button><button class="btn btn-primary" onclick="guardarAjustesPrecios()">Guardar</button></div></div>`;
+ document.body.appendChild(overlay);
+}
+function guardarAjustesPrecios(){
+ const v=id=>parseFloat(document.getElementById(id)?.value);
+ const nuevos={margenMinorista:v('ap-min'),margenMayorista:v('ap-may'),margenCombo:v('ap-combo'),recargo3Cuotas:v('ap-c3'),recargo6Cuotas:v('ap-c6'),tasaFija:v('ap-tasa')/100,costoHoraManoObra:v('ap-hora')};
+ if(Object.values(nuevos).some(x=>isNaN(x)||x<0)){alert('Revisá los valores: tienen que ser números de 0 en adelante.');return;}
+ if(['margenMinorista','margenMayorista','margenCombo'].some(k=>nuevos[k]>=100)){alert('Un margen no puede ser 100% o más.');return;}
+ const cfg=getCosteoCfg();
+ const historial=(cfg.historial||[]).slice();
+ Object.keys(nuevos).forEach(k=>{
+  if(Math.abs((cfg[k]||0)-nuevos[k])>1e-9)historial.push({fecha:hoy(),campo:k,valorAnterior:cfg[k],valorNuevo:nuevos[k],motivo:'Ajustes de precios'});
+  cfg[k]=nuevos[k];
+ });
+ cfg.historial=historial;
+ setCosteoCfg(cfg);
+ document.getElementById('modal-ajustes-precios')?.remove();
+ if(pantalla==='producto')recalcProducto();else renderPrecios();
+}
+
+// ── Fijar precios vigentes ──
+function preciosVigentesDe(c){return{min:c.min,may:c.may,combo:c.combo,costo:c.costo,fecha:hoy()};}
+function fijarPreciosProducto(id){
+ const lista=getProductos(),p=lista.find(x=>x.id===id);
+ if(!p)return;
+ const c=calcProducto(p);
+ if(c.faltan.length){alert('Este producto tiene materiales sin precio: completá los precios antes de fijarlo.');return;}
+ p.vigente=preciosVigentesDe(c);p.updatedAt=Date.now();
+ DB.set('productos',lista);
+ renderProducto();
+}
+function abrirFijarTodos(){
+ const cfg=getCosteoCfg(),idx=materialesIndice();
+ const items=getProductos().filter(p=>p.activo!==false).map(p=>({p,c:calcProducto(p,cfg,idx)}));
+ const ok=items.filter(x=>!x.c.faltan.length),salteados=items.length-ok.length;
+ const suben=ok.filter(x=>{const d=desfaseProducto(x.p,x.c);return d!==null&&d>0.0005;}).length,bajan=ok.filter(x=>{const d=desfaseProducto(x.p,x.c);return d!==null&&d<-0.0005;}).length;
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';overlay.id='modal-fijar';
+ overlay.innerHTML=`<div class="modal-box"><h3>📌 Fijar precios vigentes</h3>
+  <p style="font-size:13px;margin-bottom:8px">Los precios calculados hoy pasan a ser los vigentes de <b>${ok.length}</b> producto(s).</p>
+  <p style="font-size:12px;color:var(--gris)">${suben} suben · ${bajan} bajan · ${ok.length-suben-bajan} sin cambio o sin precio vigente previo.${salteados?`<br>${salteados} producto(s) no se tocan porque tienen materiales sin precio.`:''}</p>
+  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="document.getElementById('modal-fijar').remove()">Cancelar</button><button class="btn btn-primary" onclick="fijarTodosLosPrecios()">Fijar</button></div></div>`;
+ document.body.appendChild(overlay);
+}
+function fijarTodosLosPrecios(){
+ const cfg=getCosteoCfg(),idx=materialesIndice(),lista=getProductos();
+ let n=0;
+ lista.forEach(p=>{if(p.activo===false)return;const c=calcProducto(p,cfg,idx);if(c.faltan.length)return;p.vigente=preciosVigentesDe(c);p.updatedAt=Date.now();n++;});
+ DB.set('productos',lista);
+ document.getElementById('modal-fijar')?.remove();
+ renderPrecios();
+}
+
+// ── Editor de producto ──
+function abrirProducto(id){prodEditId=id||null;irA('producto');}
+function renderProducto(){
+ const cont=document.getElementById('producto-content');
+ if(!cont)return;
+ const p=prodEditId?getProductos().find(x=>x.id===prodEditId):null;
+ if(prodEditId&&!p){irA('precios');return;}
+ const d=p||{nombre:'',codigo:'',enLista:true,notas:'',receta:[{}],mano:[{operarios:1}]};
+ prmIdx=0;prhIdx=0;
+ cont.innerHTML=`<div class="form-card"><h3>${p?'✏️ Producto':'💲 Nuevo producto'}</h3>
+  <div class="form-row"><label>Nombre</label><input type="text" id="pr-nombre" value="${gastoEsc(d.nombre)}" placeholder="Ej: Alacena 120"></div>
+  <div class="form-grid"><div class="form-row"><label>Código</label><input type="text" id="pr-codigo" value="${gastoEsc(d.codigo||'')}" placeholder="AL-120"></div>
+   <div class="form-row"><label>En la lista de precios</label><select id="pr-enlista"><option value="1"${d.enLista?' selected':''}>Sí</option><option value="0"${d.enLista?'':' selected'}>No</option></select></div></div>
+  <div class="form-grid"><div class="form-row"><label>Margen minorista propio (%)</label><input type="number" step="0.01" id="pr-mmin" value="${d.margenMinorista||''}" placeholder="general" oninput="recalcProducto()"></div>
+   <div class="form-row"><label>Margen mayorista propio (%)</label><input type="number" step="0.01" id="pr-mmay" value="${d.margenMayorista||''}" placeholder="general" oninput="recalcProducto()"></div></div>
+  <div class="form-row"><label>Notas</label><textarea id="pr-notas" style="height:56px">${gastoEsc(d.notas||'')}</textarea></div></div>
+  <div class="form-card"><h3>🪵 Materiales</h3><div id="pr-mats"></div>
+   <button class="add-row-btn" onclick="prmAgregarFila({});recalcProducto()">＋ Agregar material</button></div>
+  <div class="form-card"><h3>👷 Mano de obra</h3><div id="pr-mo"></div>
+   <button class="add-row-btn" onclick="prhAgregarFila({operarios:1})">＋ Agregar tarea</button></div>
+  <div class="form-card"><h3>💰 Costo y precios</h3><div id="pr-resumen"></div></div>
+  ${p?`<div class="form-card"><h3>📌 Precio vigente</h3><div id="pr-vigente"></div></div>`:''}
+  <div class="btn-row" style="margin-bottom:24px">
+   ${p?`<button class="btn btn-danger" onclick="eliminarProducto(${p.id})">🗑</button><button class="btn btn-secondary" onclick="duplicarProducto(${p.id})">Duplicar</button>`:''}
+   <button class="btn btn-secondary" onclick="irA('precios')">Cancelar</button>
+   <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button></div>`;
+ (d.receta&&d.receta.length?d.receta:[{}]).forEach(l=>prmAgregarFila(l));
+ (d.mano&&d.mano.length?d.mano:[{operarios:1}]).forEach(x=>prhAgregarFila(x));
+ recalcProducto();
+}
+function prmAgregarFila(d){
+ d=d||{};
+ const cont=document.getElementById('pr-mats');
+ if(!cont)return;
+ const i=prmIdx++;
+ const div=document.createElement('div');
+ div.className='prm-fila';div.id='prm-'+i;div.style.cssText='margin-bottom:8px';
+ if(d.materialId!=null)div.dataset.materialId=d.materialId;
+ div.innerHTML=`<div style="display:grid;grid-template-columns:1fr 62px 24px;gap:6px;align-items:center">
+  <input type="text" class="prm-nombre" placeholder="Buscar material..." value="${gastoEsc(d.descripcion||'')}" oninput="prmSugerir(${i})" onfocus="prmSugerir(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
+  <input type="number" class="prm-cant" step="any" placeholder="Cant." value="${d.cantidad||''}" oninput="recalcProducto()">
+  <button type="button" class="del-btn" onclick="prmQuitar('prm-${i}')">✕</button></div>
+  <div class="prm-info" style="font-size:10px;color:var(--gris);margin-top:2px"></div>`;
+ cont.appendChild(div);
+}
+function prmQuitar(id){document.getElementById(id)?.remove();recalcProducto();}
+function prmSugerir(i){
+ const fila=document.getElementById('prm-'+i),input=fila?.querySelector('.prm-nombre');
+ if(!input)return;
+ delete fila.dataset.materialId; // se está escribiendo: se vuelve a vincular al elegir o por nombre exacto
+ renderSugerenciasBox(input,mat=>{input.value=mat.descripcion;fila.dataset.materialId=mat.id;cerrarSugerenciasBox();recalcProducto();});
+ recalcProducto();
+}
+function prhAgregarFila(d){
+ d=d||{};
+ const cont=document.getElementById('pr-mo');
+ if(!cont)return;
+ const i=prhIdx++;
+ const div=document.createElement('div');
+ div.className='prh-fila';div.id='prh-'+i;div.style.cssText='display:grid;grid-template-columns:1fr 58px 50px 24px;gap:6px;align-items:center;margin-bottom:8px';
+ div.innerHTML=`<input type="text" class="prh-proceso" placeholder="Tarea (opcional)" value="${gastoEsc(d.proceso||'')}">
+  <input type="number" class="prh-horas" step="any" placeholder="Horas" value="${d.horas||''}" oninput="recalcProducto()">
+  <input type="number" class="prh-op" step="1" placeholder="Pers." value="${d.operarios===undefined?1:d.operarios}" oninput="recalcProducto()">
+  <button type="button" class="del-btn" onclick="document.getElementById('prh-${i}').remove();recalcProducto()">✕</button>`;
+ cont.appendChild(div);
+}
+function leerProductoDOM(){
+ const val=id=>document.getElementById(id)?.value||'';
+ const receta=[...document.querySelectorAll('#pr-mats .prm-fila')].map(f=>({
+  descripcion:f.querySelector('.prm-nombre').value.trim(),cantidad:parseFloat(f.querySelector('.prm-cant').value)||0,
+  materialId:f.dataset.materialId?Number(f.dataset.materialId):null})).filter(l=>l.descripcion||l.cantidad);
+ const mano=[...document.querySelectorAll('#pr-mo .prh-fila')].map(f=>({
+  proceso:f.querySelector('.prh-proceso').value.trim(),horas:parseFloat(f.querySelector('.prh-horas').value)||0,
+  operarios:parseFloat(f.querySelector('.prh-op').value)||0})).filter(x=>x.horas>0);
+ return{nombre:val('pr-nombre').trim(),codigo:val('pr-codigo').trim(),enLista:val('pr-enlista')!=='0',notas:val('pr-notas').trim(),margenMinorista:parseFloat(val('pr-mmin'))||0,margenMayorista:parseFloat(val('pr-mmay'))||0,receta,mano};
+}
+function recalcProducto(){
+ const resumen=document.getElementById('pr-resumen');
+ if(!resumen)return;
+ const cfg=getCosteoCfg(),idx=materialesIndice();
+ document.querySelectorAll('#pr-mats .prm-fila').forEach(f=>{
+  const desc=f.querySelector('.prm-nombre').value.trim(),cant=parseFloat(f.querySelector('.prm-cant').value)||0;
+  const info=f.querySelector('.prm-info');
+  if(!info)return;
+  if(!desc){info.textContent='';return;}
+  const m=resolverLinea({descripcion:desc,materialId:f.dataset.materialId?Number(f.dataset.materialId):null},idx);
+  if(!m){info.innerHTML='<span style="color:var(--rojo)">⚠ No está en Materiales: elegí uno de la lista</span>';return;}
+  const pu=precioUsoMaterial(m);
+  info.innerHTML=pu>0?`${fmt(pu)} por ${gastoEsc(m.unidad||'unidad')} · subtotal <b>${fmt(cant*pu)}</b>`:'<span style="color:var(--rojo)">⚠ Sin precio en Materiales</span>';
+ });
+ const c=calcProducto(leerProductoDOM(),cfg,idx);
+ const fila=(l,v,b)=>`<div class="res-row"${b?' style="font-weight:700"':''}><span class="rl">${l}</span><span class="rv">${v}</span></div>`;
+ resumen.innerHTML=fila('Materiales',fmt(c.mp))+fila(`Mano de obra (${c.horas}h × ${fmt(cfg.costoHoraManoObra||0)})`,fmt(c.mo))+fila('Costos directos',fmt(c.directo))+
+  fila(`+ Tasa fija (${(c.tasa*100).toFixed(0)}%)`,fmt(c.fijos))+fila('Costo total',fmt(c.costo),true)+
+  fila(`Minorista (margen ${c.mMin}%)`,fmt(c.min),true)+fila(`Mayorista (margen ${c.mMay}%)`,fmt(c.may))+fila(`Combos (margen ${cfg.margenCombo}%)`,fmt(c.combo))+
+  fila('3 cuotas de',`${fmt(c.cuota3)} <span style="font-weight:400;font-size:11px">(total ${fmt(c.cuota3*3)})</span>`)+fila('6 cuotas de',`${fmt(c.cuota6)} <span style="font-weight:400;font-size:11px">(total ${fmt(c.cuota6*6)})</span>`)+
+  (c.faltan.length?`<p style="font-size:11px;color:var(--rojo);margin-top:8px">⚠ Materiales sin precio: ${c.faltan.map(gastoEsc).join(', ')}. El costo real es mayor.</p>`:'')+
+  (!cfg.costoHoraManoObra?'<p style="font-size:11px;color:var(--naranja);margin-top:8px">⚠ Falta cargar el costo de mano de obra por hora (⚙️ Márgenes y tasas).</p>':'')+
+  `<button class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="abrirModalAjustesPrecios()">⚙️ Márgenes y tasas</button>`;
+ const vig=document.getElementById('pr-vigente');
+ if(vig){
+  const p=getProductos().find(x=>x.id===prodEditId);
+  const d=p?desfaseProducto(p,c):null;
+  vig.innerHTML=(p&&p.vigente&&p.vigente.min>0?fila('Minorista vigente',fmt(p.vigente.min))+(p.vigente.may?fila('Mayorista vigente',fmt(p.vigente.may)):'')+fila('Fijado',p.vigente.fecha&&p.vigente.fecha!=='planilla'?fmtF(p.vigente.fecha):'según la planilla')+
+   (d!==null?`<p style="font-size:12px;margin-top:8px;color:${Math.abs(d)>=PRECIOS_UMBRAL_DESFASE?'var(--naranja)':'var(--gris)'}">Hoy el cálculo da ${fmtPct(d)} respecto del vigente.</p>`:''):'<p style="font-size:12px;color:var(--gris)">Todavía no fijaste un precio para este producto.</p>')+
+   `<button class="btn btn-verde" style="width:100%;margin-top:8px" onclick="fijarPreciosProducto(${prodEditId})">📌 Fijar los precios calculados</button>`;
+ }
+}
+function guardarProducto(){
+ const d=leerProductoDOM();
+ if(!d.nombre){alert('Poné el nombre del producto');return;}
+ if(!d.receta.length){alert('Agregá al menos un material');return;}
+ const lista=getProductos();
+ const prev=prodEditId?lista.find(x=>x.id===prodEditId):null;
+ const p=prev?{...prev}:{id:DB.nuevoId(),origen:'app',createdAt:Date.now(),activo:true,vigente:null};
+ Object.assign(p,{nombre:d.nombre,codigo:d.codigo,enLista:d.enLista,notas:d.notas,receta:d.receta,mano:d.mano,updatedAt:Date.now()});
+ if(d.margenMinorista>0&&d.margenMinorista<100)p.margenMinorista=d.margenMinorista;else delete p.margenMinorista;
+ if(d.margenMayorista>0&&d.margenMayorista<100)p.margenMayorista=d.margenMayorista;else delete p.margenMayorista;
+ const idx=prev?lista.findIndex(x=>x.id===prodEditId):-1;
+ if(idx>=0)lista[idx]=p;else lista.push(p);
+ DB.set('productos',lista);
+ irA('precios');
+}
+function duplicarProducto(id){
+ const lista=getProductos(),p=lista.find(x=>x.id===id);
+ if(!p)return;
+ const copia=JSON.parse(JSON.stringify(p));
+ Object.assign(copia,{id:DB.nuevoId(),nombre:p.nombre+' (copia)',codigo:'',vigente:null,origen:'app',createdAt:Date.now(),updatedAt:Date.now()});
+ lista.push(copia);
+ DB.set('productos',lista);
+ prodEditId=copia.id;renderProducto();
+}
+function eliminarProducto(id){irA('precios');eliminarItem('productos',id);}
+
+function importarCatalogoProductos(input){
+ const file=input.files&&input.files[0];
+ if(!file)return;
+ const rd=new FileReader();
+ rd.onload=e=>{
+  try{
+   const d=JSON.parse(e.target.result);
+   const nuevos=Array.isArray(d)?d:d.productos;
+   if(!Array.isArray(nuevos)||!nuevos.length)throw new Error('el archivo no tiene productos');
+   const lista=getProductos(),ids=new Set(lista.map(x=>x.id));
+   getPapelera().filter(p=>p.tipo==='productos').forEach(p=>ids.add(p.itemId));
+   let agregados=0;
+   nuevos.forEach(x=>{if(x&&x.id!==undefined&&x.nombre&&Array.isArray(x.receta)&&!ids.has(x.id)){lista.push(x);ids.add(x.id);agregados++;}});
+   DB.set('productos',lista);
+   alert(`Se importaron ${agregados} producto(s).`+(nuevos.length-agregados?` (${nuevos.length-agregados} ya estaban)`:''));
+   renderPrecios();
+  }catch(err){alert('No se pudo leer el archivo: '+err.message);}
+  input.value='';
+ };
+ rd.readAsText(file);
+}
+function exportarListaPreciosCSV(){
+ const cfg=getCosteoCfg(),idx=materialesIndice(),num=n=>String(Math.round(n*100)/100).replace('.',',');
+ const filas=[['Código','Producto','Costo','Minorista (calculado)','Mayorista (calculado)','Combos (calculado)','Cuota 3 cuotas','Cuota 6 cuotas','Minorista vigente','Mayorista vigente','Vigente desde']];
+ getProductos().filter(p=>p.activo!==false).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).forEach(p=>{
+  const c=calcProducto(p,cfg,idx),v=p.vigente||{};
+  filas.push([p.codigo||'',p.nombre,num(c.costo),num(c.min),num(c.may),num(c.combo),num(c.cuota3),num(c.cuota6),v.min?num(v.min):'',v.may?num(v.may):'',v.fecha&&v.fecha!=='planilla'?v.fecha:(v.min?'planilla':'')]);
+ });
+ const csv='\uFEFF'+filas.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+ const a=document.createElement('a');
+ a.href=url;a.download='lista-de-precios-conca-'+hoy()+'.csv';
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+
 // ══ NAVEGACIÓN ══
 let pantalla='home', historial=[];
 function irA(p){
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
  document.getElementById('screen-'+p).classList.add('active');
- const AGRUPADAS_EN_MAS=['cuentas','cobros','horas','pedidos','clientes','proveedores','materiales','personal','dashboard','papelera','gastos','ventas','mas'];
+ const AGRUPADAS_EN_MAS=['cuentas','cobros','horas','pedidos','clientes','proveedores','materiales','personal','dashboard','papelera','gastos','ventas','precios','producto','mas'];
  const navId=AGRUPADAS_EN_MAS.includes(p)?'nav-mas':'nav-'+p;
  const nb=document.getElementById(navId);
  if(nb)nb.classList.add('active');
@@ -1457,6 +1824,8 @@ function irA(p){
  if(p==='personal')renderPersonal();
  if(p==='gastos')renderGastos();
  if(p==='ventas')renderVentas();
+ if(p==='precios')renderPrecios();
+ if(p==='producto')renderProducto();
  if(p==='mas'){const b=document.getElementById('papelera-badge-mas');if(b)b.textContent=getPapelera().length;}
 }
 function mostrarForm(){
@@ -3561,7 +3930,7 @@ function eliminarDefinitivo(papId){
  DB.set('papelera',getPapelera().filter(p=>p.id!==papId));
  renderPapelera();
 }
-const ETIQUETA_TIPO_PAPELERA={presupuestos:'PRE',cuentas:'CC',ordenes:'OT',pedidos:'PED',gastos:'GAS',ventas:'VEN'};
+const ETIQUETA_TIPO_PAPELERA={presupuestos:'PRE',cuentas:'CC',ordenes:'OT',pedidos:'PED',gastos:'GAS',ventas:'VEN',productos:'PRO'};
 function renderPapelera(){
  const cont=document.getElementById('papelera-content');
  if(!cont)return;
@@ -5429,7 +5798,7 @@ function calcRentabilidad(){
 // sirve para decidir CUÁNDO conviene ajustar la tasa, pero no se aplica automático al precio.
 function getCosteoCfg(){
  const arr=DB.get('costeo_config');
- const base={tasaFija:0.5,costoHoraManoObra:0,historial:[]};
+ const base={tasaFija:0.5,costoHoraManoObra:0,historial:[],margenMinorista:37,margenMayorista:20,margenCombo:30,recargo3Cuotas:29,recargo6Cuotas:44.5};
  if(Array.isArray(arr)&&arr[0])return{...base,...arr[0]};
  return base;
 }
