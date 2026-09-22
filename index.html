@@ -211,6 +211,10 @@ body{background:white;}
 .screen.active .content>*{animation:fadeUp .25s ease both;}
 .screen.active .content>*:nth-child(2){animation-delay:.04s;}
 .screen.active .content>*:nth-child(3){animation-delay:.08s;}
+/* Los botones flotantes (🔍 a la izquierda, ☁ a la derecha) quedaban encima de la flecha de volver y del ícono del título */
+.topbar{padding-left:54px;padding-right:54px;}
+.prm-fila input,.prh-fila input{border:1.5px solid var(--crema3);border-radius:8px;padding:8px 9px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--marron);background:var(--crema);outline:none;min-width:0;width:100%;}
+.prm-fila input:focus,.prh-fila input:focus{border-color:var(--naranja);background:#fff;}
 </style>
 </head>
 <body>
@@ -996,6 +1000,20 @@ function renderGastos(){
 function abrirModalGasto(id){
  const g=id?getGastos().find(x=>x.id===id):null;
  if(id&&!g)return;
+ if(g&&g.origen==='finanzas'){
+  const c=gastoCat(g.categoria);
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';overlay.id='modal-gasto';
+  overlay.innerHTML=`<div class="modal-box"><h3>${c.emoji} ${gastoEsc(g.desc||c.label)}</h3>
+   <div class="res-row"><span class="rl">Fecha</span><span class="rv">${fmtF(g.fecha)}</span></div>
+   <div class="res-row"><span class="rl">Monto</span><span class="rv">${fmt(g.total)}</span></div>
+   <div class="res-row"><span class="rl">Medio</span><span class="rv">${gastoMedioLabel(g.medio)}</span></div>
+   <p style="font-size:12px;color:var(--gris);margin-top:10px">Este gasto se cargó desde Finanzas → Movimientos. Para editarlo o eliminarlo, hacelo desde ahí — así no se desarma el movimiento de caja.</p>
+   <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="document.getElementById('modal-gasto').remove()">Cerrar</button><button class="btn btn-primary" onclick="document.getElementById('modal-gasto').remove();finTab='movimientos';irA('finanzas');">Ir a Movimientos</button></div></div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  return;
+ }
  const f=g||{fecha:hoy(),proveedor:'',categoria:'',cif:'',desc:'',cant:1,precio:'',estado:'pagado',medio:'efectivo',obs:'',sinCaja:false};
  const cuenta={};
  getGastos().forEach(x=>{const n=(x.proveedor||'').trim();if(!n)return;const k=n.toLowerCase();cuenta[k]=cuenta[k]||{n,c:0};cuenta[k].c++;});
@@ -1420,9 +1438,9 @@ function renderFinEquilibrio(){
   </div>
   <div style="display:flex;gap:12px;justify-content:center;font-size:10px;color:var(--gris);margin-top:8px"><span><b style="color:var(--verde2)">■</b> Ingresos</span><span><b style="color:var(--marron2)">■</b> Egresos</span></div></div>`;
  // Tabla mes a mes
- const col='display:grid;grid-template-columns:62px 1fr 1fr 1fr 44px 1fr;gap:4px;align-items:center;';
+ const col='display:grid;grid-template-columns:50px 1fr 1fr 1fr 34px 1fr;gap:4px;align-items:center;';
  const tIng=meses.reduce((s,m)=>s+m.ingresos,0),tEg=meses.reduce((s,m)=>s+m.egresos,0);
- html+=`<div class="form-card"><h3>📅 Mes a mes</h3><div style="overflow-x:auto"><div style="min-width:440px;font-size:11px">
+ html+=`<div class="form-card"><h3>📅 Mes a mes</h3><div style="overflow-x:auto"><div style="min-width:320px;font-size:10.5px">
   <div style="${col}font-weight:700;color:var(--gris);text-transform:uppercase;font-size:9px;padding-bottom:6px;border-bottom:1px solid var(--crema2)"><span>Mes</span><span style="text-align:right">Ingresos</span><span style="text-align:right">Egresos</span><span style="text-align:right">Resultado</span><span style="text-align:right">Marg.</span><span style="text-align:right">P. equil.</span></div>
   ${meses.slice().reverse().map(m=>{const d=m.ym.split('-').map(Number);return `<div style="${col}padding:7px 0;border-bottom:1px solid var(--crema2);cursor:pointer;${m.ym===panelMes?'background:var(--crema);':''}" onclick="panelIrAMes('${m.ym}')">
    <span style="font-weight:600">${GASTO_MESES[d[1]-1].slice(0,3)} ${String(d[0]).slice(2)}</span>
@@ -1472,7 +1490,7 @@ function factoresUsoPlanilla(){
  return _factoresUso;
 }
 function precioUsoMaterial(m){
- const f=factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
+ const f=m.factorUso>0?m.factorUso:factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
  if(f&&m.costoUnitario>0)return m.costoUnitario*f;
  if(m.precioPorM2>0)return m.precioPorM2;
  if(m.costoConEnvio>0)return m.costoConEnvio;
@@ -1651,7 +1669,8 @@ function renderProducto(){
   <div class="btn-row" style="margin-bottom:24px">
    ${p?`<button class="btn btn-danger" onclick="eliminarProducto(${p.id})">🗑</button><button class="btn btn-secondary" onclick="duplicarProducto(${p.id})">Duplicar</button>`:''}
    <button class="btn btn-secondary" onclick="irA('precios')">Cancelar</button>
-   <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button></div>`;
+   <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button></div>
+  ${p?`<button class="btn btn-azul" style="width:100%;margin-bottom:24px" onclick="presupuestarProducto(${p.id})">🧾 Hacer un presupuesto con este producto</button>`:''}`;
  (d.receta&&d.receta.length?d.receta:[{}]).forEach(l=>prmAgregarFila(l));
  (d.mano&&d.mano.length?d.mano:[{operarios:1}]).forEach(x=>prhAgregarFila(x));
  recalcProducto();
@@ -1664,11 +1683,12 @@ function prmAgregarFila(d){
  const div=document.createElement('div');
  div.className='prm-fila';div.id='prm-'+i;div.style.cssText='margin-bottom:8px';
  if(d.materialId!=null)div.dataset.materialId=d.materialId;
- div.innerHTML=`<div style="display:grid;grid-template-columns:1fr 62px 24px;gap:6px;align-items:center">
-  <input type="text" class="prm-nombre" placeholder="Buscar material..." value="${gastoEsc(d.descripcion||'')}" oninput="prmSugerir(${i})" onfocus="prmSugerir(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
-  <input type="number" class="prm-cant" step="any" placeholder="Cant." value="${d.cantidad||''}" oninput="recalcProducto()">
+ div.innerHTML=`<div style="display:flex;gap:6px;align-items:center">
+  <input type="text" class="prm-nombre" placeholder="Buscar material..." value="${gastoEsc(d.descripcion||'')}" oninput="prmSugerir(${i})" onfocus="prmSugerir(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)" style="flex:1">
   <button type="button" class="del-btn" onclick="prmQuitar('prm-${i}')">✕</button></div>
-  <div class="prm-info" style="font-size:10px;color:var(--gris);margin-top:2px"></div>`;
+  <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+   <input type="number" class="prm-cant" step="any" placeholder="Cant." value="${d.cantidad||''}" oninput="recalcProducto()" style="width:84px;flex:none">
+   <div class="prm-info" style="flex:1;font-size:10px;color:var(--gris)"></div></div>`;
  cont.appendChild(div);
 }
 function prmQuitar(id){document.getElementById(id)?.remove();recalcProducto();}
@@ -1794,6 +1814,206 @@ function exportarListaPreciosCSV(){
  a.href=url;a.download='lista-de-precios-conca-'+hoy()+'.csv';
  document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+
+// ══ PRESUPUESTOS: productos de la lista de precios + cálculo de pintura (hoja "presupuestos" de la planilla) ══
+// Desde el formulario de presupuesto se puede traer un producto de la Lista de precios: entra como ítem (con el
+// precio del canal elegido) y, si querés, su receta pasa al Costeo (materiales y horas), ya multiplicada por la cantidad.
+// Todo sigue siendo referencia interna: nunca pisa a mano los precios que cargues en los ítems.
+let _selProd={q:'',canal:'min',id:null};
+const CANALES_PRECIO={min:'Minorista',may:'Mayorista',combo:'Combos'};
+function precioProductoCanal(p,c,canal){
+ const campo=canal==='may'?'may':canal==='combo'?'combo':'min',v=p.vigente||{};
+ return v[campo]>0?{valor:v[campo],origen:'vigente'}:{valor:c[campo],origen:'calculado hoy'};
+}
+function margenProductoCanal(c,cfg,canal){return canal==='may'?c.mMay:canal==='combo'?cfg.margenCombo:c.mMin;}
+function abrirSelectorProducto(){
+ document.getElementById('modal-sel-prod')?.remove();
+ _selProd={q:'',canal:'min',id:null};
+ const ov=document.createElement('div');
+ ov.className='modal-overlay';ov.id='modal-sel-prod';
+ ov.innerHTML='<div class="modal-box" id="sel-prod-box"></div>';
+ document.body.appendChild(ov);
+ ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+ selProdRender();
+}
+function selProdRender(){
+ const box=document.getElementById('sel-prod-box');
+ if(!box)return;
+ const chips=Object.entries(CANALES_PRECIO).map(([k,l])=>`<button type="button" class="presup-tab${_selProd.canal===k?' active':''}" style="padding:5px 12px;font-size:11px" onclick="selProdCanal('${k}')">${l}</button>`).join('');
+ if(!_selProd.id){
+  box.innerHTML=`<h3>📋 Producto de la lista</h3>
+   <div class="search-bar" style="box-shadow:none;background:var(--crema);margin-bottom:10px"><span>🔍</span><input type="text" id="sp-q" placeholder="Buscar producto o código..." value="${gastoEsc(_selProd.q)}" oninput="_selProd.q=this.value;selProdLista()"></div>
+   <div style="display:flex;gap:6px;margin-bottom:10px">${chips}</div>
+   <div id="sp-lista" style="max-height:44vh;overflow-y:auto"></div>
+   <div class="btn-row" style="margin-top:10px"><button class="btn btn-secondary" onclick="document.getElementById('modal-sel-prod').remove()">Cancelar</button></div>`;
+  selProdLista();
+  return;
+ }
+ const p=getProductos().find(x=>x.id===_selProd.id);
+ if(!p){_selProd.id=null;selProdRender();return;}
+ const cfg=getCosteoCfg(),c=calcProducto(p,cfg),pr=precioProductoCanal(p,c,_selProd.canal);
+ box.innerHTML=`<h3>${gastoEsc(p.nombre)}</h3>
+  <div style="display:flex;gap:6px;margin-bottom:10px">${chips}</div>
+  <div class="form-grid">
+   <div class="form-row"><label>Cantidad</label><input type="number" id="sp-cant" value="1" min="0" step="1"></div>
+   <div class="form-row"><label>Precio unitario</label><input type="number" id="sp-precio" step="0.01" value="${Math.round(pr.valor)}"></div></div>
+  <p style="font-size:11px;color:var(--gris);margin-bottom:10px">Precio ${pr.origen} · costo ${fmt(c.costo)}${c.faltan.length?' · ⚠ materiales sin precio: el costo real es mayor':''}</p>
+  <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer;background:var(--crema);border-radius:10px;padding:10px 12px"><input type="checkbox" id="sp-costeo" checked style="width:auto"> Sumar sus materiales y horas al Costeo</label>
+  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="_selProd.id=null;selProdRender()">‹ Volver</button><button class="btn btn-primary" onclick="selProdConfirmar()">Agregar</button></div>`;
+}
+function selProdCanal(k){_selProd.canal=k;selProdRender();}
+function selProdLista(){
+ const cont=document.getElementById('sp-lista');
+ if(!cont)return;
+ const cfg=getCosteoCfg(),idx=materialesIndice(),q=(_selProd.q||'').trim().toLowerCase();
+ const items=getProductos().filter(p=>p.activo!==false&&(!q||((p.nombre||'')+' '+(p.codigo||'')).toLowerCase().includes(q))).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).slice(0,80);
+ cont.innerHTML=items.length?items.map(p=>{
+  const pr=precioProductoCanal(p,calcProducto(p,cfg,idx),_selProd.canal);
+  return `<div class="item-card" style="padding:10px 12px;margin-bottom:8px" onclick="selProdElegir(${p.id})"><div class="item-nombre" style="font-size:13px;margin-bottom:1px">${gastoEsc(p.nombre)}</div><div class="item-desc">${fmt(pr.valor)} · ${pr.origen}</div></div>`;}).join('')
+  :'<p style="font-size:12px;color:var(--gris);text-align:center;padding:16px">No hay productos. Importá el catálogo en Lista de precios.</p>';
+}
+function selProdElegir(id){_selProd.id=id;selProdRender();}
+function selProdConfirmar(){
+ const cant=parseFloat(document.getElementById('sp-cant')?.value)||0,precio=parseFloat(document.getElementById('sp-precio')?.value)||0;
+ if(!(cant>0)){alert('Ingresá la cantidad');return;}
+ const id=_selProd.id,canal=_selProd.canal,costeo=!!document.getElementById('sp-costeo')?.checked;
+ document.getElementById('modal-sel-prod')?.remove();
+ agregarProductoAlPresupuesto(id,cant,precio,canal,costeo);
+}
+// Suma una cantidad de un material a la tabla de Costeo del presupuesto abierto (si ya está con el mismo precio, suma cantidades).
+function costeoSumarMaterial(mat,cantidad,costoUnitario){
+ const cu=Math.round(costoUnitario*100)/100;
+ const existente=[...document.querySelectorAll('#ct-materiales .tabla-fila')].find(f=>f.dataset.materialId&&Number(f.dataset.materialId)===mat.id&&Math.abs((parseFloat(f.querySelector('.cti-costo')?.value)||0)-cu)<0.01);
+ if(existente){
+  const inp=existente.querySelector('.cti-cant');
+  inp.value=Math.round(((parseFloat(inp.value)||0)+cantidad)*1000)/1000;
+  return;
+ }
+ agregarFilaCosteoMaterial({materialId:mat.id,descripcion:mat.descripcion,cantidad:Math.round(cantidad*1000)/1000,costoUnitario:cu,proveedor:mat.proveedor||''});
+}
+function agregarProductoAlPresupuesto(id,cant,precio,canal,cargarCosteo){
+ const p=getProductos().find(x=>x.id===id);
+ if(!p)return;
+ const cfg=getCosteoCfg(),c=calcProducto(p,cfg);
+ const pu=Math.round(precio*100)/100;
+ const vacia=[...document.querySelectorAll('#fp-items .tabla-fila')].find(f=>!(f.querySelector('.fpi-desc')?.value||'').trim()&&!(parseFloat(f.querySelector('.fpi-precio')?.value)||0));
+ if(vacia){
+  vacia.querySelector('.fpi-desc').value=p.nombre;vacia.querySelector('.fpi-cant').value=cant;vacia.querySelector('.fpi-precio').value=pu;
+  calcPresup();
+ } else agregarFilaPresup({desc:p.nombre,cant,precio:pu});
+ if(!cargarCosteo)return;
+ const sinPrecio=[];
+ c.lineas.forEach(l=>{
+  if(!l.material||!(l.pu>0)){sinPrecio.push(l.descripcion);return;}
+  costeoSumarMaterial(l.material,l.cantidad*cant,l.pu);
+ });
+ const horas=document.getElementById('fp-horas-est');
+ if(horas)horas.value=Math.round(((parseFloat(horas.value)||0)+c.horas*cant)*100)/100;
+ const mg=document.getElementById('ct-margen');
+ if(mg&&!mg.value)mg.value=margenProductoCanal(c,cfg,canal);
+ recalcularCosteoPresup();
+ if(sinPrecio.length)alert('Estos materiales no se sumaron al costeo porque no tienen precio en Materiales:\n• '+sinPrecio.join('\n• '));
+}
+// Desde la Lista de precios: abre un presupuesto nuevo con el producto ya cargado (canal minorista).
+function presupuestarProducto(id){
+ const p=getProductos().find(x=>x.id===id);
+ if(!p)return;
+ const c=calcProducto(p);
+ abrirForm('presupuestos',null);
+ agregarProductoAlPresupuesto(id,1,Math.round(precioProductoCanal(p,c,'min').valor),'min',true);
+}
+
+// ── Cálculo de pintura (litros = m² ÷ rendimiento × manos) ──
+// El rendimiento (m² por litro) se guarda en cada pintura; si todavía no lo cargaste, se propone el que figura en la
+// planilla (en la columna "precio de venta" de las pinturas en litros).
+let pinIdx=0;
+function rendimientoMaterial(m){
+ if(m.rendimiento>0)return m.rendimiento;
+ if(String(m.unidad||'').toLowerCase()==='lt'&&m.precioVenta>=1&&m.precioVenta<=30)return m.precioVenta;
+ return 0;
+}
+function guardarRendimientoMaterial(id,valor){
+ const lista=getMateriales(),m=lista.find(x=>x.id===id);
+ if(!m)return;
+ m.rendimiento=valor;m.updatedAt=Date.now();
+ DB.set('materiales',lista);
+}
+function abrirModalPintura(){
+ document.getElementById('modal-pintura')?.remove();
+ pinIdx=0;
+ const ov=document.createElement('div');
+ ov.className='modal-overlay';ov.id='modal-pintura';
+ ov.innerHTML=`<div class="modal-box"><h3>🎨 Cálculo de pintura</h3>
+  <p style="font-size:11px;color:var(--gris);margin-bottom:10px">Litros = m² ÷ rendimiento × manos. Al sumar al costeo se guarda el rendimiento en cada pintura.</p>
+  <div id="pin-filas"></div>
+  <button class="add-row-btn" onclick="pinAgregarFila()">＋ Otra pintura</button>
+  <div id="pin-total" style="margin-top:10px;font-size:12px"></div>
+  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="cerrarSugerenciasBox();document.getElementById('modal-pintura').remove()">Cancelar</button><button class="btn btn-primary" onclick="pinConfirmar()">Sumar al costeo</button></div></div>`;
+ document.body.appendChild(ov);
+ pinAgregarFila();
+}
+function pinAgregarFila(){
+ const cont=document.getElementById('pin-filas');
+ if(!cont)return;
+ const i=pinIdx++;
+ const div=document.createElement('div');
+ div.className='pin-fila';div.id='pin-'+i;div.style.cssText='margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--crema2)';
+ div.innerHTML=`<input type="text" class="pin-nombre" placeholder="Buscar pintura..." style="width:100%;border:1.5px solid var(--crema3);border-radius:10px;padding:9px 10px;font-size:13px;background:var(--crema);margin-bottom:6px" oninput="pinSugerir(${i})" onfocus="pinSugerir(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+   <div><div style="font-size:9px;color:var(--gris);font-weight:600">M² A PINTAR</div><input type="number" class="pin-m2" step="any" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:7px;background:var(--crema)" oninput="pinRecalc()"></div>
+   <div><div style="font-size:9px;color:var(--gris);font-weight:600">MANOS</div><input type="number" class="pin-manos" value="2" step="1" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:7px;background:var(--crema)" oninput="pinRecalc()"></div>
+   <div><div style="font-size:9px;color:var(--gris);font-weight:600">REND. M²/L</div><input type="number" class="pin-rend" step="any" style="width:100%;border:1.5px solid var(--crema3);border-radius:8px;padding:7px;background:var(--crema)" oninput="pinRecalc()"></div></div>
+  <div class="pin-res" style="font-size:11px;color:var(--gris);margin-top:5px"></div>`;
+ cont.appendChild(div);
+}
+function pinMaterial(f){
+ const idx=materialesIndice();
+ return((f.dataset.materialId&&idx.porId.get(Number(f.dataset.materialId)))||idx.porNombre.get(normalizarNombreMaterial(f.querySelector('.pin-nombre').value))||null);
+}
+function pinSugerir(i){
+ const fila=document.getElementById('pin-'+i),input=fila?.querySelector('.pin-nombre');
+ if(!input)return;
+ delete fila.dataset.materialId;
+ renderSugerenciasBox(input,m=>{
+  input.value=m.descripcion;fila.dataset.materialId=m.id;
+  const r=fila.querySelector('.pin-rend');
+  if(!(parseFloat(r.value)>0)){const rd=rendimientoMaterial(m);if(rd>0)r.value=rd;}
+  cerrarSugerenciasBox();pinRecalc();
+ });
+ pinRecalc();
+}
+function pinCalcFila(f){
+ const m=pinMaterial(f),m2=parseFloat(f.querySelector('.pin-m2').value)||0,manos=parseFloat(f.querySelector('.pin-manos').value)||0,rend=parseFloat(f.querySelector('.pin-rend').value)||0;
+ const litros=(m2>0&&rend>0&&manos>0)?Math.round(m2/rend*manos*100)/100:0;
+ return{m,m2,manos,rend,litros,costo:m?litros*precioUsoMaterial(m):0};
+}
+function pinRecalc(){
+ let lt=0,cs=0;
+ document.querySelectorAll('#pin-filas .pin-fila').forEach(f=>{
+  const r=pinCalcFila(f);lt+=r.litros;cs+=r.costo;
+  const el=f.querySelector('.pin-res');
+  if(!el)return;
+  el.innerHTML=r.litros>0?`<b>${r.litros} L</b>${r.m?` × ${fmt(precioUsoMaterial(r.m))} por litro = <b>${fmt(r.costo)}</b>`:' · <span style="color:var(--rojo)">elegí una pintura de la lista</span>'}`:'Completá m², manos y rendimiento';
+ });
+ const t=document.getElementById('pin-total');
+ if(t)t.innerHTML=lt>0?`Total: <b>${Math.round(lt*100)/100} L</b> · <b>${fmt(cs)}</b>`:'';
+}
+function pinConfirmar(){
+ let n=0;const incompletas=[];
+ document.querySelectorAll('#pin-filas .pin-fila').forEach(f=>{
+  const r=pinCalcFila(f),nombre=f.querySelector('.pin-nombre').value.trim();
+  if(!nombre&&!r.m2)return;
+  if(!r.m||!(r.litros>0)){incompletas.push(nombre||'(sin nombre)');return;}
+  if(r.rend>0&&rendimientoMaterial(r.m)!==r.rend)guardarRendimientoMaterial(r.m.id,r.rend);
+  costeoSumarMaterial(r.m,r.litros,precioUsoMaterial(r.m));n++;
+ });
+ if(incompletas.length){alert('Faltan datos (pintura de la lista, m², manos y rendimiento) en: '+incompletas.join(', '));return;}
+ if(!n){alert('Cargá al menos una pintura.');return;}
+ cerrarSugerenciasBox();
+ document.getElementById('modal-pintura')?.remove();
+ recalcularCosteoPresup();
 }
 
 
@@ -2592,7 +2812,7 @@ function buildFormPresup(num,item){
     <div class="tabla-header compras"><span>Fecha</span><span>Descripción</span><span>Cant</span><span>P. Unit</span><span>Total</span><span></span></div>
     <div id="fp-items"></div>
     <div class="tabla-total"><span>TOTAL</span><span class="tv" id="fp-total">$ 0</span></div>
-    <button class="add-row-btn" onclick="agregarFilaPresup()">＋ Agregar ítem</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="add-row-btn" style="margin-top:0" onclick="agregarFilaPresup()">＋ Agregar ítem</button><button class="add-row-btn" style="margin-top:0" onclick="abrirSelectorProducto()">📋 De la lista de precios</button></div>
   </div>
   <div class="form-card"><h3>💳 Condición de pago</h3>
     <div class="form-row"><label>Forma de pago</label>
@@ -2663,7 +2883,7 @@ function buildFormPresup(num,item){
     <div id="ct-materiales"></div>
     </div>
     </div>
-    <button class="add-row-btn" onclick="agregarFilaCosteoMaterial()">＋ Agregar material</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="add-row-btn" style="margin-top:0" onclick="agregarFilaCosteoMaterial()">＋ Agregar material</button><button class="add-row-btn" style="margin-top:0" onclick="abrirModalPintura()">🎨 Calcular pintura</button></div>
     <div class="form-row" style="margin-top:10px"><label>Margen de ganancia sobre este producto (%)</label><input type="number" id="ct-margen" step="1" placeholder="Ej: 30" oninput="recalcularCosteoPresup()"></div>
     <div id="ct-resumen" style="margin-top:10px"></div>
   </div>
@@ -2943,6 +3163,7 @@ function agregarFilaCosteoMaterial(data){
  div.className='tabla-fila'; div.id=`cti-${i}`;
  div.style.cssText='display:grid;grid-template-columns:180px 55px 80px 110px 85px 30px;gap:6px;align-items:center;margin-bottom:6px';
  if(d.proveedor)div.dataset.proveedor=d.proveedor;
+ if(d.materialId!=null)div.dataset.materialId=d.materialId;
  div.innerHTML=`<input type="text" class="cti-nombre" placeholder="Buscar material..." value="${(d.descripcion||'').replace(/"/g,'&quot;')}" oninput="mostrarSugerenciasCosteo(${i});actualizarCostoDesdeMaterial(${i})" onfocus="mostrarSugerenciasCosteo(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
     <input type="number" class="cti-cant" placeholder="1" step="0.1" value="${d.cantidad||''}" oninput="recalcularCosteoPresup()">
     <input type="number" class="cti-costo" placeholder="0" step="0.01" value="${d.costoUnitario||''}" oninput="recalcularCosteoPresup()">
@@ -3004,6 +3225,7 @@ function recalcularCosteoPresup(){
  const resumen=document.getElementById('ct-resumen');
  if(resumen){
  resumen.innerHTML=`<div class="res-row"><span class="rl">Costo materiales</span><span class="rv">${fmt(costoMateriales)}</span></div>
+ <div class="res-row"><span class="rl" style="font-size:11px">Materiales con IVA 21% (referencia)</span><span class="rv" style="font-size:12px;font-weight:400">${fmt(costoMateriales*1.21)}</span></div>
  <div class="res-row"><span class="rl">Costo mano de obra (${horas}h × ${fmt(cfg.costoHoraManoObra||0)})</span><span class="rv">${fmt(costoManoObra)}</span></div>
  <div class="res-row"><span class="rl">Costo directo</span><span class="rv">${fmt(costoDirecto)}</span></div>
  <div class="res-row"><span class="rl">+ Tasa fija (${(cfg.tasaFija*100).toFixed(0)}%)</span><span class="rv">${fmt(costoTotal-costoDirecto)}</span></div>
@@ -4676,6 +4898,8 @@ function abrirModalMaterialForm(materialId){
     <div class="form-row"><label>Costo con envío</label><input type="number" step="0.01" id="mmf-envio" value="${m?.costoConEnvio||''}"></div>
     <div class="form-row"><label>Precio de venta</label><input type="number" step="0.01" id="mmf-venta" value="${m?.precioVenta||''}"></div>
     <div class="form-row"><label>Stock actual</label><input type="number" step="0.01" id="mmf-stock" value="${m?.stock||''}" placeholder="Ej: 20"></div>
+    <div class="form-row"><label>Rendimiento (m² por litro)</label><input type="number" step="0.01" id="mmf-rend" value="${m?.rendimiento||''}" placeholder="Solo pinturas"></div>
+    <div class="form-row"><label>Precio de uso (por m², ml, unidad o litro)</label><input type="number" step="0.01" id="mmf-uso" value="${m?(Math.round(precioUsoMaterial(m)*100)/100||''):''}" placeholder="Lo que usan los productos"><div style="font-size:10px;color:var(--gris);margin-top:3px">Es el precio que usa la Lista de precios. Se ajusta solo cuando cambiás el costo unitario; corregilo acá si está mal.</div></div>
     <div class="form-row"><label>Proveedor</label><input type="text" id="mmf-prov" list="proveedores-datalist-form" value="${m?.proveedor||''}"></div>
     <datalist id="proveedores-datalist-form">${getProveedores().map(n=>`<option value="${(n||'').replace(/"/g,'&quot;')}">`).join('')}</datalist>
     <div class="btn-row" style="margin-top:16px">
@@ -4693,16 +4917,21 @@ function guardarMaterialForm(materialId){
  const costoConEnvio=parseFloat(document.getElementById('mmf-envio')?.value)||0;
  const precioVenta=parseFloat(document.getElementById('mmf-venta')?.value)||0;
  const stock=parseFloat(document.getElementById('mmf-stock')?.value)||0;
+ const rendimiento=parseFloat(document.getElementById('mmf-rend')?.value)||0;
+ const usoTipeado=parseFloat(document.getElementById('mmf-uso')?.value)||0;
  const provNombre=(document.getElementById('mmf-prov')?.value||'').trim();
  const lista=getMateriales();
  if(materialId){
  const m=lista.find(x=>x.id===materialId);
  if(m){
+ const usoAntes=precioUsoMaterial(m),factorAntes=m.factorUso>0?m.factorUso:factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
  m.descripcion=descripcion;m.unidad=unidad;m.costoUnitario=costoUnitario;m.costoConEnvio=costoConEnvio;m.precioVenta=precioVenta;m.stock=stock;
+ if(usoTipeado>0&&costoUnitario>0&&Math.abs(usoTipeado-usoAntes)>0.5)m.factorUso=usoTipeado/costoUnitario;else if(factorAntes&&!(m.factorUso>0))m.factorUso=factorAntes;
+ if(rendimiento>0)m.rendimiento=rendimiento;else delete m.rendimiento;
  m.proveedor=provNombre;m.proveedorId=provNombre?buscarOCrearProveedor(provNombre):null;m.updatedAt=Date.now();
  }
  } else {
- lista.push({id:DB.nuevoId(),descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2:0,stock,
+ lista.push({id:DB.nuevoId(),descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2:0,stock,...(rendimiento>0?{rendimiento}:{}),...(usoTipeado>0&&costoUnitario>0?{factorUso:usoTipeado/costoUnitario}:{}),
  proveedor:provNombre,proveedorId:provNombre?buscarOCrearProveedor(provNombre):null,activo:true,origen:'manual',createdAt:Date.now(),updatedAt:Date.now()});
  }
  DB.set('materiales',lista);
@@ -6304,13 +6533,26 @@ function abrirModalMovimiento(tipo,medio,catDefault,labelDefault){
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
+// Un egreso real (no un retiro) cargado acá también se refleja en Compras y Gastos del mes, para que
+// no haga falta cargarlo dos veces. No vuelve a tocar la caja: ya la tocó registrarMovimiento().
+const CATPAGO_A_GASTO={sueldos:'sueldos',alquiler:'gastos_fijos',impuestos:'impuestos',proveedores:'otros',servicios:'servicios',otros:'otros',tarjetas:'finanzas',prestamos:'finanzas'};
 function guardarMovimientoModal(tipo){
  const concepto=document.getElementById('mm-concepto')?.value||'';
  const monto=parseFloat(document.getElementById('mm-monto')?.value)||0;
  const medio=document.getElementById('mm-medio')?.value||'efectivo';
  const categoria=document.getElementById('mm-cat')?.value||'';
  if(monto<=0){alert('Ingresá un monto válido');return;}
- registrarMovimiento(tipo,medio,categoria,monto,concepto,'manual');
+ const fecha=hoy();
+ const esGasto=tipo==='egreso'&&CATPAGO_A_GASTO[categoria];
+ // Si además queda cargado en Gastos, el movimiento se marca origen "gasto" para que el panel de Equilibrio
+ // no lo sume dos veces (una vez desde Gastos y otra vez desde Movimientos).
+ const movId=registrarMovimiento(tipo,medio,categoria,monto,concepto,esGasto?'gasto':'manual',undefined,undefined,fecha);
+ if(esGasto){
+  const cifMap={fijo:'fijo',variable:'variable'};
+  const gastos=getGastos();
+  gastos.push({id:DB.nuevoId(),fecha,proveedor:'',categoria:CATPAGO_A_GASTO[categoria],cif:cifMap[PANEL_CAT_MOV[categoria]]||'',desc:concepto||CATEGORIAS_PAGO[categoria]?.label||'',cant:1,precio:monto,total:monto,medio,estado:'pagado',fechaPago:fecha,obs:'Cargado desde Finanzas → Movimientos',sinCaja:true,origen:'finanzas',finanzasMovId:movId,createdAt:Date.now(),updatedAt:Date.now()});
+  DB.set('gastos',gastos);
+ }
  document.getElementById('modal-movimiento')?.remove();
  renderFinanzas();
 }
