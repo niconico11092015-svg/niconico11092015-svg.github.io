@@ -6522,6 +6522,7 @@ function abrirModalMovimiento(tipo,medio,catDefault,labelDefault){
  overlay.innerHTML=`<div class="modal-box">
  <h3>${tipo==='ingreso'?'💵 Registrar ingreso':'📤 Registrar egreso'}</h3>
  <div class="form-row"><label>Concepto</label><input type="text" id="mm-concepto" value="${labelDefault||''}" placeholder="Descripción..."></div>
+ <div class="form-row"><label>Fecha</label><input type="date" id="mm-fecha" value="${hoy()}"></div>
  <div class="form-row"><label>Monto ($)</label><input type="number" id="mm-monto" placeholder="0"></div>
  <div class="form-row"><label>Medio</label><select id="mm-medio">${Object.entries(MEDIOS_PAGO).map(([k,l])=>`<option value="${k}"${k===medio?' selected':''}>${l}</option>`).join('')}</select></div>
  ${tipo==='egreso'?`<div class="form-row"><label>Categoría</label><select id="mm-cat">${Object.entries(CATEGORIAS_PAGO).map(([k,c])=>`<option value="${k}"${k===catDefault?' selected':''}>${c.emoji} ${c.label}</option>`).join('')}</select></div>`:''}
@@ -6541,8 +6542,9 @@ function guardarMovimientoModal(tipo){
  const monto=parseFloat(document.getElementById('mm-monto')?.value)||0;
  const medio=document.getElementById('mm-medio')?.value||'efectivo';
  const categoria=document.getElementById('mm-cat')?.value||'';
+ const fecha=document.getElementById('mm-fecha')?.value||hoy();
  if(monto<=0){alert('Ingresá un monto válido');return;}
- const fecha=hoy();
+ if(!fecha){alert('Ingresá la fecha');return;}
  const esGasto=tipo==='egreso'&&CATPAGO_A_GASTO[categoria];
  // Si además queda cargado en Gastos, el movimiento se marca origen "gasto" para que el panel de Equilibrio
  // no lo sume dos veces (una vez desde Gastos y otra vez desde Movimientos).
