@@ -1489,7 +1489,28 @@ function factoresUsoPlanilla(){
  });
  return _factoresUso;
 }
+// Un material se compra en un envase/formato (placa, balde, tablón) pero se USA en otra unidad (m², litro, pie).
+// Estas 3 conversiones explícitas reemplazan el factor oculto que traía la planilla, y quedan auditables:
+// PLACA (superficie): largo × ancho del tablero, en mm → m² o pie².
+// ENVASE (volumen en litros): cuántos litros trae el envase → $/litro.
+// TABLÓN (pie tablar, típico de maderas como el cedro): ancho y espesor en pulgadas, largo en metros,
+//   × 0,2734 → pies. Fórmula estándar: pies = ancho" × espesor" × largo(m) × 0,2734.
+function m2Placa(m){return(m.largoPlaca>0&&m.anchoPlaca>0)?(m.largoPlaca/1000)*(m.anchoPlaca/1000):0;}
+function piesTablon(m){return(m.anchoPulgTablon>0&&m.espesorPulgTablon>0&&m.largoMTablon>0)?m.anchoPulgTablon*m.espesorPulgTablon*m.largoMTablon*0.2734:0;}
+function unidadUsoMaterial(m){
+ if(m.porPlaca)return m.unidadPlaca==='pie2'?'pie²':'m²';
+ if(m.porEnvase)return 'litro';
+ if(m.porTablon)return 'pie';
+ return m.unidad||'u.';
+}
 function precioUsoMaterial(m){
+ const base=(m.costoConEnvio>0?m.costoConEnvio:m.costoUnitario)||0;
+ if(m.porPlaca){
+  const mm2=m2Placa(m);
+  if(mm2>0){const cant=m.unidadPlaca==='pie2'?mm2*10.7639:mm2;return cant>0?base/cant:0;}
+ }
+ if(m.porEnvase&&m.litrosEnvase>0)return base/m.litrosEnvase;
+ if(m.porTablon){const pies=piesTablon(m);if(pies>0)return base/pies;}
  const f=m.factorUso>0?m.factorUso:factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
  if(f&&m.costoUnitario>0)return m.costoUnitario*f;
  if(m.precioPorM2>0)return m.precioPorM2;
@@ -3137,7 +3158,8 @@ function renderSugerenciasBox(inputEl,onPick){
  lista.forEach(m=>{
  const opt=document.createElement('div');
  opt.style.cssText='padding:8px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid #eee';
- opt.innerHTML=`<div style="font-weight:600;color:#333">${m.descripcion}</div><div style="font-size:10px;color:#888">${fmt(m.costoUnitario)} / ${m.unidad||'u.'}${m.proveedor?' · '+m.proveedor:''}</div>`;
+ const puSug=precioUsoMaterial(m),unidadSug=unidadUsoMaterial(m),conv=m.porPlaca||m.porEnvase||m.porTablon;
+ opt.innerHTML=`<div style="font-weight:600;color:#333">${m.descripcion}</div><div style="font-size:10px;color:#888">${fmt(puSug)} / ${unidadSug}${conv?` (${m.porPlaca?'placa':m.porEnvase?'envase':'tablón'} ${fmt(m.costoUnitario)})`:''}${m.proveedor?' · '+m.proveedor:''}</div>`;
  opt.onmousedown=e=>{e.preventDefault();onPick(m);};
  box.appendChild(opt);
  });
@@ -4812,10 +4834,17 @@ function renderMateriales(){
  html+=lista.map(m=>{
  const stock=m.stock||0;
  const stockTxt=stock<=0?`<span style="color:var(--rojo);font-weight:700">⚠ Sin stock</span>`:`Stock: ${stock} ${m.unidad||'u.'}`;
+ const pu=precioUsoMaterial(m);
+ // Si el costo se cargó "por placa entera" o con un factor propio, el precio que usan los presupuestos
+ // (precio de uso) es distinto del costo unitario tal cual se compra — se muestran los dos para que no se confundan.
+ const unidadCompra=m.porPlaca?'placa':m.porEnvase?'envase':m.porTablon?'tablón':(m.unidad||'u.');
+ const usoDistinto=m.porPlaca||m.porEnvase||m.porTablon||(m.factorUso>0)||factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
+ const detalleConv=m.porPlaca?` (${m.largoPlaca}×${m.anchoPlaca}mm)`:m.porEnvase?` (${m.litrosEnvase} L)`:m.porTablon?` (${m.anchoPulgTablon}"×${m.espesorPulgTablon}"×${m.largoMTablon}m)`:'';
+ const lineaUso=usoDistinto&&pu>0?` · <b>Precio de uso: ${fmt(pu)} / ${unidadUsoMaterial(m)}</b>`:'';
  return`<div class="item-card" onclick="verMaterial(${m.id})" style="cursor:pointer">
-    <div class="item-top"><span class="item-codigo">🪵 ${m.unidad||''}</span><span class="item-fecha">${m.proveedor||'Sin proveedor'}</span></div>
+    <div class="item-top"><span class="item-codigo">🪵 ${unidadCompra}</span><span class="item-fecha">${m.proveedor||'Sin proveedor'}</span></div>
     <div class="item-nombre">${m.descripcion}</div>
-    <div class="item-desc">${fmt(m.costoUnitario)} / ${m.unidad||'u.'} · ${stockTxt}</div>
+    <div class="item-desc">${fmt(m.costoUnitario)} / ${unidadCompra}${detalleConv} · ${stockTxt}${lineaUso}</div>
   </div>`;}).join('');
  cont.innerHTML=html;
 }
@@ -4828,11 +4857,12 @@ function verMaterial(materialId){
  overlay.id='modal-material';
  overlay.innerHTML=`<div class="modal-box">
     <h3>🪵 ${m.descripcion}</h3>
-    <p style="font-size:13px;color:var(--gris);margin-bottom:12px">Unidad: ${m.unidad||'—'}</p>
-    <div class="res-row"><span class="rl">Costo unitario</span><span class="rv">${fmt(m.costoUnitario)}</span></div>
+    <p style="font-size:13px;color:var(--gris);margin-bottom:12px">Unidad de compra: ${m.porPlaca?'placa':m.porEnvase?'envase':m.porTablon?'tablón':(m.unidad||'—')}${m.porPlaca?` (${m.largoPlaca}×${m.anchoPlaca}mm = ${Math.round(m2Placa(m)*1000)/1000} m²)`:m.porEnvase?` (${m.litrosEnvase} L)`:m.porTablon?` (${m.anchoPulgTablon}"×${m.espesorPulgTablon}"×${m.largoMTablon}m = ${Math.round(piesTablon(m)*100)/100} pies)`:''}</p>
+    <div class="res-row"><span class="rl">Costo unitario</span><span class="rv">${fmt(m.costoUnitario)}${(m.porPlaca||m.porEnvase||m.porTablon)?' / '+(m.porPlaca?'placa':m.porEnvase?'envase':'tablón'):''}</span></div>
     <div class="res-row"><span class="rl">Costo con envío</span><span class="rv">${fmt(m.costoConEnvio)}</span></div>
     ${m.precioVenta?`<div class="res-row"><span class="rl">Precio de venta</span><span class="rv">${fmt(m.precioVenta)}</span></div>`:''}
     ${m.precioPorM2?`<div class="res-row"><span class="rl">Precio por m²/unidad</span><span class="rv">${fmt(m.precioPorM2)}</span></div>`:''}
+    <div class="res-row" style="font-weight:700"><span class="rl">Precio de uso (el que usan los presupuestos)</span><span class="rv">${fmt(precioUsoMaterial(m))} / ${unidadUsoMaterial(m)}</span></div>
     <div class="res-row"><span class="rl">Proveedor</span><span class="rv">${m.proveedor||'Sin asignar'}</span></div>
     <div class="res-row" style="font-weight:700"><span class="rl">Stock actual</span><span class="rv" style="color:${stock<=0?'var(--rojo)':'var(--verde2)'}">${stock} ${m.unidad||'u.'}</span></div>
     <div class="btn-row" style="margin-top:16px">
@@ -4894,12 +4924,30 @@ function abrirModalMaterialForm(materialId){
     <h3>🪵 ${m?'Editar material':'Nuevo material'}</h3>
     <div class="form-row"><label>Descripción</label><input type="text" id="mmf-desc" value="${(m?.descripcion||'').replace(/"/g,'&quot;')}"></div>
     <div class="form-row"><label>Unidad</label><input type="text" id="mmf-unidad" value="${m?.unidad||''}" placeholder="Ej: m2, unidad, kg"></div>
-    <div class="form-row"><label>Costo unitario</label><input type="number" step="0.01" id="mmf-costo" value="${m?.costoUnitario||''}"></div>
-    <div class="form-row"><label>Costo con envío</label><input type="number" step="0.01" id="mmf-envio" value="${m?.costoConEnvio||''}"></div>
+    <div class="form-row"><label>Costo unitario</label><input type="number" step="0.01" id="mmf-costo" value="${m?.costoUnitario||''}" oninput="mmfCalcConv()"></div>
+    <div class="form-row"><label>Costo con envío</label><input type="number" step="0.01" id="mmf-envio" value="${m?.costoConEnvio||''}" oninput="mmfCalcConv()"></div>
     <div class="form-row"><label>Precio de venta</label><input type="number" step="0.01" id="mmf-venta" value="${m?.precioVenta||''}"></div>
     <div class="form-row"><label>Stock actual</label><input type="number" step="0.01" id="mmf-stock" value="${m?.stock||''}" placeholder="Ej: 20"></div>
     <div class="form-row"><label>Rendimiento (m² por litro)</label><input type="number" step="0.01" id="mmf-rend" value="${m?.rendimiento||''}" placeholder="Solo pinturas"></div>
-    <div class="form-row"><label>Precio de uso (por m², ml, unidad o litro)</label><input type="number" step="0.01" id="mmf-uso" value="${m?(Math.round(precioUsoMaterial(m)*100)/100||''):''}" placeholder="Lo que usan los productos"><div style="font-size:10px;color:var(--gris);margin-top:3px">Es el precio que usa la Lista de precios. Se ajusta solo cuando cambiás el costo unitario; corregilo acá si está mal.</div></div>
+    <div class="form-row"><label>¿A qué corresponde el costo unitario?</label>
+     <select id="mmf-conv-tipo" onchange="mmfCambioConv()">
+      <option value="" ${(m?.porPlaca?'placa':m?.porEnvase?'envase':m?.porTablon?'tablon':'')===''?'selected':''}>Ya está en la unidad de uso (kg, ml, unidad, litro...)</option>
+      <option value="placa" ${(m?.porPlaca?'placa':m?.porEnvase?'envase':m?.porTablon?'tablon':'')==='placa'?'selected':''}>Superficie: precio de una placa/tablero entero</option>
+      <option value="envase" ${(m?.porPlaca?'placa':m?.porEnvase?'envase':m?.porTablon?'tablon':'')==='envase'?'selected':''}>Volumen: precio de un envase/balde (litros)</option>
+      <option value="tablon" ${(m?.porPlaca?'placa':m?.porEnvase?'envase':m?.porTablon?'tablon':'')==='tablon'?'selected':''}>Volumen: tablón de madera por pie (ej. cedro)</option>
+     </select></div>
+    <div class="form-row" id="mmf-conv-placa" style="display:${m?.porPlaca?'':'none'}"><div class="form-grid">
+      <div><label>Largo (mm)</label><input type="number" step="1" id="mmf-largo" value="${m?.largoPlaca||''}" placeholder="Ej: 3000" oninput="mmfCalcConv()"></div>
+      <div><label>Ancho (mm)</label><input type="number" step="1" id="mmf-ancho" value="${m?.anchoPlaca||''}" placeholder="Ej: 1200" oninput="mmfCalcConv()"></div></div>
+      <div style="margin-top:8px"><label>Resultado en</label><select id="mmf-uni-placa" onchange="mmfCalcConv()"><option value="m2" ${m?.unidadPlaca!=='pie2'?'selected':''}>m²</option><option value="pie2" ${m?.unidadPlaca==='pie2'?'selected':''}>pie²</option></select></div></div>
+    <div class="form-row" id="mmf-conv-envase" style="display:${m?.porEnvase?'':'none'}"><label>Contenido del envase (litros)</label><input type="number" step="0.01" id="mmf-litros" value="${m?.litrosEnvase||''}" placeholder="Ej: 20" oninput="mmfCalcConv()"></div>
+    <div class="form-row" id="mmf-conv-tablon" style="display:${m?.porTablon?'':'none'}"><div class="form-grid">
+      <div><label>Ancho (pulgadas)</label><input type="number" step="0.01" id="mmf-tabl-ancho" value="${m?.anchoPulgTablon||''}" placeholder="Ej: 8" oninput="mmfCalcConv()"></div>
+      <div><label>Espesor (pulgadas)</label><input type="number" step="0.01" id="mmf-tabl-esp" value="${m?.espesorPulgTablon||''}" placeholder="Ej: 1" oninput="mmfCalcConv()"></div></div>
+      <div style="margin-top:8px"><label>Largo (metros)</label><input type="number" step="0.01" id="mmf-tabl-largo" value="${m?.largoMTablon||''}" placeholder="Ej: 3" oninput="mmfCalcConv()"></div>
+      <div style="font-size:10px;color:var(--gris);margin-top:4px">Pies = ancho" × espesor" × largo(m) × 0,2734 (pie tablar)</div></div>
+    <div class="form-row" id="mmf-conv-preview" style="display:${(m?.porPlaca||m?.porEnvase||m?.porTablon)?'':'none'}"><label>Precio de uso resultante</label><input type="text" readonly value="" id="mmf-uso-calc"></div>
+    <div class="form-row" id="mmf-uso-row" style="display:${(m?.porPlaca||m?.porEnvase||m?.porTablon)?'none':''}"><label>Precio de uso (por m², ml, unidad o litro)</label><input type="number" step="0.01" id="mmf-uso" value="${m?(Math.round(precioUsoMaterial(m)*100)/100||''):''}" placeholder="Lo que usan los productos"><div style="font-size:10px;color:var(--gris);margin-top:3px">Es el precio que usa la Lista de precios. Se ajusta solo cuando cambiás el costo unitario; corregilo acá si está mal.</div></div>
     <div class="form-row"><label>Proveedor</label><input type="text" id="mmf-prov" list="proveedores-datalist-form" value="${m?.proveedor||''}"></div>
     <datalist id="proveedores-datalist-form">${getProveedores().map(n=>`<option value="${(n||'').replace(/"/g,'&quot;')}">`).join('')}</datalist>
     <div class="btn-row" style="margin-top:16px">
@@ -4908,6 +4956,34 @@ function abrirModalMaterialForm(materialId){
     </div>
   </div>`;
  document.body.appendChild(overlay);
+}
+function mmfCambioConv(){
+ const t=document.getElementById('mmf-conv-tipo')?.value||'';
+ document.getElementById('mmf-conv-placa').style.display=t==='placa'?'':'none';
+ document.getElementById('mmf-conv-envase').style.display=t==='envase'?'':'none';
+ document.getElementById('mmf-conv-tablon').style.display=t==='tablon'?'':'none';
+ document.getElementById('mmf-conv-preview').style.display=t?'':'none';
+ document.getElementById('mmf-uso-row').style.display=t?'none':'';
+ mmfCalcConv();
+}
+function mmfCalcConv(){
+ const t=document.getElementById('mmf-conv-tipo')?.value||'';
+ const calc=document.getElementById('mmf-uso-calc');
+ if(!calc||!t)return;
+ const costo=parseFloat(document.getElementById('mmf-envio')?.value)||parseFloat(document.getElementById('mmf-costo')?.value)||0;
+ let cant=0,label='';
+ if(t==='placa'){
+  const largo=parseFloat(document.getElementById('mmf-largo')?.value)||0,ancho=parseFloat(document.getElementById('mmf-ancho')?.value)||0;
+  const uni=document.getElementById('mmf-uni-placa')?.value||'m2';
+  const m2=largo>0&&ancho>0?(largo/1000)*(ancho/1000):0;
+  cant=uni==='pie2'?m2*10.7639:m2;label=uni==='pie2'?'pie²':'m²';
+ } else if(t==='envase'){
+  cant=parseFloat(document.getElementById('mmf-litros')?.value)||0;label='litro';
+ } else if(t==='tablon'){
+  const a=parseFloat(document.getElementById('mmf-tabl-ancho')?.value)||0,e=parseFloat(document.getElementById('mmf-tabl-esp')?.value)||0,l=parseFloat(document.getElementById('mmf-tabl-largo')?.value)||0;
+  cant=a>0&&e>0&&l>0?a*e*l*0.2734:0;label='pie';
+ }
+ calc.value=cant>0?(costo>0?fmt(costo/cant)+' por '+label+' (total: '+(Math.round(cant*1000)/1000)+' '+label+(cant!==1?'s':'')+')':'Falta el costo unitario'):'Completá los datos para calcular';
 }
 function guardarMaterialForm(materialId){
  const descripcion=(document.getElementById('mmf-desc')?.value||'').trim();
@@ -4918,7 +4994,13 @@ function guardarMaterialForm(materialId){
  const precioVenta=parseFloat(document.getElementById('mmf-venta')?.value)||0;
  const stock=parseFloat(document.getElementById('mmf-stock')?.value)||0;
  const rendimiento=parseFloat(document.getElementById('mmf-rend')?.value)||0;
- const usoTipeado=parseFloat(document.getElementById('mmf-uso')?.value)||0;
+ const convTipo=document.getElementById('mmf-conv-tipo')?.value||'';
+ const porPlaca=convTipo==='placa',porEnvase=convTipo==='envase',porTablon=convTipo==='tablon';
+ const largoPlaca=parseFloat(document.getElementById('mmf-largo')?.value)||0,anchoPlaca=parseFloat(document.getElementById('mmf-ancho')?.value)||0;
+ const unidadPlaca=document.getElementById('mmf-uni-placa')?.value||'m2';
+ const litrosEnvase=parseFloat(document.getElementById('mmf-litros')?.value)||0;
+ const anchoPulgTablon=parseFloat(document.getElementById('mmf-tabl-ancho')?.value)||0,espesorPulgTablon=parseFloat(document.getElementById('mmf-tabl-esp')?.value)||0,largoMTablon=parseFloat(document.getElementById('mmf-tabl-largo')?.value)||0;
+ const usoTipeado=convTipo?0:(parseFloat(document.getElementById('mmf-uso')?.value)||0);
  const provNombre=(document.getElementById('mmf-prov')?.value||'').trim();
  const lista=getMateriales();
  if(materialId){
@@ -4926,12 +5008,16 @@ function guardarMaterialForm(materialId){
  if(m){
  const usoAntes=precioUsoMaterial(m),factorAntes=m.factorUso>0?m.factorUso:factoresUsoPlanilla()[normalizarNombreMaterial(m.descripcion)];
  m.descripcion=descripcion;m.unidad=unidad;m.costoUnitario=costoUnitario;m.costoConEnvio=costoConEnvio;m.precioVenta=precioVenta;m.stock=stock;
- if(usoTipeado>0&&costoUnitario>0&&Math.abs(usoTipeado-usoAntes)>0.5)m.factorUso=usoTipeado/costoUnitario;else if(factorAntes&&!(m.factorUso>0))m.factorUso=factorAntes;
+ delete m.porPlaca;delete m.largoPlaca;delete m.anchoPlaca;delete m.unidadPlaca;delete m.porEnvase;delete m.litrosEnvase;delete m.porTablon;delete m.anchoPulgTablon;delete m.espesorPulgTablon;delete m.largoMTablon;
+ if(porPlaca&&largoPlaca>0&&anchoPlaca>0){m.porPlaca=true;m.largoPlaca=largoPlaca;m.anchoPlaca=anchoPlaca;m.unidadPlaca=unidadPlaca;}
+ else if(porEnvase&&litrosEnvase>0){m.porEnvase=true;m.litrosEnvase=litrosEnvase;}
+ else if(porTablon&&anchoPulgTablon>0&&espesorPulgTablon>0&&largoMTablon>0){m.porTablon=true;m.anchoPulgTablon=anchoPulgTablon;m.espesorPulgTablon=espesorPulgTablon;m.largoMTablon=largoMTablon;}
+ else if(usoTipeado>0&&costoUnitario>0&&Math.abs(usoTipeado-usoAntes)>0.5)m.factorUso=usoTipeado/costoUnitario;else if(factorAntes&&!(m.factorUso>0)&&!porPlaca&&!porEnvase&&!porTablon)m.factorUso=factorAntes;
  if(rendimiento>0)m.rendimiento=rendimiento;else delete m.rendimiento;
  m.proveedor=provNombre;m.proveedorId=provNombre?buscarOCrearProveedor(provNombre):null;m.updatedAt=Date.now();
  }
  } else {
- lista.push({id:DB.nuevoId(),descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2:0,stock,...(rendimiento>0?{rendimiento}:{}),...(usoTipeado>0&&costoUnitario>0?{factorUso:usoTipeado/costoUnitario}:{}),
+ lista.push({id:DB.nuevoId(),descripcion,unidad,costoUnitario,costoConEnvio,precioVenta,precioPorM2:0,stock,...(rendimiento>0?{rendimiento}:{}),...(porPlaca&&largoPlaca>0&&anchoPlaca>0?{porPlaca:true,largoPlaca,anchoPlaca,unidadPlaca}:porEnvase&&litrosEnvase>0?{porEnvase:true,litrosEnvase}:porTablon&&anchoPulgTablon>0&&espesorPulgTablon>0&&largoMTablon>0?{porTablon:true,anchoPulgTablon,espesorPulgTablon,largoMTablon}:(usoTipeado>0&&costoUnitario>0?{factorUso:usoTipeado/costoUnitario}:{})),
  proveedor:provNombre,proveedorId:provNombre?buscarOCrearProveedor(provNombre):null,activo:true,origen:'manual',createdAt:Date.now(),updatedAt:Date.now()});
  }
  DB.set('materiales',lista);
