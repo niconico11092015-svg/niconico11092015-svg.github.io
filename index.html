@@ -1014,7 +1014,7 @@ function abrirModalGasto(id){
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   return;
  }
- const f=g||{fecha:hoy(),proveedor:'',categoria:'',cif:'',desc:'',cant:1,precio:'',estado:'pagado',medio:'efectivo',obs:'',sinCaja:false};
+ const f=g||{fecha:hoy(),proveedor:'',categoria:'',cif:'',desc:'',cant:1,precio:'',estado:'pagado',medio:'efectivo',obs:'',sinCaja:false,materialId:null,aplicarStock:true};
  const cuenta={};
  getGastos().forEach(x=>{const n=(x.proveedor||'').trim();if(!n)return;const k=n.toLowerCase();cuenta[k]=cuenta[k]||{n,c:0};cuenta[k].c++;});
  _gastoChips=Object.values(cuenta).sort((a,b)=>b.c-a.c).slice(0,8).map(x=>x.n);
@@ -1030,11 +1030,14 @@ function abrirModalGasto(id){
   <div class="form-row"><label>Categoría</label><select id="mg-cat" onchange="gastoCambioCat()"><option value="">— Elegí —</option>${Object.entries(GASTO_CATEGORIAS).map(([k,c])=>`<option value="${k}"${k===f.categoria?' selected':''}>${c.emoji} ${c.label}</option>`).join('')}</select></div>
   <div class="form-row"><label>Tipo de costo</label><select id="mg-cif" ${g?'data-manual="1"':''} onchange="this.dataset.manual='1'">${['fijo','variable',''].map(k=>`<option value="${k}"${k===(f.cif||'')?' selected':''}>${GASTO_CIF_LABEL[k]}</option>`).join('')}</select></div>
   <div class="form-row"><label>Detalle</label><input type="text" id="mg-desc" value="${gastoEsc(f.desc)}" placeholder="Ej: tornillos 6x2, flete, luz..."></div>
+  <div class="form-row"><label>Material relacionado (opcional)</label>
+   <input type="text" id="mg-material" placeholder="Buscar en Materiales..." autocomplete="off" oninput="gastoSugerirMaterial()" onfocus="gastoSugerirMaterial()" onblur="setTimeout(cerrarSugerenciasBox,150)"></div>
   <div class="form-grid">
    <div class="form-row"><label>Cantidad</label><input type="number" step="0.01" id="mg-cant" value="${f.cant||1}" oninput="gastoCalcTotal()"></div>
    <div class="form-row"><label>Precio unitario</label><input type="number" step="0.01" id="mg-precio" value="${f.precio===''?'':f.precio}" placeholder="0" oninput="gastoCalcTotal()"></div>
   </div>
   <div class="form-row readonly"><label>Total</label><input type="text" id="mg-total" readonly value=""></div>
+  <div class="form-row" id="mg-material-info" style="display:none"></div>
   <div class="form-row"><label>Estado</label><select id="mg-estado" onchange="gastoToggleEstado()"><option value="pagado"${f.estado!=='a_pagar'?' selected':''}>✅ Pagado</option><option value="a_pagar"${f.estado==='a_pagar'?' selected':''}>⏳ A pagar (queda debiendo)</option></select></div>
   <div class="form-row" id="mg-medio-row"><label>Medio de pago</label><select id="mg-medio">${medios.map(([k,l])=>`<option value="${k}"${k===f.medio?' selected':''}>${l}</option>`).join('')}</select></div>
   <div class="form-row"><label>Observaciones</label><input type="text" id="mg-obs" value="${gastoEsc(f.obs)}" placeholder="Opcional"></div>
@@ -1047,6 +1050,10 @@ function abrirModalGasto(id){
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
  gastoCalcTotal();gastoToggleEstado();
+ if(f.materialId){
+  const mi=document.getElementById('mg-material'),mat=getMateriales().find(x=>x.id===f.materialId);
+  if(mi&&mat){mi.value=mat.descripcion;mi.dataset.materialId=mat.id;gastoRenderMaterialInfo(mat,f.aplicarStock!==false);}
+ }
 }
 function gastoElegirProv(i){const el=document.getElementById('mg-prov');if(el)el.value=_gastoChips[i]||'';}
 function gastoCambioCat(){
@@ -1054,13 +1061,69 @@ function gastoCambioCat(){
  const sel=document.getElementById('mg-cif');
  if(c&&sel&&!sel.dataset.manual)sel.value=c.cif;
 }
+function gastoSugerirMaterial(){
+ const input=document.getElementById('mg-material');
+ if(!input)return;
+ delete input.dataset.materialId;
+ document.getElementById('mg-material-info').style.display='none';
+ renderSugerenciasBox(input,mat=>{
+  input.value=mat.descripcion;input.dataset.materialId=mat.id;cerrarSugerenciasBox();
+  gastoRenderMaterialInfo(mat,true);
+ });
+}
+// Muestra stock y precio actuales del material elegido, y el check para actualizarlos con esta compra.
+function gastoRenderMaterialInfo(mat,marcado){
+ const box=document.getElementById('mg-material-info');
+ if(!box)return;
+ box.style.display='';
+ box.innerHTML=`<div style="background:var(--crema2);border-radius:10px;padding:10px 12px;font-size:12px">
+  Stock actual: <b>${mat.stock||0} ${mat.unidad||'u.'}</b> · Costo unitario actual: <b>${fmt(mat.costoUnitario||0)}</b>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:8px;cursor:pointer"><input type="checkbox" id="mg-aplicar-stock" style="width:auto" ${marcado?'checked':''} onchange="gastoCalcTotal()">
+   Sumar la cantidad al stock y actualizar el costo unitario de este material</label></div>`;
+ gastoCalcTotal();
+}
 function gastoCalcTotal(){
  const c=parseFloat(document.getElementById('mg-cant')?.value)||0,p=parseFloat(document.getElementById('mg-precio')?.value)||0;
  const el=document.getElementById('mg-total');if(el)el.value=fmt(c*p);
+ const matId=document.getElementById('mg-material')?.dataset.materialId;
+ const nota=document.getElementById('mg-material-nota');
+ if(matId&&document.getElementById('mg-aplicar-stock')?.checked){
+  const mat=getMateriales().find(x=>x.id===Number(matId));
+  if(mat&&nota)nota.remove();
+  if(mat){
+   const div=document.getElementById('mg-material-info');
+   let n=document.getElementById('mg-material-nota');
+   if(!n){n=document.createElement('div');n.id='mg-material-nota';n.style.cssText='font-size:11px;color:var(--verde);margin-top:6px';div.appendChild(n);}
+   n.innerHTML=c>0?`Al guardar: stock ${mat.stock||0} → <b>${(mat.stock||0)+c} ${mat.unidad||'u.'}</b>${p>0&&Math.abs(p-(mat.costoUnitario||0))>0.01?` · costo unitario ${fmt(mat.costoUnitario||0)} → <b>${fmt(p)}</b>`:''}`:'';
+  }
+ }
 }
 function gastoToggleEstado(){
  const fila=document.getElementById('mg-medio-row');
  if(fila)fila.style.display=(document.getElementById('mg-estado')?.value==='a_pagar')?'none':'';
+}
+// Deshace SOLO el stock que había sumado un gasto anterior (nunca el precio: si el material tuvo compras
+// más nuevas después, "deshacer" el precio pisaría un dato más actualizado que el que se está tocando).
+function revertirAjusteMaterial(ajuste){
+ if(!ajuste||!ajuste.materialId)return;
+ const lista=getMateriales(),m=lista.find(x=>x.id===ajuste.materialId);
+ if(!m)return;
+ m.stock=Math.max(0,(m.stock||0)-(ajuste.cantidad||0));
+ m.updatedAt=Date.now();
+ DB.set('materiales',lista);
+}
+// Aplica una compra al material: suma la cantidad al stock y actualiza el costo unitario (y el costo con envío,
+// para que no quede un valor viejo "ganándole" al nuevo en el cálculo de precio de uso). Como los productos leen
+// el precio del material en el momento de calcular, esto actualiza sola toda la Lista de precios y los presupuestos
+// que todavía no fijaron su precio vigente.
+function aplicarCompraAMaterial(materialId,cantidad,precioUnitario){
+ const lista=getMateriales(),m=lista.find(x=>x.id===materialId);
+ if(!m)return null;
+ m.stock=(m.stock||0)+(cantidad||0);
+ if(precioUnitario>0){m.costoUnitario=precioUnitario;m.costoConEnvio=precioUnitario;}
+ m.updatedAt=Date.now();
+ DB.set('materiales',lista);
+ return{materialId,cantidad:cantidad||0};
 }
 function guardarGasto(id){
  const v=k=>document.getElementById(k)?.value;
@@ -1071,13 +1134,16 @@ function guardarGasto(id){
  const estado=v('mg-estado')==='a_pagar'?'a_pagar':'pagado';
  const medio=v('mg-medio')||'efectivo';
  const sinCaja=!!document.getElementById('mg-sincaja')?.checked;
+ const materialIdStr=document.getElementById('mg-material')?.dataset.materialId;
+ const materialId=materialIdStr?Number(materialIdStr):null;
+ const aplicarStock=materialId&&!!document.getElementById('mg-aplicar-stock')?.checked;
  const lista=getGastos();
  const prev=id?lista.find(x=>x.id===id):null;
  if(!fecha){alert('Ingresá la fecha');return;}
  if(!(total>0)){alert('Ingresá cantidad y precio: el total tiene que ser mayor a 0');return;}
  if(!cat&&!(prev&&!prev.categoria)){alert('Elegí una categoría');return;}
  const g=prev?{...prev}:{id:DB.nuevoId(),origen:'app',createdAt:Date.now()};
- Object.assign(g,{fecha,proveedor:prov,proveedorId:prov?(buscarOCrearProveedor(prov)||null):null,categoria:cat,cif,desc,cant:cant||1,precio,total,estado,medio,sinCaja,obs,updatedAt:Date.now()});
+ Object.assign(g,{fecha,proveedor:prov,proveedorId:prov?(buscarOCrearProveedor(prov)||null):null,categoria:cat,cif,desc,cant:cant||1,precio,total,estado,medio,sinCaja,obs,materialId,updatedAt:Date.now()});
  if(estado==='pagado'){
   // al pasar de "a pagar" a "pagado" la plata sale hoy; si ya estaba pagado o se carga pagado, sale en la fecha del gasto
   g.fechaPago=(prev&&prev.estado==='a_pagar')?hoy():(prev&&prev.fechaPago)||fecha;
@@ -1085,6 +1151,11 @@ function guardarGasto(id){
  // La caja se recalcula siempre desde cero: se deshace el movimiento anterior (si había) y se crea el que corresponda.
  if(prev&&prev.movimientoId)revertirMovimientoEgreso(prev.movimientoId);
  g.movimientoId=gastoAplicarCaja(g);
+ // Igual con el stock: se deshace lo que este gasto había sumado antes (si cambió cantidad o material) y se
+ // vuelve a aplicar con los datos actuales. El precio del material solo se toca si se pidió aplicar esta vez.
+ if(prev&&prev.materialAjuste)revertirAjusteMaterial(prev.materialAjuste);
+ g.materialAjuste=aplicarStock?aplicarCompraAMaterial(materialId,g.cant,precio):null;
+ g.aplicarStock=aplicarStock;
  const idx=prev?lista.findIndex(x=>x.id===id):-1;
  if(idx>=0)lista[idx]=g;else lista.push(g);
  DB.set('gastos',lista);
@@ -1096,8 +1167,11 @@ function eliminarGasto(id){
  const lista=getGastos();
  const g=lista.find(x=>x.id===id);
  if(!g)return;
- // Si había descontado plata de la caja, se devuelve. Lo que vuelva de la Papelera queda solo como registro.
- if(g.movimientoId){revertirMovimientoEgreso(g.movimientoId);g.movimientoId=null;g.sinCaja=true;DB.set('gastos',lista);}
+ // Si había descontado plata de la caja, se devuelve. Si había sumado stock a un material, también se resta.
+ // Lo que vuelva de la Papelera queda solo como registro, sin volver a tocar ni la caja ni el stock.
+ if(g.movimientoId){revertirMovimientoEgreso(g.movimientoId);g.movimientoId=null;g.sinCaja=true;}
+ if(g.materialAjuste){revertirAjusteMaterial(g.materialAjuste);g.materialAjuste=null;g.aplicarStock=false;}
+ DB.set('gastos',lista);
  document.getElementById('modal-gasto')?.remove();
  eliminarItem('gastos',id);
 }
