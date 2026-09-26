@@ -931,10 +931,15 @@ function renderGastos(){
   </div>
   ${sin>0?`<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.7)">Sin clasificar / financiero: ${fmt(sin)}</div>`:''}
  </div>`;
- if(pend.length){
+ // Los pagos fijos pendientes (Finanzas → Por Pagar: alquiler, sueldos, servicios, etc. antes de pagarlos) son
+ // otra fuente de "debo esto" además de las compras a crédito cargadas acá. Se muestran juntos, de solo lectura,
+ // para no tener que ir a buscarlos a otro lado.
+ const pagosFijosPend=getPagosFijos().filter(p=>p.estado!=='Pagado');
+ const debeTotal=suma(pend)+pagosFijosPend.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+ if(pend.length||pagosFijosPend.length){
   html+=`<div class="item-card" style="border-left-color:var(--amarillo);margin-bottom:12px" onclick="gastoSetFiltro('a_pagar')">
-   <div class="item-nombre">⏳ Debés ${fmt(suma(pend))} a proveedores</div>
-   <div class="item-desc">${pend.length} compra(s) sin pagar · tocá para verlas</div></div>`;
+   <div class="item-nombre">⏳ Debés ${fmt(debeTotal)}</div>
+   <div class="item-desc">${pend.length} compra(s) sin pagar${pagosFijosPend.length?` · ${pagosFijosPend.length} pago(s) fijo(s) pendiente(s)`:''} · tocá para verlas</div></div>`;
  }
  // Evolución de los últimos 6 meses (fijo / variable / sin clasificar)
  const p0=gastosMes.split('-').map(Number);
@@ -977,9 +982,20 @@ function renderGastos(){
  else if(gastosFiltro==='sin')lista=lista.filter(g=>!g.cif);
  if(q)lista=lista.filter(g=>[g.proveedor,g.desc,g.obs].join(' ').toLowerCase().includes(q));
  lista.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.id-a.id));
- if(!lista.length){
-  html+=`<div class="empty-state"><div class="e-ico">🧾</div><p>${gastosFiltro==='a_pagar'?'No hay compras pendientes de pago.':'No hay gastos cargados en este período.'}<br>Tocá ＋ para cargar uno.</p></div>`;
- } else {
+ let pagosFijosFiltrados=gastosFiltro==='a_pagar'?pagosFijosPend.slice():[];
+ if(q)pagosFijosFiltrados=pagosFijosFiltrados.filter(p=>(p.concepto||'').toLowerCase().includes(q));
+ if(gastosFiltro==='a_pagar'&&pagosFijosFiltrados.length){
+  html+=`<p class="section-title">Pagos fijos pendientes (${pagosFijosFiltrados.length})</p><div class="lista" style="margin-bottom:14px">${pagosFijosFiltrados.map(p=>{
+   const c=CATEGORIAS_PAGO[p.categoria]||{emoji:'📌',label:'Otros'};
+   return `<div class="item-card" style="border-left-color:var(--amarillo)" onclick="finTab='pagar';irA('finanzas')">
+    <div class="item-top"><span class="item-codigo">${c.emoji} ${c.label}</span><span class="item-fecha">${p.vencimiento?fmtF(p.vencimiento):'Sin vencimiento'}</span></div>
+    <div class="item-nombre">${gastoEsc(p.concepto)}</div>
+    <div class="item-desc">Pago fijo de Finanzas · tocá para ir a Por Pagar</div>
+    <div class="item-footer"><span class="item-total">${fmt(p.monto)}</span><span class="item-badge badge-env">Pendiente</span></div></div>`;}).join('')}</div>`;
+ }
+ if(!lista.length&&!pagosFijosFiltrados.length){
+  html+=`<div class="empty-state"><div class="e-ico">🧾</div><p>${gastosFiltro==='a_pagar'?'No hay nada pendiente de pago.':'No hay gastos cargados en este período.'}<br>Tocá ＋ para cargar uno.</p></div>`;
+ } else if(lista.length){
   html+=`<p class="section-title">${gastosFiltro==='a_pagar'?'Compras a pagar':'Movimientos'} (${lista.length})</p><div class="lista">${lista.map(g=>{
    const c=gastoCat(g.categoria);
    return `<div class="item-card" style="border-left-color:${GASTO_CIF_COLOR[g.cif||'']}" onclick="abrirModalGasto(${g.id})">
@@ -1425,6 +1441,10 @@ function panelCalcMes(ym,opt){
  getVentas().forEach(v=>{if(en(v.fecha))ingV+=v.total||0;});
  getGastos().forEach(g=>{
   if(!en(g.fecha))return;
+  // Un gasto que en realidad vino sincronizado desde un movimiento de Finanzas (sueldo, alquiler, compra de
+  // material, pago fijo...) sigue las mismas reglas que esos movimientos: si "Sumar lo que pasó por Finanzas"
+  // está apagado, tampoco entra por acá — si no, contaría igual aunque el interruptor diga que no.
+  if(g.origen==='finanzas'&&!opt.finanzas)return;
   const t=g.total||0;
   if(g.categoria==='finanzas'){fin+=t;return;}
   if(g.cif==='fijo')fijos+=t;else if(g.cif==='variable')vars+=t;else sin+=t;
@@ -1435,7 +1455,7 @@ function panelCalcMes(ym,opt){
    if(!en(m.fecha))return;
    const t=m.monto||0;
    if(m.tipo==='ingreso'){if(m.origen!=='venta')ingF+=t;}
-   else if(m.tipo==='egreso'&&m.origen!=='gasto'){
+   else if(m.tipo==='egreso'&&m.origen!=='gasto'&&!m.esGastoSincronizado){
     const c=PANEL_CAT_MOV[m.categoria];
     if(c==='retiro')ret+=t;
     else if(c==='fin')fin+=t;
@@ -5260,7 +5280,7 @@ function guardarRetiroPersonal(personalId){
  p.retiros.push({id:DB.nuevoId(),fecha,monto,motivo});
  p.updatedAt=Date.now();
  DB.set('personal',lista);
- registrarMovimiento('egreso',medio,p.esDueno?'retiro_propietario':'sueldos',monto,`Retiro ${p.nombre}${motivo?' · '+motivo:''}`,`personal:${personalId}`);
+ registrarMovimiento('egreso',medio,p.esDueno?'retiro_propietario':'sueldos',monto,`Retiro ${p.nombre}${motivo?' · '+motivo:''}`,`personal:${personalId}`,undefined,undefined,fecha);
  document.getElementById('modal-retiro-personal').remove();
  renderPersonal();
 }
@@ -5916,10 +5936,18 @@ function setFinCfg(cfg){DB.set('finanzas_config',[cfg]);}
 
 // ── Movimientos (ingresos/egresos) ──
 function getMovimientos(){return DB.get('movimientos')||[];}
+// Categoría de Finanzas (CATEGORIAS_PAGO) → categoría de Compras y Gastos. Cualquier egreso real (sueldos,
+// alquiler, impuestos, proveedores, servicios, tarjetas u otros), se cargue desde donde se cargue — el modal
+// de Movimientos, un retiro de Personal, una compra rápida de material o la ejecución de un pago fijo — queda
+// también reflejado en Compras y Gastos del mes, de solo lectura, sin duplicar el descuento de caja.
+const CATPAGO_A_GASTO={sueldos:'sueldos',alquiler:'gastos_fijos',impuestos:'impuestos',proveedores:'otros',servicios:'servicios',otros:'otros',tarjetas:'finanzas',prestamos:'finanzas'};
 function registrarMovimiento(tipo,medio,categoria,monto,concepto,origen,estructura,prevPagado,fechaMov){
  monto=parseFloat(monto)||0;
  if(monto<=0)return false;
- const mov={id:DB.nuevoId(),fecha:fechaMov||hoy(),tipo,medio,categoria:categoria||'',concepto:concepto||'',monto,origen:origen||''};
+ const fecha=fechaMov||hoy();
+ // Si esto YA nació de un gasto (gastoAplicarCaja), no hay que sincronizar nada: es la fuente, no la copia.
+ const sincronizar=tipo==='egreso'&&origen!=='gasto'&&CATPAGO_A_GASTO[categoria];
+ const mov={id:DB.nuevoId(),fecha,tipo,medio,categoria:categoria||'',concepto:concepto||'',monto,origen:origen||'',...(sincronizar?{esGastoSincronizado:true}:{})};
  const lista=getMovimientos();
  lista.push(mov);
  DB.set('movimientos',lista);
@@ -5930,6 +5958,12 @@ function registrarMovimiento(tipo,medio,categoria,monto,concepto,origen,estructu
  else cfg.saldoEfectivo=(cfg.saldoEfectivo||0)+delta;
  setFinCfg(cfg);
  distribuirFondos(tipo,categoria,monto,estructura,prevPagado);
+ if(sincronizar){
+  const cifMap={fijo:'fijo',variable:'variable'};
+  const gastos=getGastos();
+  gastos.push({id:DB.nuevoId(),fecha,proveedor:'',categoria:CATPAGO_A_GASTO[categoria],cif:cifMap[PANEL_CAT_MOV[categoria]]||'',desc:concepto||CATEGORIAS_PAGO[categoria]?.label||'',cant:1,precio:monto,total:monto,medio,estado:'pagado',fechaPago:fecha,obs:'Cargado desde Finanzas → Movimientos',sinCaja:true,origen:'finanzas',finanzasMovId:mov.id,createdAt:Date.now(),updatedAt:Date.now()});
+  DB.set('gastos',gastos);
+ }
  // CORRECCIÓN: devolver el id del movimiento para poder enlazarlo desde el pago que lo originó
  return mov.id;
 }
@@ -6694,9 +6728,6 @@ function abrirModalMovimiento(tipo,medio,catDefault,labelDefault){
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
-// Un egreso real (no un retiro) cargado acá también se refleja en Compras y Gastos del mes, para que
-// no haga falta cargarlo dos veces. No vuelve a tocar la caja: ya la tocó registrarMovimiento().
-const CATPAGO_A_GASTO={sueldos:'sueldos',alquiler:'gastos_fijos',impuestos:'impuestos',proveedores:'otros',servicios:'servicios',otros:'otros',tarjetas:'finanzas',prestamos:'finanzas'};
 function guardarMovimientoModal(tipo){
  const concepto=document.getElementById('mm-concepto')?.value||'';
  const monto=parseFloat(document.getElementById('mm-monto')?.value)||0;
@@ -6705,16 +6736,7 @@ function guardarMovimientoModal(tipo){
  const fecha=document.getElementById('mm-fecha')?.value||hoy();
  if(monto<=0){alert('Ingresá un monto válido');return;}
  if(!fecha){alert('Ingresá la fecha');return;}
- const esGasto=tipo==='egreso'&&CATPAGO_A_GASTO[categoria];
- // Si además queda cargado en Gastos, el movimiento se marca origen "gasto" para que el panel de Equilibrio
- // no lo sume dos veces (una vez desde Gastos y otra vez desde Movimientos).
- const movId=registrarMovimiento(tipo,medio,categoria,monto,concepto,esGasto?'gasto':'manual',undefined,undefined,fecha);
- if(esGasto){
-  const cifMap={fijo:'fijo',variable:'variable'};
-  const gastos=getGastos();
-  gastos.push({id:DB.nuevoId(),fecha,proveedor:'',categoria:CATPAGO_A_GASTO[categoria],cif:cifMap[PANEL_CAT_MOV[categoria]]||'',desc:concepto||CATEGORIAS_PAGO[categoria]?.label||'',cant:1,precio:monto,total:monto,medio,estado:'pagado',fechaPago:fecha,obs:'Cargado desde Finanzas → Movimientos',sinCaja:true,origen:'finanzas',finanzasMovId:movId,createdAt:Date.now(),updatedAt:Date.now()});
-  DB.set('gastos',gastos);
- }
+ registrarMovimiento(tipo,medio,categoria,monto,concepto,'manual',undefined,undefined,fecha);
  document.getElementById('modal-movimiento')?.remove();
  renderFinanzas();
 }
