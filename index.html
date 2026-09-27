@@ -564,7 +564,7 @@ const _cache = {};
 
 
 // Sincronización en tiempo real — escucha cambios de Firebase
-const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config','papelera','contadores','clientes','costeo_config','materiales','fondos_config','personal','agenda_notas','gastos','ventas','productos'];
+const CLAVES_SYNC = ['presupuestos','cuentas','ordenes','pedidos','empleados_horas','proveedores','cat_materiales','cat_piezas','cat_herrajes','movimientos','pagos_fijos','finanzas_config','produccion_config','papelera','contadores','clientes','costeo_config','materiales','fondos_config','personal','agenda_notas','gastos','ventas','productos','ahorro_usd'];
 
 
 // ══ OFFLINE / COLA DE CAMBIOS PENDIENTES ══
@@ -1424,7 +1424,7 @@ function importarHistorialGastos(input){importarHistorialGenerico(input,'gastos'
 // Egresos  = gastos cargados + egresos que pasaron por Finanzas sin ser un gasto (pagos fijos, pedidos, manuales).
 // Nunca se cuenta dos veces: lo que se carga en Ventas/Gastos y descuenta caja queda marcado y se excluye de la 2ª fuente.
 let panelMes=null;
-const PANEL_CAT_MOV={sueldos:'fijo',alquiler:'fijo',impuestos:'fijo',proveedores:'variable',servicios:'variable',otros:'',tarjetas:'fin',prestamos:'fin',retiro_propietario:'retiro'};
+const PANEL_CAT_MOV={sueldos:'fijo',alquiler:'fijo',impuestos:'fijo',proveedores:'variable',servicios:'variable',otros:'',tarjetas:'fin',prestamos:'fin',retiro_propietario:'retiro',ahorro_usd:'retiro'};
 function panelOpts(){const c=getFinCfg();return{finanzas:c.panelIncluyeFinanzas!==false,tarjetas:!!c.panelIncluyeTarjetas};}
 function panelMover(d){const p=panelMes.split('-').map(Number);const dt=new Date(p[0],p[1]-1+d,1);panelMes=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');renderFinanzas();}
 function panelIrAMes(ym){panelMes=ym;renderFinanzas();}
@@ -1454,7 +1454,7 @@ function panelCalcMes(ym,opt){
   getMovimientos().forEach(m=>{
    if(!en(m.fecha))return;
    const t=m.monto||0;
-   if(m.tipo==='ingreso'){if(m.origen!=='venta')ingF+=t;}
+   if(m.tipo==='ingreso'){if(m.origen!=='venta'&&m.origen!=='ahorro_usd')ingF+=t;}
    else if(m.tipo==='egreso'&&m.origen!=='gasto'&&!m.esGastoSincronizado){
     const c=PANEL_CAT_MOV[m.categoria];
     if(c==='retiro')ret+=t;
@@ -2131,6 +2131,113 @@ function pinConfirmar(){
  recalcularCosteoPresup();
 }
 
+
+
+// ══ AHORRO EN USD ══
+// Comprar dólares: sale plata de la caja en pesos y se suma a la posición en USD. Vender: al revés.
+// No es un costo ni una venta del negocio, así que queda afuera del punto de equilibrio (como un retiro).
+function getUsdOps(){return DB.get('ahorro_usd')||[];}
+function saldoUsd(){return getUsdOps().reduce((s,o)=>s+(o.tipo==='compra'?o.usd:-o.usd),0);}
+// Costo promedio en pesos de los dólares que quedan en cartera (para estimar ganancia/pérdida contable).
+function costoPromedioUsd(){
+ const ops=getUsdOps().slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||a.id-b.id);
+ let usd=0,pesos=0;
+ ops.forEach(o=>{
+  if(o.tipo==='compra'){pesos+=o.pesos;usd+=o.usd;}
+  else{const cp=usd>0?pesos/usd:0;pesos-=cp*o.usd;usd=Math.max(0,usd-o.usd);}
+ });
+ return usd>0?pesos/usd:0;
+}
+function guardarCotizacionUsd(){
+ const v=parseFloat(document.getElementById('usd-cotact')?.value)||0;
+ const cfg=getFinCfg();cfg.usdCotizacionActual=v;setFinCfg(cfg);
+ renderFinanzas();
+}
+function abrirModalUsd(tipo){
+ const cfg=getFinCfg();
+ const overlay=document.createElement('div');
+ overlay.className='modal-overlay';overlay.id='modal-usd';
+ overlay.innerHTML=`<div class="modal-box"><h3>${tipo==='compra'?'💵 Comprar':'💸 Vender'} dólares</h3>
+  <div class="form-row"><label>Fecha</label><input type="date" id="usd-fecha" value="${hoy()}"></div>
+  <div class="form-grid">
+   <div class="form-row"><label>Cantidad (USD)</label><input type="number" step="0.01" id="usd-cant" placeholder="Ej: 100" oninput="usdCalcTotal()"></div>
+   <div class="form-row"><label>Cotización ($)</label><input type="number" step="0.01" id="usd-cot" value="${cfg.usdCotizacionActual||''}" placeholder="Ej: 1450" oninput="usdCalcTotal()"></div></div>
+  <div class="form-row readonly"><label>Total en pesos</label><input type="text" id="usd-total" readonly value=""></div>
+  <div class="form-row"><label>Medio</label><select id="usd-medio"><option value="efectivo">Efectivo</option><option value="banco">Banco/Transferencia</option></select></div>
+  <div class="form-row"><label>Observaciones</label><input type="text" id="usd-obs" placeholder="Opcional"></div>
+  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="document.getElementById('modal-usd').remove()">Cancelar</button><button class="btn btn-primary" onclick="guardarOperacionUsd('${tipo}')">Guardar</button></div></div>`;
+ document.body.appendChild(overlay);
+ overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+function usdCalcTotal(){
+ const c=parseFloat(document.getElementById('usd-cant')?.value)||0,p=parseFloat(document.getElementById('usd-cot')?.value)||0;
+ const el=document.getElementById('usd-total');if(el)el.value=fmt(c*p);
+}
+function registrarOperacionUsd(tipo,usd,cotizacion,medio,fecha,obs){
+ usd=parseFloat(usd)||0;cotizacion=parseFloat(cotizacion)||0;
+ if(!(usd>0)||!(cotizacion>0))return null;
+ if(tipo==='venta'&&usd>saldoUsd()+0.005)return'sin_saldo';
+ const pesos=Math.round(usd*cotizacion*100)/100;
+ const concepto=`${tipo==='compra'?'Compra':'Venta'} de USD ${usd}${obs?' · '+obs:''}`;
+ const movId=registrarMovimiento(tipo==='compra'?'egreso':'ingreso',medio,'ahorro_usd',pesos,concepto,'ahorro_usd',undefined,undefined,fecha);
+ const lista=getUsdOps();
+ const op={id:DB.nuevoId(),fecha,tipo,usd,cotizacion,pesos,medio,obs:obs||'',movimientoId:movId,createdAt:Date.now(),updatedAt:Date.now()};
+ lista.push(op);DB.set('ahorro_usd',lista);
+ const cfg=getFinCfg();cfg.usdCotizacionActual=cotizacion;setFinCfg(cfg);
+ return op;
+}
+function guardarOperacionUsd(tipo){
+ const fecha=document.getElementById('usd-fecha')?.value||hoy();
+ const usd=parseFloat(document.getElementById('usd-cant')?.value)||0;
+ const cot=parseFloat(document.getElementById('usd-cot')?.value)||0;
+ const medio=document.getElementById('usd-medio')?.value||'efectivo';
+ const obs=document.getElementById('usd-obs')?.value||'';
+ if(!(usd>0)||!(cot>0)){alert('Ingresá la cantidad de USD y la cotización.');return;}
+ const r=registrarOperacionUsd(tipo,usd,cot,medio,fecha,obs);
+ if(r==='sin_saldo'){alert(`No tenés esa cantidad de dólares ahorrados (tenés USD ${saldoUsd()}).`);return;}
+ document.getElementById('modal-usd')?.remove();
+ renderFinanzas();
+}
+function eliminarOperacionUsd(id){
+ const lista=getUsdOps();
+ const idx=lista.findIndex(o=>o.id===id);
+ if(idx<0)return;
+ const op=lista[idx];
+ if(op.movimientoId){if(op.tipo==='compra')revertirMovimientoEgreso(op.movimientoId);else revertirMovimientoIngreso(op.movimientoId);}
+ lista.splice(idx,1);
+ DB.set('ahorro_usd',lista);
+ renderFinanzas();
+}
+function renderFinUsd(){
+ const ops=getUsdOps().slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.id-a.id);
+ const saldo=Math.round(saldoUsd()*100)/100;
+ const cfg=getFinCfg();
+ const cotAct=cfg.usdCotizacionActual||0;
+ const valorHoy=saldo*cotAct,cp=costoPromedioUsd(),invertido=saldo*cp,dif=valorHoy-invertido;
+ let html=`<div class="cobros-header" style="background:linear-gradient(135deg,#1B4D3E,#2E7D5B)">
+  <div class="cobros-total-label">Ahorro en dólares</div>
+  <div class="cobros-total-num">USD ${saldo.toLocaleString('es-AR',{maximumFractionDigits:2})}</div>
+  <div class="cobros-sub">
+   <div class="cobros-sub-item"><div class="csi-label">Valor a la cotización actual</div><div class="csi-val">${fmt(valorHoy)}</div></div>
+   <div class="cobros-sub-item"><div class="csi-label">Costo promedio</div><div class="csi-val">${fmt(cp)}</div></div>
+  </div>
+  ${saldo>0&&cotAct>0?`<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.85)">${dif>=0?'✅ Ganancia':'⚠️ Pérdida'} en pesos si vendieras hoy: ${fmt(Math.abs(dif))}</div>`:''}
+ </div>
+ <div class="form-card"><h3>💱 Cotización actual (para valuar)</h3>
+  <div class="form-grid"><input type="number" id="usd-cotact" step="0.01" value="${cotAct||''}" placeholder="Ej: 1450"><button class="btn btn-secondary" onclick="guardarCotizacionUsd()">Guardar</button></div>
+  <p style="font-size:10px;color:var(--gris);margin-top:6px">Solo para ver cuánto valen hoy tus dólares. No hace falta cargarla siempre: se actualiza sola cada vez que comprás o vendés.</p></div>
+ <div class="btn-row" style="margin-bottom:14px"><button class="btn btn-verde" onclick="abrirModalUsd('compra')">💵 Comprar dólares</button><button class="btn btn-secondary" onclick="abrirModalUsd('venta')">💸 Vender dólares</button></div>`;
+ if(!ops.length){
+  html+=`<div class="empty-state"><div class="e-ico">💵</div><p>Todavía no cargaste compras ni ventas de dólares.</p></div>`;
+ } else {
+  html+=`<p class="section-title">Movimientos (${ops.length})</p><div class="lista">${ops.map(o=>`<div class="item-card" style="border-left-color:${o.tipo==='compra'?'var(--verde2)':'var(--rojo)'}">
+   <div class="item-top"><span class="item-codigo">${o.tipo==='compra'?'💵 Compra':'💸 Venta'}</span><span class="item-fecha">${fmtF(o.fecha)}</span></div>
+   <div class="item-nombre">USD ${o.usd} a ${fmt(o.cotizacion)}</div>
+   <div class="item-desc">${gastoEsc(o.obs)}${o.obs?' · ':''}${gastoMedioLabel(o.medio)}</div>
+   <div class="item-footer"><span class="item-total">${fmt(o.pesos)}</span><button class="del-btn" onclick="event.stopPropagation();if(confirm('¿Eliminar este movimiento? Se corrige la caja.'))eliminarOperacionUsd(${o.id})">🗑</button></div></div>`).join('')}</div>`;
+ }
+ return html;
+}
 
 // ══ NAVEGACIÓN ══
 let pantalla='home', historial=[];
@@ -5917,7 +6024,8 @@ const CATEGORIAS_PAGO={
  servicios:{label:'Servicios',emoji:'💡'},
  tarjetas:{label:'Tarjetas',emoji:'💳'},
  prestamos:{label:'Préstamos',emoji:'🏦'},
- otros:{label:'Otros',emoji:'📌'}
+ otros:{label:'Otros',emoji:'📌'},
+ ahorro_usd:{label:'Ahorro en USD',emoji:'💵'}
 };
 const MEDIOS_PAGO={efectivo:'💵 Efectivo',transferencia:'🏦 Transferencia',mercadopago:'📱 Mercado Pago',tarjeta:'💳 Tarjeta'};
 function medioFromTexto(t){t=(t||'').toLowerCase();if(t.includes('efect'))return'efectivo';if(t.includes('mercado')||t.includes('mp'))return'mercadopago';if(t.includes('tarjeta'))return'tarjeta';return'transferencia';}
@@ -6379,7 +6487,7 @@ function setFinTab(tab){finTab=tab;renderFinanzas();}
 function renderFinanzas(){
  const cont=document.getElementById('finanzas-content');
  if(!cont)return;
- const tabs=[{k:'panel',l:'Panel'},{k:'cobrar',l:'Por Cobrar'},{k:'pagar',l:'Por Pagar'},{k:'movs',l:'Movimientos'},{k:'renta',l:'Rentabilidad'},{k:'equilibrio',l:'Equilibrio'}];
+ const tabs=[{k:'panel',l:'Panel'},{k:'cobrar',l:'Por Cobrar'},{k:'pagar',l:'Por Pagar'},{k:'movs',l:'Movimientos'},{k:'renta',l:'Rentabilidad'},{k:'equilibrio',l:'Equilibrio'},{k:'usd',l:'Ahorro USD'}];
  let html=`<div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
  ${tabs.map(t=>`<button onclick="setFinTab('${t.k}')" style="padding:8px 14px;border-radius:20px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;background:${finTab===t.k?'var(--marron)':'var(--blanco)'};color:${finTab===t.k?'#fff':'var(--gris)'};box-shadow:var(--sombra)">${t.l}</button>`).join('')}
  </div>`;
@@ -6389,6 +6497,7 @@ function renderFinanzas(){
  else if(finTab==='movs')html+=renderFinMovs();
  else if(finTab==='renta')html+=renderFinRenta();
  else if(finTab==='equilibrio')html+=renderFinEquilibrio();
+ else if(finTab==='usd')html+=renderFinUsd();
  cont.innerHTML=html;
 }
 
