@@ -4645,11 +4645,11 @@ function renderDashboard(){
   </div>
   <div style="background:var(--blanco);border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
     <div style="font-family:'Playfair Display',serif;font-size:14px;color:var(--marron);margin-bottom:12px">📋 Presupuestos por estado</div>
-    <canvas id="chart-presup" height="180"></canvas>
+    <div style="position:relative;height:200px;width:100%"><canvas id="chart-presup"></canvas></div>
   </div>
   <div style="background:var(--blanco);border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:14px">
     <div style="font-family:'Playfair Display',serif;font-size:14px;color:var(--marron);margin-bottom:12px">💵 Facturación últimos 6 meses</div>
-    <canvas id="chart-facturacion" height="180"></canvas>
+    <div style="position:relative;height:200px;width:100%"><canvas id="chart-facturacion"></canvas></div>
   </div>`;
  setTimeout(()=>{
  try{
