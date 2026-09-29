@@ -1009,7 +1009,9 @@ function renderGastos(){
   <div class="btn-row">
    <label class="btn btn-azul" style="text-align:center;cursor:pointer;display:block">📥 Importar historial del Excel<input type="file" accept=".json" style="display:none" onchange="importarHistorialGastos(this)"></label>
    <button class="btn btn-secondary" onclick="exportarGastosCSV()">📄 Exportar a Excel (CSV)</button>
-  </div></div>`;
+  </div>
+  <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="sincronizarMovimientosViejos()">🔄 Sincronizar movimientos anteriores de Finanzas</button>
+  <p style="font-size:10px;color:var(--gris);margin-top:6px">Si el total de acá no coincide con el de Equilibrio, tocá esto una vez: trae los pagos de sueldos, alquiler u otros que hayas cargado en Finanzas → Movimientos antes de que existiera esta conexión.</p></div>`;
  cont.innerHTML=html;
 }
 
@@ -1680,7 +1682,7 @@ function renderPrecios(){
   const vig=p.vigente&&p.vigente.min>0?`Vigente ${fmt(p.vigente.min)} · ${p.vigente.fecha&&p.vigente.fecha!=='planilla'?fmtF(p.vigente.fecha):'de la planilla'}`:'Sin precio vigente';
   return `<div class="item-card" style="border-left-color:${c.faltan.length?'var(--rojo)':(d!==null&&Math.abs(d)>=PRECIOS_UMBRAL_DESFASE?'var(--naranja)':'var(--verde2)')}" onclick="abrirProducto(${p.id})">
    <div class="item-top"><span class="item-codigo">${gastoEsc(p.codigo||'')}</span><span class="item-fecha">costo ${fmt(c.costo)}</span></div>
-   <div class="item-nombre">${gastoEsc(p.nombre)}</div>
+   <div class="item-nombre">${gastoEsc(p.nombre)}${medidasProducto(p)?` <span style="font-weight:400;color:var(--gris);font-size:11px">(${medidasProducto(p)})</span>`:''}</div>
    <div class="item-desc">Minorista <b>${fmt(c.min)}</b> · Mayorista <b>${fmt(c.may)}</b></div>
    <div class="item-footer"><span style="font-size:11px;color:var(--gris)">${vig}</span><span>
     ${d!==null&&Math.abs(d)>=PRECIOS_UMBRAL_DESFASE?`<span class="item-badge ${d>0?'badge-env':'badge-ok'}">${d>0?'⬆':'⬇'} ${fmtPct(d)}</span> `:''}${c.faltan.length?'<span class="item-badge badge-rojo">Falta precio</span>':''}</span></div></div>`;}).join('')}</div>`;
@@ -1774,6 +1776,11 @@ function renderProducto(){
    <div class="form-row"><label>En la lista de precios</label><select id="pr-enlista"><option value="1"${d.enLista?' selected':''}>Sí</option><option value="0"${d.enLista?'':' selected'}>No</option></select></div></div>
   <div class="form-grid"><div class="form-row"><label>Margen minorista propio (%)</label><input type="number" step="0.01" id="pr-mmin" value="${d.margenMinorista||''}" placeholder="general" oninput="recalcProducto()"></div>
    <div class="form-row"><label>Margen mayorista propio (%)</label><input type="number" step="0.01" id="pr-mmay" value="${d.margenMayorista||''}" placeholder="general" oninput="recalcProducto()"></div></div>
+  <div class="form-grid"><div class="form-row"><label>Alto (cm)</label><input type="number" step="0.1" id="pr-alto" value="${d.alto||''}" placeholder="Ej: 80"></div>
+   <div class="form-row"><label>Ancho (cm)</label><input type="number" step="0.1" id="pr-ancho" value="${d.ancho||''}" placeholder="Ej: 120"></div></div>
+  <div class="form-row"><label>Profundidad (cm)</label><input type="number" step="0.1" id="pr-prof" value="${d.profundidad||''}" placeholder="Ej: 45"></div>
+  <div class="form-row"><label>Descripción breve (para el presupuesto)</label><textarea id="pr-desc-breve" style="height:56px" placeholder="Ej: 2 puertas, 3 cajones, tirador de bronce...">${gastoEsc(d.descripcionBreve||'')}</textarea>
+   <div style="font-size:10px;color:var(--gris);margin-top:3px">Al agregar este producto a un presupuesto, se copia sola en Observaciones.</div></div>
   <div class="form-row"><label>Notas</label><textarea id="pr-notas" style="height:56px">${gastoEsc(d.notas||'')}</textarea></div></div>
   <div class="form-card"><h3>🪵 Materiales</h3><div id="pr-mats"></div>
    <button class="add-row-btn" onclick="prmAgregarFila({});recalcProducto()">＋ Agregar material</button></div>
@@ -1829,13 +1836,14 @@ function prhAgregarFila(d){
 }
 function leerProductoDOM(){
  const val=id=>document.getElementById(id)?.value||'';
+ const num=id=>parseFloat(document.getElementById(id)?.value)||0;
  const receta=[...document.querySelectorAll('#pr-mats .prm-fila')].map(f=>({
   descripcion:f.querySelector('.prm-nombre').value.trim(),cantidad:parseFloat(f.querySelector('.prm-cant').value)||0,
   materialId:f.dataset.materialId?Number(f.dataset.materialId):null})).filter(l=>l.descripcion||l.cantidad);
  const mano=[...document.querySelectorAll('#pr-mo .prh-fila')].map(f=>({
   proceso:f.querySelector('.prh-proceso').value.trim(),horas:parseFloat(f.querySelector('.prh-horas').value)||0,
   operarios:parseFloat(f.querySelector('.prh-op').value)||0})).filter(x=>x.horas>0);
- return{nombre:val('pr-nombre').trim(),codigo:val('pr-codigo').trim(),enLista:val('pr-enlista')!=='0',notas:val('pr-notas').trim(),margenMinorista:parseFloat(val('pr-mmin'))||0,margenMayorista:parseFloat(val('pr-mmay'))||0,receta,mano};
+ return{nombre:val('pr-nombre').trim(),codigo:val('pr-codigo').trim(),enLista:val('pr-enlista')!=='0',notas:val('pr-notas').trim(),margenMinorista:parseFloat(val('pr-mmin'))||0,margenMayorista:parseFloat(val('pr-mmay'))||0,alto:num('pr-alto'),ancho:num('pr-ancho'),profundidad:num('pr-prof'),descripcionBreve:val('pr-desc-breve').trim(),receta,mano};
 }
 function recalcProducto(){
  const resumen=document.getElementById('pr-resumen');
@@ -1879,6 +1887,10 @@ function guardarProducto(){
  Object.assign(p,{nombre:d.nombre,codigo:d.codigo,enLista:d.enLista,notas:d.notas,receta:d.receta,mano:d.mano,updatedAt:Date.now()});
  if(d.margenMinorista>0&&d.margenMinorista<100)p.margenMinorista=d.margenMinorista;else delete p.margenMinorista;
  if(d.margenMayorista>0&&d.margenMayorista<100)p.margenMayorista=d.margenMayorista;else delete p.margenMayorista;
+ if(d.alto>0)p.alto=d.alto;else delete p.alto;
+ if(d.ancho>0)p.ancho=d.ancho;else delete p.ancho;
+ if(d.profundidad>0)p.profundidad=d.profundidad;else delete p.profundidad;
+ if(d.descripcionBreve)p.descripcionBreve=d.descripcionBreve;else delete p.descripcionBreve;
  const idx=prev?lista.findIndex(x=>x.id===prodEditId):-1;
  if(idx>=0)lista[idx]=p;else lista.push(p);
  DB.set('productos',lista);
@@ -1938,9 +1950,17 @@ function exportarListaPreciosCSV(){
 // Todo sigue siendo referencia interna: nunca pisa a mano los precios que cargues en los ítems.
 let _selProd={q:'',canal:'min',id:null};
 const CANALES_PRECIO={min:'Minorista',may:'Mayorista',combo:'Combos'};
+function medidasProducto(p){
+ return(p.alto>0||p.ancho>0||p.profundidad>0)?[p.ancho,p.alto,p.profundidad].map(x=>x>0?x:'?').join('×')+' cm':'';
+}
 function precioProductoCanal(p,c,canal){
+ // El precio que se usa siempre es el que calcula el sistema en este momento (materiales + mano de obra +
+ // margen actuales), nunca el precio original con el que se cargó el catálogo. El "vigente" (precargado) solo
+ // se muestra como referencia, para avisar si quedó desactualizado respecto de lo que da el sistema hoy.
  const campo=canal==='may'?'may':canal==='combo'?'combo':'min',v=p.vigente||{};
- return v[campo]>0?{valor:v[campo],origen:'vigente'}:{valor:c[campo],origen:'calculado hoy'};
+ const valor=c[campo];
+ const coincideVigente=v[campo]>0&&Math.abs(v[campo]-valor)<1;
+ return{valor,origen:coincideVigente?'igual al vigente':(v[campo]>0?'del sistema (el vigente era '+fmt(v[campo])+')':'del sistema')};
 }
 function margenProductoCanal(c,cfg,canal){return canal==='may'?c.mMay:canal==='combo'?cfg.margenCombo:c.mMin;}
 function abrirSelectorProducto(){
@@ -1968,8 +1988,8 @@ function selProdRender(){
  }
  const p=getProductos().find(x=>x.id===_selProd.id);
  if(!p){_selProd.id=null;selProdRender();return;}
- const cfg=getCosteoCfg(),c=calcProducto(p,cfg),pr=precioProductoCanal(p,c,_selProd.canal);
- box.innerHTML=`<h3>${gastoEsc(p.nombre)}</h3>
+ const cfg=getCosteoCfg(),c=calcProducto(p,cfg),pr=precioProductoCanal(p,c,_selProd.canal),med=medidasProducto(p);
+ box.innerHTML=`<h3>${gastoEsc(p.nombre)}</h3>${med?`<p style="font-size:12px;color:var(--gris);margin-top:-8px;margin-bottom:10px">Medidas: ${med} (ancho×alto×prof.)</p>`:''}
   <div style="display:flex;gap:6px;margin-bottom:10px">${chips}</div>
   <div class="form-grid">
    <div class="form-row"><label>Cantidad</label><input type="number" id="sp-cant" value="1" min="0" step="1"></div>
@@ -1986,7 +2006,8 @@ function selProdLista(){
  const items=getProductos().filter(p=>p.activo!==false&&(!q||((p.nombre||'')+' '+(p.codigo||'')).toLowerCase().includes(q))).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).slice(0,80);
  cont.innerHTML=items.length?items.map(p=>{
   const pr=precioProductoCanal(p,calcProducto(p,cfg,idx),_selProd.canal);
-  return `<div class="item-card" style="padding:10px 12px;margin-bottom:8px" onclick="selProdElegir(${p.id})"><div class="item-nombre" style="font-size:13px;margin-bottom:1px">${gastoEsc(p.nombre)}</div><div class="item-desc">${fmt(pr.valor)} · ${pr.origen}</div></div>`;}).join('')
+  const med=medidasProducto(p);
+  return `<div class="item-card" style="padding:10px 12px;margin-bottom:8px" onclick="selProdElegir(${p.id})"><div class="item-nombre" style="font-size:13px;margin-bottom:1px">${gastoEsc(p.nombre)}${med?` <span style="font-weight:400;color:var(--gris);font-size:11px">(${med})</span>`:''}</div><div class="item-desc">${fmt(pr.valor)} · ${pr.origen}</div></div>`;}).join('')
   :'<p style="font-size:12px;color:var(--gris);text-align:center;padding:16px">No hay productos. Importá el catálogo en Lista de precios.</p>';
 }
 function selProdElegir(id){_selProd.id=id;selProdRender();}
@@ -2018,6 +2039,13 @@ function agregarProductoAlPresupuesto(id,cant,precio,canal,cargarCosteo){
   vacia.querySelector('.fpi-desc').value=p.nombre;vacia.querySelector('.fpi-cant').value=cant;vacia.querySelector('.fpi-precio').value=pu;
   calcPresup();
  } else agregarFilaPresup({desc:p.nombre,cant,precio:pu});
+ // La descripción breve del producto (cant. de cajones, puertas, detalles) pasa sola a Observaciones,
+ // para no tener que volver a escribirla. No se duplica si ya estaba (por ejemplo, al sumar el mismo producto otra vez).
+ if(p.descripcionBreve){
+  const obs=document.getElementById('fp-obs');
+  const linea=`${p.nombre}: ${p.descripcionBreve}`;
+  if(obs&&!obs.value.includes(linea))obs.value=(obs.value.trim()?obs.value.trim()+'\n':'')+linea;
+ }
  if(!cargarCosteo)return;
  const sinPrecio=[];
  c.lineas.forEach(l=>{
@@ -6836,6 +6864,27 @@ function abrirModalMovimiento(tipo,medio,catDefault,labelDefault){
  </div>`;
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+// Corrige un desfasaje puntual: movimientos de Finanzas ya cargados ANTES de que existiera el puente
+// automático con Compras y Gastos (o hechos desde una versión anterior de esta app) nunca generaron su
+// gasto reflejado. Cuentan en el punto de Equilibrio (correcto, son costos reales) pero no aparecían acá.
+// Este botón los recorre una sola vez y crea el gasto reflejado que les falta, para que los dos números coincidan.
+function sincronizarMovimientosViejos(){
+ const movs=getMovimientos();
+ const gastos=getGastos();
+ const yaVinculados=new Set(gastos.filter(g=>g.finanzasMovId).map(g=>g.finanzasMovId));
+ const cifMap={fijo:'fijo',variable:'variable'};
+ let agregados=0;
+ movs.forEach(m=>{
+  if(m.tipo!=='egreso'||m.origen==='gasto'||!CATPAGO_A_GASTO[m.categoria])return;
+  if(m.esGastoSincronizado||yaVinculados.has(m.id))return;
+  gastos.push({id:DB.nuevoId(),fecha:m.fecha,proveedor:'',categoria:CATPAGO_A_GASTO[m.categoria],cif:cifMap[PANEL_CAT_MOV[m.categoria]]||'',desc:m.concepto||CATEGORIAS_PAGO[m.categoria]?.label||'',cant:1,precio:m.monto,total:m.monto,medio:m.medio,estado:'pagado',fechaPago:m.fecha,obs:'Cargado desde Finanzas → Movimientos',sinCaja:true,origen:'finanzas',finanzasMovId:m.id,createdAt:Date.now(),updatedAt:Date.now()});
+  m.esGastoSincronizado=true;
+  agregados++;
+ });
+ if(agregados){DB.set('gastos',gastos);DB.set('movimientos',movs);}
+ alert(agregados?`Se sincronizaron ${agregados} movimiento(s) viejo(s) de Finanzas. Ya se ven en Compras y Gastos y en el punto de Equilibrio, sin duplicar la caja.`:'No había movimientos de Finanzas pendientes de sincronizar.');
+ renderGastos();
 }
 function guardarMovimientoModal(tipo){
  const concepto=document.getElementById('mm-concepto')?.value||'';
