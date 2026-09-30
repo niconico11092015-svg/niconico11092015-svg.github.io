@@ -5397,7 +5397,7 @@ function verPersonal(personalId){
       <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('modal-personal').remove();abrirModalRetiroPersonal(${p.id})">🔻 Registrar retiro</button>
       <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('modal-personal').remove();abrirModalAsistenciaPersonal(${p.id})">📋 Asistencia</button>
     </div>
-    ${(p.retiros||[]).length?`<p class="section-title">Últimos retiros</p>${p.retiros.slice(-5).reverse().map(r=>`<div class="res-row"><span class="rl">${fmtF(r.fecha)}${r.motivo?' · '+r.motivo:''}</span><span class="rv">${fmt(r.monto)}</span></div>`).join('')}`:''}
+    ${retirosMes.length?`<p class="section-title">Retiros de este mes (${retirosMes.length})</p>${retirosMes.slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).map(r=>`<div class="res-row"><span class="rl">${fmtF(r.fecha)}${r.motivo?' · '+gastoEsc(r.motivo):''}</span><span class="rv">${fmt(r.monto)} <button class="del-btn" onclick="eliminarRetiroPersonal(${p.id},${r.id})">🗑</button></span></div>`).join('')}`:'<p style="font-size:12px;color:var(--gris);margin-top:10px">Sin retiros este mes.</p>'}
     <div class="btn-row" style="margin-top:12px">
       <button class="btn btn-secondary" onclick="document.getElementById('modal-personal').remove();abrirModalPersonalForm(${p.id})">✏️ Editar</button>
       <button class="btn btn-primary" onclick="document.getElementById('modal-personal').remove()">Cerrar</button>
@@ -5478,12 +5478,29 @@ function guardarRetiroPersonal(personalId){
  const p=lista.find(x=>x.id===personalId);
  if(!p)return;
  if(!p.retiros)p.retiros=[];
- p.retiros.push({id:DB.nuevoId(),fecha,monto,motivo});
+ const movId=registrarMovimiento('egreso',medio,p.esDueno?'retiro_propietario':'sueldos',monto,`Retiro ${p.nombre}${motivo?' · '+motivo:''}`,`personal:${personalId}`,undefined,undefined,fecha);
+ p.retiros.push({id:DB.nuevoId(),fecha,monto,motivo,movimientoId:movId});
  p.updatedAt=Date.now();
  DB.set('personal',lista);
- registrarMovimiento('egreso',medio,p.esDueno?'retiro_propietario':'sueldos',monto,`Retiro ${p.nombre}${motivo?' · '+motivo:''}`,`personal:${personalId}`,undefined,undefined,fecha);
  document.getElementById('modal-retiro-personal').remove();
  renderPersonal();
+}
+// Se puede borrar un retiro cargado por error: se corrige la caja (y el gasto reflejado si lo había) y
+// desaparece del detalle de lo abonado de esa persona.
+function eliminarRetiroPersonal(personalId,retiroId){
+ if(!confirm('¿Eliminar este retiro? Se corrige la caja.'))return;
+ const lista=getPersonalObjs();
+ const p=lista.find(x=>x.id===personalId);
+ if(!p)return;
+ const idx=(p.retiros||[]).findIndex(r=>r.id===retiroId);
+ if(idx<0)return;
+ const r=p.retiros[idx];
+ if(r.movimientoId){limpiarGastoSincronizadoDe(r.movimientoId);revertirMovimientoEgreso(r.movimientoId);}
+ p.retiros.splice(idx,1);
+ p.updatedAt=Date.now();
+ DB.set('personal',lista);
+ document.getElementById('modal-personal')?.remove();
+ verPersonal(personalId);
 }
 function abrirModalAsistenciaPersonal(personalId){
  const p=getPersonalObjs().find(x=>x.id===personalId);
@@ -6785,11 +6802,13 @@ function renderFinPagar(){
  items.forEach(p=>{
  const sem=semaforoPago(p);
  const semColor={verde:'#22C55E',amarillo:'#F59E0B',rojo:'#EF4444'}[sem];
+ const pagadoYa=(p.pagos||[]).reduce((s,x)=>s+(x.monto||0),0);
+ const saldoPend=Math.max(0,(p.monto||0)-pagadoYa);
  html+=`<div class="cobro-card" style="border-left-color:${semColor}">
  <div class="cobro-top"><span class="cobro-nombre" style="font-size:14px">${p.concepto}</span><span class="item-badge" style="background:${semColor}22;color:${semColor}">${p.vencimiento?fmtF(p.vencimiento):'Sin fecha'}</span></div>
- <div class="cobro-montos"><div class="cobro-monto-item cm-saldo"><div class="cm-label">Monto</div><div class="cm-val">${fmt(p.monto)}</div></div></div>
+ <div class="cobro-montos">${pagadoYa>0?`<div class="cobro-monto-item"><div class="cm-label">Pagado</div><div class="cm-val" style="color:var(--verde2)">${fmt(pagadoYa)}</div></div><div class="cobro-monto-item cm-saldo"><div class="cm-label">Saldo</div><div class="cm-val">${fmt(saldoPend)}</div></div>`:`<div class="cobro-monto-item cm-saldo"><div class="cm-label">Monto</div><div class="cm-val">${fmt(p.monto)}</div></div>`}</div>
  <div class="cobro-actions">
- <button class="cobro-btn cobro-btn-pago" onclick="marcarPagoFijoPagado(${p.id})">✅ Marcar pagado</button>
+ <button class="cobro-btn cobro-btn-pago" onclick="abrirPagoParcial(${p.id})">💰 ${pagadoYa>0?'Seguir pagando':'Pagar'}</button>
  <button class="cobro-btn cobro-btn-ver" onclick="abrirFormPagoFijo(${p.id})">✏️ Editar</button>
  <button class="cobro-btn" style="background:var(--rojo-cl);color:var(--rojo)" onclick="eliminarPagoFijo(${p.id})">🗑</button>
  </div>
@@ -6840,33 +6859,65 @@ function guardarPagoFijoForm(id){
  document.getElementById('modal-pago-fijo')?.remove();
  renderFinanzas();
 }
-function marcarPagoFijoPagado(id){
+// Algunas cuentas se abonan de a poco, según arreglo con el proveedor: cada pago parcial queda
+// registrado por separado (fecha, monto, medio), descuenta la caja en el momento y se refleja en Compras y
+// Gastos como cualquier otro egreso. El pago fijo pasa a "Pagado" recién cuando la suma cubre el monto total.
+function abrirPagoParcial(id){
  const p=getPagosFijos().find(x=>x.id===id);
  if(!p)return;
+ const pagos=(p.pagos||[]).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.id-a.id);
+ const pagado=pagos.reduce((s,x)=>s+(x.monto||0),0);
+ const saldo=Math.max(0,(p.monto||0)-pagado);
+ document.getElementById('modal-pago-parcial')?.remove();
  const overlay=document.createElement('div');
- overlay.className='modal-overlay'; overlay.id='modal-marcar-pagado';
+ overlay.className='modal-overlay'; overlay.id='modal-pago-parcial';
  overlay.innerHTML=`<div class="modal-box">
- <h3>✅ Confirmar pago</h3>
- <p style="font-size:13px;color:var(--gris);margin-bottom:16px">${p.concepto} · ${fmt(p.monto)}</p>
- <div class="form-row"><label>Medio de pago</label><select id="mmp-medio">${Object.entries(MEDIOS_PAGO).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
- <div class="btn-row" style="margin-top:16px">
- <button class="btn btn-secondary" onclick="document.getElementById('modal-marcar-pagado').remove()">Cancelar</button>
- <button class="btn btn-primary" onclick="confirmarPagoFijoPagado(${id})">Confirmar</button>
- </div>
+ <h3>💰 ${gastoEsc(p.concepto)}</h3>
+ <div class="res-row"><span class="rl">Monto total</span><span class="rv">${fmt(p.monto)}</span></div>
+ <div class="res-row"><span class="rl">Pagado hasta ahora</span><span class="rv" style="color:var(--verde2)">${fmt(pagado)}</span></div>
+ <div class="res-row" style="font-weight:700"><span class="rl">Saldo pendiente</span><span class="rv" style="color:${saldo>0?'var(--rojo)':'var(--verde2)'}">${fmt(saldo)}</span></div>
+ ${saldo>0?`<div class="form-row" style="margin-top:10px"><label>Fecha</label><input type="date" id="mpp-fecha" value="${hoy()}"></div>
+  <div class="form-row"><label>Monto a pagar ahora</label><input type="number" step="1" id="mpp-monto" value="${saldo}"></div>
+  <div class="form-row"><label>Medio</label><select id="mpp-medio">${Object.entries(MEDIOS_PAGO).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
+  <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="registrarPagoParcial(${id})">Registrar pago</button>`
+  :'<p style="font-size:12px;color:var(--verde2);margin-top:10px">✅ Totalmente pagado.</p>'}
+ ${pagos.length?`<p class="section-title" style="margin-top:14px">Pagos realizados</p>${pagos.map(x=>`<div class="res-row"><span class="rl">${fmtF(x.fecha)} · ${gastoMedioLabel(x.medio)}</span><span class="rv">${fmt(x.monto)} <button class="del-btn" onclick="eliminarPagoParcial(${id},${x.id})">🗑</button></span></div>`).join('')}`:''}
+ <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('modal-pago-parcial').remove()">Cerrar</button></div>
  </div>`;
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 }
-function confirmarPagoFijoPagado(id){
- const medio=document.getElementById('mmp-medio')?.value||'efectivo';
+function registrarPagoParcial(id){
+ const fecha=document.getElementById('mpp-fecha')?.value||hoy();
+ const monto=parseFloat(document.getElementById('mpp-monto')?.value)||0;
+ const medio=document.getElementById('mpp-medio')?.value||'efectivo';
+ if(monto<=0){alert('Ingresá un monto válido.');return;}
  const lista=getPagosFijos();
- const idx=lista.findIndex(p=>p.id===id);
- if(idx<0)return;
- lista[idx].estado='Pagado';
- lista[idx].fechaPago=hoy();
+ const p=lista.find(x=>x.id===id);
+ if(!p)return;
+ const movId=registrarMovimiento('egreso',medio,p.categoria,monto,p.concepto,'pago_fijo',undefined,undefined,fecha);
+ if(!p.pagos)p.pagos=[];
+ p.pagos.push({id:DB.nuevoId(),fecha,monto,medio,movimientoId:movId});
+ const pagadoTotal=p.pagos.reduce((s,x)=>s+x.monto,0);
+ if(pagadoTotal>=(p.monto||0)){p.estado='Pagado';p.fechaPago=fecha;} else p.estado='Pendiente';
  DB.set('pagos_fijos',lista);
- registrarMovimiento('egreso',medio,lista[idx].categoria,lista[idx].monto,lista[idx].concepto,'pago_fijo');
- document.getElementById('modal-marcar-pagado')?.remove();
+ abrirPagoParcial(id);
+ renderFinanzas();
+}
+function eliminarPagoParcial(id,pagoId){
+ if(!confirm('¿Eliminar este pago? Se corrige la caja.'))return;
+ const lista=getPagosFijos();
+ const p=lista.find(x=>x.id===id);
+ if(!p)return;
+ const idx=(p.pagos||[]).findIndex(x=>x.id===pagoId);
+ if(idx<0)return;
+ const pago=p.pagos[idx];
+ if(pago.movimientoId){limpiarGastoSincronizadoDe(pago.movimientoId);revertirMovimientoEgreso(pago.movimientoId);}
+ p.pagos.splice(idx,1);
+ const pagadoTotal=p.pagos.reduce((s,x)=>s+x.monto,0);
+ p.estado=pagadoTotal>=(p.monto||0)&&pagadoTotal>0?'Pagado':'Pendiente';
+ DB.set('pagos_fijos',lista);
+ abrirPagoParcial(id);
  renderFinanzas();
 }
 
