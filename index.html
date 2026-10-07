@@ -245,6 +245,7 @@ body{background:white;}
  <div class="menu-grid">
  <button class="menu-card" onclick="irA('presupuestos')"><div class="mc-ico">📋</div><div class="mc-label">Presupuestos</div></button>
  <button class="menu-card" onclick="irA('ordenes')"><div class="mc-ico">🏭</div><div class="mc-label">Producción (OT)</div></button>
+ <button class="menu-card" onclick="irCalendario()"><div class="mc-ico">📅</div><div class="mc-label">Calendario</div></button>
  <button class="menu-card" onclick="irA('finanzas')" style="grid-column:1/-1;background:linear-gradient(135deg,var(--marron),var(--marron2))"><div class="mc-ico" style="filter:brightness(3)">💼</div><div class="mc-label" style="color:#fff">Administración / Finanzas</div></button>
  <button class="menu-card" onclick="irA('ventas')"><div class="mc-ico">💵</div><div class="mc-label">Ventas</div></button>
  <button class="menu-card" onclick="irA('gastos')"><div class="mc-ico">🧾</div><div class="mc-label">Compras y Gastos</div></button>
@@ -2335,6 +2336,7 @@ function eliminarMovimientoDetalle(id){
 
 // ══ NAVEGACIÓN ══
 let pantalla='home', historial=[];
+function irCalendario(){otVista='mes';irA('ordenes');}
 function irA(p){
  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -6332,6 +6334,8 @@ function eliminarPagoFijo(id){
 }
 function semaforoPago(p){
  if(p.estado==='Pagado')return'verde';
+ // Una compra con tarjeta no "vence": lo que importa es si le quedan cuotas, no una fecha.
+ if(p.cuotasTotales>0)return'amarillo';
  if(!p.vencimiento)return'amarillo';
  const hoyMs=new Date().setHours(0,0,0,0);
  const vMs=new Date(p.vencimiento).setHours(0,0,0,0);
@@ -6782,7 +6786,9 @@ function renderFinPagar(){
  </div>
  <button class="btn btn-primary" style="width:100%;margin-bottom:14px" onclick="abrirFormPagoFijo(null)">＋ Agregar pago</button>`;
  const hoyMs=new Date().setHours(0,0,0,0);
- const prox7=pendientes.filter(p=>p.vencimiento&&Math.floor((new Date(p.vencimiento).setHours(0,0,0,0)-hoyMs)/86400000)<=7).sort((a,b)=>new Date(a.vencimiento)-new Date(b.vencimiento));
+ // Las compras con tarjeta guardan ahí la fecha de compra, no un vencimiento: no tiene sentido avisar que
+ // están "vencidas" por eso, así que quedan afuera de esta agenda (ya se ven, con sus cuotas, en Tarjetas).
+ const prox7=pendientes.filter(p=>p.vencimiento&&!(p.cuotasTotales>0)&&Math.floor((new Date(p.vencimiento).setHours(0,0,0,0)-hoyMs)/86400000)<=7).sort((a,b)=>new Date(a.vencimiento)-new Date(b.vencimiento));
  if(prox7.length){
  html+=`<div class="form-card"><h3>📅 Agenda próximos 7 días</h3>`;
  prox7.forEach(p=>{
@@ -6804,11 +6810,14 @@ function renderFinPagar(){
  const semColor={verde:'#22C55E',amarillo:'#F59E0B',rojo:'#EF4444'}[sem];
  const pagadoYa=(p.pagos||[]).reduce((s,x)=>s+(x.monto||0),0);
  const saldoPend=Math.max(0,(p.monto||0)-pagadoYa);
+ const esTarjeta=p.cuotasTotales>0;
+ const cuotasPagadas=(p.pagos||[]).length;
  html+=`<div class="cobro-card" style="border-left-color:${semColor}">
  <div class="cobro-top"><span class="cobro-nombre" style="font-size:14px">${p.concepto}</span><span class="item-badge" style="background:${semColor}22;color:${semColor}">${p.vencimiento?fmtF(p.vencimiento):'Sin fecha'}</span></div>
+ ${esTarjeta?`<p style="font-size:11px;color:var(--gris);margin:-4px 0 6px">${TIPOS_COMPRA_TARJETA[p.tipoCompra]?.emoji||''} ${TIPOS_COMPRA_TARJETA[p.tipoCompra]?.label||''} · Cuota ${Math.min(cuotasPagadas+1,p.cuotasTotales)} de ${p.cuotasTotales}</p>`:''}
  <div class="cobro-montos">${pagadoYa>0?`<div class="cobro-monto-item"><div class="cm-label">Pagado</div><div class="cm-val" style="color:var(--verde2)">${fmt(pagadoYa)}</div></div><div class="cobro-monto-item cm-saldo"><div class="cm-label">Saldo</div><div class="cm-val">${fmt(saldoPend)}</div></div>`:`<div class="cobro-monto-item cm-saldo"><div class="cm-label">Monto</div><div class="cm-val">${fmt(p.monto)}</div></div>`}</div>
  <div class="cobro-actions">
- <button class="cobro-btn cobro-btn-pago" onclick="abrirPagoParcial(${p.id})">💰 ${pagadoYa>0?'Seguir pagando':'Pagar'}</button>
+ <button class="cobro-btn cobro-btn-pago" onclick="abrirPagoParcial(${p.id})">${esTarjeta?'☑️ Tildar cuota':'💰 '+(pagadoYa>0?'Seguir pagando':'Pagar')}</button>
  <button class="cobro-btn cobro-btn-ver" onclick="abrirFormPagoFijo(${p.id})">✏️ Editar</button>
  <button class="cobro-btn" style="background:var(--rojo-cl);color:var(--rojo)" onclick="eliminarPagoFijo(${p.id})">🗑</button>
  </div>
@@ -6825,16 +6834,20 @@ function renderFinPagar(){
  if(!pendientes.length&&!pagados.length)html+=`<div class="empty-state"><div class="e-ico">📤</div><p>No hay pagos registrados.<br>Tocá "＋ Agregar pago".</p></div>`;
  return html;
 }
+const TIPOS_COMPRA_TARJETA={insumo:{label:'Insumo',emoji:'🧩'},herramienta:{label:'Herramienta',emoji:'🛠️'},inversion:{label:'Inversión (maquinaria)',emoji:'⚙️'}};
 function abrirFormPagoFijo(id){
  const item=id?getPagosFijos().find(p=>p.id===id):null;
+ const esTarjetaIni=(item?item.categoria:document.getElementById('mpf-cat')?.value)==='tarjetas';
  const overlay=document.createElement('div');
  overlay.className='modal-overlay'; overlay.id='modal-pago-fijo';
  overlay.innerHTML=`<div class="modal-box">
  <h3>📤 ${item?'Editar':'Nuevo'} pago</h3>
- <div class="form-row"><label>Categoría</label><select id="mpf-cat">${Object.entries(CATEGORIAS_PAGO).map(([k,c])=>`<option value="${k}"${item?.categoria===k?' selected':''}>${c.emoji} ${c.label}</option>`).join('')}</select></div>
- <div class="form-row"><label>Concepto</label><input type="text" id="mpf-concepto" value="${item?.concepto||''}" placeholder="Ej: Alquiler julio"></div>
+ <div class="form-row"><label>Categoría</label><select id="mpf-cat" onchange="mpfToggleTarjeta()">${Object.entries(CATEGORIAS_PAGO).map(([k,c])=>`<option value="${k}"${item?.categoria===k?' selected':''}>${c.emoji} ${c.label}</option>`).join('')}</select></div>
+ <div class="form-row"><label id="mpf-label-concepto">Concepto</label><input type="text" id="mpf-concepto" value="${item?.concepto||''}" placeholder="Ej: Alquiler julio"></div>
+ <div class="form-row" id="mpf-row-tipo" style="display:none"><label>Tipo de compra</label><select id="mpf-tipo">${Object.entries(TIPOS_COMPRA_TARJETA).map(([k,t])=>`<option value="${k}"${item?.tipoCompra===k?' selected':''}>${t.emoji} ${t.label}</option>`).join('')}</select></div>
  <div class="form-row"><label>Monto ($)</label><input type="number" id="mpf-monto" value="${item?.monto||''}" placeholder="0"></div>
- <div class="form-row"><label>Vencimiento</label><input type="date" id="mpf-venc" value="${item?.vencimiento||''}"></div>
+ <div class="form-row" id="mpf-row-cuotas" style="display:none"><label>Cantidad de cuotas</label><input type="number" id="mpf-cuotas" min="1" step="1" value="${item?.cuotasTotales||1}"></div>
+ <div class="form-row"><label id="mpf-label-venc">Vencimiento</label><input type="date" id="mpf-venc" value="${item?.vencimiento||''}"></div>
  <div class="form-row"><label>Prioridad</label><select id="mpf-prio">${['Normal','Alta','Urgente'].map(p=>`<option${item?.prioridad===p?' selected':''}>${p}</option>`).join('')}</select></div>
  <div class="btn-row" style="margin-top:16px">
  <button class="btn btn-secondary" onclick="document.getElementById('modal-pago-fijo').remove()">Cancelar</button>
@@ -6843,18 +6856,35 @@ function abrirFormPagoFijo(id){
  </div>`;
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+ mpfToggleTarjeta();
+}
+// Una compra con tarjeta es un gasto en cuotas: pide producto, tipo (insumo/herramienta/inversión) y cantidad
+// de cuotas, en vez de los campos genéricos de un pago fijo común.
+function mpfToggleTarjeta(){
+ const esTarjeta=document.getElementById('mpf-cat')?.value==='tarjetas';
+ document.getElementById('mpf-row-tipo').style.display=esTarjeta?'':'none';
+ document.getElementById('mpf-row-cuotas').style.display=esTarjeta?'':'none';
+ document.getElementById('mpf-label-concepto').textContent=esTarjeta?'Producto':'Concepto';
+ document.getElementById('mpf-label-venc').textContent=esTarjeta?'Fecha de compra':'Vencimiento';
 }
 function guardarPagoFijoForm(id){
- const prevEstado=id?(getPagosFijos().find(p=>p.id===id)?.estado||'Pendiente'):'Pendiente';
+ const prev=id?getPagosFijos().find(p=>p.id===id):null;
+ const categoria=document.getElementById('mpf-cat')?.value||'otros';
+ const esTarjeta=categoria==='tarjetas';
  const obj={
  id:id||Date.now(),
- categoria:document.getElementById('mpf-cat')?.value||'otros',
+ categoria,
  concepto:document.getElementById('mpf-concepto')?.value||'',
  monto:parseFloat(document.getElementById('mpf-monto')?.value)||0,
  vencimiento:document.getElementById('mpf-venc')?.value||'',
  prioridad:document.getElementById('mpf-prio')?.value||'Normal',
- estado:prevEstado
+ estado:prev?.estado||'Pendiente',
+ pagos:prev?.pagos||[]
  };
+ if(esTarjeta){
+  obj.tipoCompra=document.getElementById('mpf-tipo')?.value||'insumo';
+  obj.cuotasTotales=Math.max(1,parseInt(document.getElementById('mpf-cuotas')?.value)||1);
+ }
  guardarPagoFijo(obj);
  document.getElementById('modal-pago-fijo')?.remove();
  renderFinanzas();
@@ -6868,20 +6898,28 @@ function abrirPagoParcial(id){
  const pagos=(p.pagos||[]).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.id-a.id);
  const pagado=pagos.reduce((s,x)=>s+(x.monto||0),0);
  const saldo=Math.max(0,(p.monto||0)-pagado);
+ const esTarjeta=p.cuotasTotales>0;
+ const cuotasPagadas=pagos.length;
+ const valorCuota=esTarjeta?Math.round((p.monto||0)/p.cuotasTotales):0;
+ // La última cuota se ajusta al saldo real, para que la suma de cuotas dé exacto incluso si el monto
+ // total no se divide justo entre la cantidad de cuotas.
+ const proximaCuota=esTarjeta?(cuotasPagadas+1>=p.cuotasTotales?saldo:Math.min(valorCuota,saldo)):0;
  document.getElementById('modal-pago-parcial')?.remove();
  const overlay=document.createElement('div');
  overlay.className='modal-overlay'; overlay.id='modal-pago-parcial';
  overlay.innerHTML=`<div class="modal-box">
- <h3>💰 ${gastoEsc(p.concepto)}</h3>
+ <h3>${esTarjeta?'💳':'💰'} ${gastoEsc(p.concepto)}</h3>
+ ${esTarjeta?`<p style="font-size:12px;color:var(--gris);margin-top:-6px;margin-bottom:10px">${TIPOS_COMPRA_TARJETA[p.tipoCompra]?.emoji||''} ${TIPOS_COMPRA_TARJETA[p.tipoCompra]?.label||''} · ${p.cuotasTotales} cuotas de ${fmt(valorCuota)}</p>`:''}
  <div class="res-row"><span class="rl">Monto total</span><span class="rv">${fmt(p.monto)}</span></div>
+ ${esTarjeta?`<div class="res-row"><span class="rl">Cuotas pagadas</span><span class="rv">${cuotasPagadas} de ${p.cuotasTotales}</span></div>`:''}
  <div class="res-row"><span class="rl">Pagado hasta ahora</span><span class="rv" style="color:var(--verde2)">${fmt(pagado)}</span></div>
  <div class="res-row" style="font-weight:700"><span class="rl">Saldo pendiente</span><span class="rv" style="color:${saldo>0?'var(--rojo)':'var(--verde2)'}">${fmt(saldo)}</span></div>
  ${saldo>0?`<div class="form-row" style="margin-top:10px"><label>Fecha</label><input type="date" id="mpp-fecha" value="${hoy()}"></div>
-  <div class="form-row"><label>Monto a pagar ahora</label><input type="number" step="1" id="mpp-monto" value="${saldo}"></div>
+  <div class="form-row"><label>${esTarjeta?'Valor de esta cuota':'Monto a pagar ahora'}</label><input type="number" step="1" id="mpp-monto" value="${esTarjeta?proximaCuota:saldo}" ${esTarjeta?'readonly style="background:var(--crema2)"':''}></div>
   <div class="form-row"><label>Medio</label><select id="mpp-medio">${Object.entries(MEDIOS_PAGO).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
-  <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="registrarPagoParcial(${id})">Registrar pago</button>`
+  <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="registrarPagoParcial(${id})">${esTarjeta?'☑️ Tildar cuota '+(cuotasPagadas+1)+' pagada':'Registrar pago'}</button>`
   :'<p style="font-size:12px;color:var(--verde2);margin-top:10px">✅ Totalmente pagado.</p>'}
- ${pagos.length?`<p class="section-title" style="margin-top:14px">Pagos realizados</p>${pagos.map(x=>`<div class="res-row"><span class="rl">${fmtF(x.fecha)} · ${gastoMedioLabel(x.medio)}</span><span class="rv">${fmt(x.monto)} <button class="del-btn" onclick="eliminarPagoParcial(${id},${x.id})">🗑</button></span></div>`).join('')}`:''}
+ ${pagos.length?`<p class="section-title" style="margin-top:14px">${esTarjeta?'Cuotas pagadas':'Pagos realizados'}</p>${pagos.map((x,i)=>`<div class="res-row"><span class="rl">${esTarjeta?'Cuota '+(pagos.length-i)+' · ':''}${fmtF(x.fecha)} · ${gastoMedioLabel(x.medio)}</span><span class="rv">${fmt(x.monto)} <button class="del-btn" onclick="eliminarPagoParcial(${id},${x.id})">🗑</button></span></div>`).join('')}`:''}
  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('modal-pago-parcial').remove()">Cerrar</button></div>
  </div>`;
  document.body.appendChild(overlay);
