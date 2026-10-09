@@ -1593,6 +1593,9 @@ function factoresUsoPlanilla(){
 // TABLÓN (pie tablar, típico de maderas como el cedro): ancho y espesor en pulgadas, largo en metros,
 //   × 0,2734 → pies. Fórmula estándar: pies = ancho" × espesor" × largo(m) × 0,2734.
 function m2Placa(m){return(m.largoPlaca>0&&m.anchoPlaca>0)?(m.largoPlaca/1000)*(m.anchoPlaca/1000):0;}
+// Un material "de área" es el que se corta en piezas (tableros, placas): va en el desplegable de Despiece.
+// El resto (herrajes, tapacantos, pegamentos, etc.) va en Insumos.
+function esMaterialDeArea(m){return!!m.porPlaca||['m²','pie²'].includes(String(m.unidad||'').trim().toLowerCase());}
 function piesTablon(m){return(m.anchoPulgTablon>0&&m.espesorPulgTablon>0&&m.largoMTablon>0)?m.anchoPulgTablon*m.espesorPulgTablon*m.largoMTablon*0.2734:0;}
 function unidadUsoMaterial(m){
  if(m.porPlaca)return m.unidadPlaca==='pie2'?'pie²':'m²';
@@ -2289,8 +2292,8 @@ function abrirDetalleMovimiento(id){
  if(m.origen==='ahorro_usd'){finTab='usd';renderFinanzas();return;}
  if(typeof m.origen==='string'&&m.origen.startsWith('personal:')){alert('Este movimiento es un pago o retiro de Personal.\nPara corregirlo o eliminarlo, hacelo desde Personal.');return;}
  if(typeof m.origen==='string'&&m.origen.startsWith('material:')){alert('Este movimiento es una compra rápida de material.\nPara corregirlo, hacelo desde Materiales.');return;}
- if(m.origen==='cobro_ot'){alert('Este movimiento es un cobro de una Orden de Trabajo.\nPara corregirlo, hacelo desde esa OT.');return;}
- if(m.origen==='cobro_cc'){alert('Este movimiento es un cobro de una Cuenta Corriente.\nPara corregirlo, hacelo desde esa cuenta.');return;}
+ if(typeof m.origen==='string'&&m.origen.startsWith('OT-')){alert('Este movimiento es un cobro de la Orden de Trabajo '+m.origen+'.\nPara corregirlo, hacelo desde esa OT (botón 💰 Registrar pago).');return;}
+ if(typeof m.origen==='string'&&m.origen.startsWith('CC-')){alert('Este movimiento es un cobro de la Cuenta Corriente '+m.origen+'.\nPara corregirlo, hacelo desde esa cuenta.');return;}
  // Sin un origen con editor propio (cargado a mano, pago fijo ejecutado, etc.): se edita directo acá.
  const overlay=document.createElement('div');
  overlay.className='modal-overlay';overlay.id='modal-detalle-mov';
@@ -2331,6 +2334,65 @@ function eliminarMovimientoDetalle(id){
  limpiarGastoSincronizadoDe(id);
  if(mov.tipo==='egreso')revertirMovimientoEgreso(id);else revertirMovimientoIngreso(id);
  document.getElementById('modal-detalle-mov')?.remove();
+ renderFinanzas();
+}
+
+
+// ══ MI SUELDO (orientativo) ══
+// Compara, mes a mes, cuánto dejó el negocio (utilidad antes de tu retiro) contra cuánto te retiraste
+// como sueldo (Personal → retiros con categoría "Retiro Propietario"). Es una estimación para decidir,
+// no un consejo contable: vos conocés el negocio mejor que cualquier fórmula.
+let sueldoPeriodoMeses=6;
+function mesesSueldo(n){
+ const out=[]; const base=hoy().slice(0,7).split('-').map(Number);
+ for(let i=n-1;i>=0;i--){
+  const d=new Date(base[0],base[1]-1-i,1);
+  out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+ }
+ return out;
+}
+function renderFinSueldo(){
+ const cfg=getFinCfg();
+ const reservaPct=cfg.reservaSueldoPct!=null?cfg.reservaSueldoPct:20;
+ const costoEmpleado=cfg.costoEmpleadoEstimado||0;
+ const meses=mesesSueldo(sueldoPeriodoMeses);
+ const datos=meses.map(ym=>{const r=panelCalcMes(ym,{finanzas:true,tarjetas:false});return{ym,utilidad:r.utilidad,retirado:r.ret};});
+ const promUtilidad=datos.reduce((s,d)=>s+d.utilidad,0)/datos.length;
+ const promRetirado=datos.reduce((s,d)=>s+d.retirado,0)/datos.length;
+ const sueldoSugerido=Math.max(0,promUtilidad*(1-reservaPct/100));
+ const diferencia=sueldoSugerido-promRetirado;
+ const margenLibre=sueldoSugerido-promRetirado;
+ let html=`<div class="cobros-header" style="background:linear-gradient(135deg,#1B4D3E,#2E7D5B)">
+  <div class="cobros-total-label">Sueldo sugerido por mes (últimos ${sueldoPeriodoMeses} meses)</div>
+  <div class="cobros-total-num">${fmt(sueldoSugerido)}</div>
+  <div class="cobros-sub">
+   <div class="cobros-sub-item"><div class="csi-label">Utilidad promedio</div><div class="csi-val">${fmt(promUtilidad)}</div></div>
+   <div class="cobros-sub-item"><div class="csi-label">Retiraste en promedio</div><div class="csi-val">${fmt(promRetirado)}</div></div>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.85)">${diferencia>=0?`✅ Tenés margen para subir tu retiro hasta ${fmt(diferencia)} más por mes.`:`⚠️ Estás retirando ${fmt(Math.abs(diferencia))} más de lo sostenible, dejando la reserva del ${reservaPct}% de lado.`}</div>
+ </div>
+ <div class="form-card"><h3>⚙️ Ajustar el cálculo</h3>
+  <div class="form-row"><label>Período a analizar</label><select id="sueldo-periodo" onchange="sueldoPeriodoMeses=parseInt(this.value);renderFinanzas()"><option value="3"${sueldoPeriodoMeses===3?' selected':''}>Últimos 3 meses</option><option value="6"${sueldoPeriodoMeses===6?' selected':''}>Últimos 6 meses</option><option value="12"${sueldoPeriodoMeses===12?' selected':''}>Últimos 12 meses</option></select></div>
+  <div class="form-row"><label>Reserva para reinvertir / imprevistos (%)</label><input type="number" id="sueldo-reserva" value="${reservaPct}" step="1" min="0" max="90"></div>
+  <button class="btn btn-secondary" style="width:100%;margin-top:4px" onclick="guardarAjusteSueldo()">Guardar</button>
+  <p style="font-size:10px;color:var(--gris);margin-top:6px">La reserva es la parte de la utilidad que se deja en el negocio (para comprar materiales, imprevistos, crecer) antes de calcular cuánto te podés pagar vos.</p></div>
+ <div class="form-card"><h3>👤 ¿Da para sumar un empleado más?</h3>
+  <div class="form-row"><label>Costo estimado de un empleado más por mes (sueldo + cargas)</label><input type="number" id="sueldo-costo-empleado" value="${costoEmpleado||''}" placeholder="Ej: 450000"></div>
+  <button class="btn btn-secondary" style="width:100%;margin-top:4px" onclick="guardarAjusteSueldo()">Guardar</button>
+  ${costoEmpleado>0?(margenLibre>=costoEmpleado?`<p style="font-size:12px;color:var(--verde2);font-weight:600;margin-top:10px">✅ Según el promedio de estos ${sueldoPeriodoMeses} meses, hay margen: te quedan ${fmt(margenLibre)} libres por mes después de tu sueldo y la reserva.</p>`:`<p style="font-size:12px;color:var(--rojo);margin-top:10px">⚠️ Todavía no da: te faltarían ${fmt(costoEmpleado-margenLibre)} por mes para cubrirlo sin tocar tu sueldo ni la reserva.</p>`):'<p style="font-size:11px;color:var(--gris);margin-top:8px">Cargá el costo estimado para ver si da.</p>'}
+ </div>
+ <div class="form-card"><h3>📅 Mes a mes</h3>
+  <div style="display:grid;grid-template-columns:70px 1fr 1fr 1fr;gap:4px;font-size:10px;font-weight:700;color:var(--gris);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--crema2)"><span>Mes</span><span style="text-align:right">Utilidad</span><span style="text-align:right">Retirado</span><span style="text-align:right">Diferencia</span></div>
+  ${datos.slice().reverse().map(d=>{const dif=d.utilidad-d.retirado;const p=d.ym.split('-').map(Number);return`<div style="display:grid;grid-template-columns:70px 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--crema2);font-size:11px"><span style="font-weight:600">${GASTO_MESES[p[1]-1].slice(0,3)} ${String(p[0]).slice(2)}</span><span style="text-align:right">${gastoFmtCorto(d.utilidad)}</span><span style="text-align:right">${gastoFmtCorto(d.retirado)}</span><span style="text-align:right;color:${dif>=0?'var(--verde2)':'var(--rojo)'}">${dif<0?'-':''}${gastoFmtCorto(Math.abs(dif))}</span></div>`;}).join('')}
+ </div>
+ <p style="font-size:10px;color:var(--gris);padding:0 4px 16px">Esto es una estimación orientativa a partir de lo cargado en la app — no reemplaza el criterio de tu contador.</p>`;
+ return html;
+}
+function guardarAjusteSueldo(){
+ const cfg=getFinCfg();
+ cfg.reservaSueldoPct=Math.min(90,Math.max(0,parseFloat(document.getElementById('sueldo-reserva')?.value)||0));
+ cfg.costoEmpleadoEstimado=parseFloat(document.getElementById('sueldo-costo-empleado')?.value)||0;
+ setFinCfg(cfg);
  renderFinanzas();
 }
 
@@ -3191,8 +3253,20 @@ function buildFormPresup(num,item){
     <h3 style="margin-top:12px">📝 Notas técnicas</h3>
     <textarea class="ficha-input" id="ft-notas" style="height:60px;resize:none" placeholder="Detalles técnicos..."></textarea>
   </div>
+  <div class="form-card" style="border-left:4px solid var(--azul);background:var(--crema)">
+    <h3>✂️ Despiece <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(tableros/placas cortados a medida)</span></h3>
+    <div style="overflow-x:auto">
+    <div style="min-width:460px">
+    <div class="tabla-header" style="grid-template-columns:140px 55px 55px 45px 45px 70px 60px 26px;font-size:10px">
+      <span>Material</span><span>Largo</span><span>Ancho</span><span>Un.</span><span>Cant</span><span>$/u.</span><span>Subtotal</span><span></span>
+    </div>
+    <div id="ct-despiece"></div>
+    </div>
+    </div>
+    <button class="add-row-btn" onclick="agregarFilaDespiece()">＋ Agregar pieza</button>
+  </div>
   <div class="form-card" style="border-left:4px solid var(--verde2);background:var(--crema)">
-    <h3>📋 Materiales <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(una sola lista: ficha técnica + costeo)</span></h3>
+    <h3>🧩 Insumos <span style="font-size:10px;font-weight:400;color:var(--gris);text-transform:none">(herrajes, tapacantos, tornillería, pintura...)</span></h3>
     <div style="overflow-x:auto">
     <div style="min-width:520px">
     <div class="tabla-header" style="grid-template-columns:180px 55px 80px 110px 85px 30px;font-size:10px">
@@ -3201,9 +3275,10 @@ function buildFormPresup(num,item){
     <div id="ct-materiales"></div>
     </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="add-row-btn" style="margin-top:0" onclick="agregarFilaCosteoMaterial()">＋ Agregar material</button><button class="add-row-btn" style="margin-top:0" onclick="abrirModalPintura()">🎨 Calcular pintura</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="add-row-btn" style="margin-top:0" onclick="agregarFilaCosteoMaterial()">＋ Agregar insumo</button><button class="add-row-btn" style="margin-top:0" onclick="abrirModalPintura()">🎨 Calcular pintura</button></div>
     <div class="form-row" style="margin-top:10px"><label>Margen de ganancia sobre este producto (%)</label><input type="number" id="ct-margen" step="1" placeholder="Ej: 30" oninput="recalcularCosteoPresup()"></div>
     <div id="ct-resumen" style="margin-top:10px"></div>
+    <div id="ct-stock-aviso" style="margin-top:10px"></div>
   </div>
   <div class="btn-row" style="margin-top:14px">
     <button class="btn btn-secondary" onclick="volverDeForm()">Cancelar</button>
@@ -3441,10 +3516,11 @@ function calcPresup(){
 let ctIdx=0;
 // Desplegable propio de sugerencias de material (reemplaza <datalist>, que muchos navegadores
 // móviles no muestran — mismo tipo de problema que tuvimos con prompt()).
-function renderSugerenciasBox(inputEl,onPick){
+function renderSugerenciasBox(inputEl,onPick,filtroFn){
  cerrarSugerenciasBox();
  const filtro=(inputEl.value||'').toLowerCase();
  let lista=getMateriales().slice().sort((a,b)=>(a.descripcion||'').localeCompare(b.descripcion||''));
+ if(filtroFn)lista=lista.filter(filtroFn);
  if(filtro)lista=lista.filter(m=>(m.descripcion||'').toLowerCase().includes(filtro));
  // Sin límite artificial de resultados — la caja ya scrollea (max-height más abajo).
  if(!lista.length)return;
@@ -3472,6 +3548,60 @@ function mostrarSugerenciasCosteo(i){
  actualizarCostoDesdeMaterial(i);
  cerrarSugerenciasBox();
  });
+}
+let ctDespiecePzIdx=0;
+function mostrarSugerenciasDespiece(i){
+ const fila=document.getElementById(`ctp-${i}`);
+ const inputEl=fila?.querySelector('.ctp-nombre');
+ if(!inputEl)return;
+ renderSugerenciasBox(inputEl,mat=>{
+  inputEl.value=mat.descripcion;
+  fila.dataset.materialId=mat.id;
+  const inp=fila.querySelector('.ctp-costo');
+  if(inp)inp.value=Math.round(precioUsoMaterial(mat)*100)/100;
+  cerrarSugerenciasBox();
+  recalcularCosteoPresup();
+ },esMaterialDeArea);
+}
+function agregarFilaDespiece(data){
+ const i=ctDespiecePzIdx++;
+ const cont=document.getElementById('ct-despiece');
+ if(!cont)return;
+ const d=data||{};
+ const div=document.createElement('div');
+ div.className='tabla-fila'; div.id=`ctp-${i}`;
+ div.style.cssText='display:grid;grid-template-columns:140px 55px 55px 45px 45px 70px 60px 26px;gap:6px;align-items:center;margin-bottom:6px';
+ if(d.materialId!=null)div.dataset.materialId=d.materialId;
+ div.innerHTML=`<input type="text" class="ctp-nombre" placeholder="Buscar placa..." value="${(d.descripcion||'').replace(/"/g,'&quot;')}" oninput="mostrarSugerenciasDespiece(${i});delete document.getElementById('ctp-${i}').dataset.materialId;recalcularCosteoPresup()" onfocus="mostrarSugerenciasDespiece(${i})" onblur="setTimeout(cerrarSugerenciasBox,150)">
+    <input type="number" class="ctp-largo" placeholder="cm" step="0.1" value="${d.largo||''}" oninput="recalcularCosteoPresup()">
+    <input type="number" class="ctp-ancho" placeholder="cm" step="0.1" value="${d.ancho||''}" oninput="recalcularCosteoPresup()">
+    <select class="ctp-unidad" onchange="recalcularCosteoPresup()"><option value="cm"${d.unidad!=='mm'?' selected':''}>cm</option><option value="mm"${d.unidad==='mm'?' selected':''}>mm</option></select>
+    <input type="number" class="ctp-cant" placeholder="1" step="1" value="${d.cantidad||''}" oninput="recalcularCosteoPresup()">
+    <input type="number" class="ctp-costo" placeholder="0" step="0.01" value="${d.costoUnitario||''}" oninput="recalcularCosteoPresup()">
+    <span class="total-cell ctp-subtotal">—</span>
+    <button class="del-btn" onclick="document.getElementById('ctp-${i}').remove();recalcularCosteoPresup()">✕</button>`;
+ cont.appendChild(div);
+ recalcularCosteoPresup();
+}
+// Área de una pieza (m²) = largo × ancho (convertidos a metros) × cantidad de piezas iguales.
+function areaDespieceM2(largo,ancho,unidad,cantidad){
+ const f=unidad==='mm'?0.001:0.01;
+ return(largo>0&&ancho>0&&cantidad>0)?(largo*f)*(ancho*f)*cantidad:0;
+}
+function leerDespiece(){
+ const filas=[];
+ document.querySelectorAll('#ct-despiece .tabla-fila').forEach(r=>{
+  const descripcion=r.querySelector('.ctp-nombre')?.value||'';
+  const largo=parseFloat(r.querySelector('.ctp-largo')?.value)||0;
+  const ancho=parseFloat(r.querySelector('.ctp-ancho')?.value)||0;
+  const unidad=r.querySelector('.ctp-unidad')?.value||'cm';
+  const cantidad=parseFloat(r.querySelector('.ctp-cant')?.value)||0;
+  const costoUnitario=parseFloat(r.querySelector('.ctp-costo')?.value)||0;
+  if(!descripcion&&!largo&&!ancho&&!cantidad)return;
+  const areaM2=areaDespieceM2(largo,ancho,unidad,cantidad);
+  filas.push({materialId:r.dataset.materialId?parseInt(r.dataset.materialId):null,descripcion,largo,ancho,unidad,cantidad,costoUnitario,areaM2,subtotal:areaM2*costoUnitario});
+ });
+ return filas;
 }
 function agregarFilaCosteoMaterial(data){
  const i=ctIdx++;
@@ -3524,7 +3654,34 @@ function leerCosteoMateriales(){
  return filas;
 }
 // Recalcula el resumen de costeo en vivo. Es solo referencia: NUNCA toca los Ítems del presupuesto.
+// Compara el despiece + los insumos contra el stock actual de cada material y arma la lista de lo que falta.
+// Es solo un aviso en pantalla mientras se arma el presupuesto — nunca bloquea ni descuenta nada acá; el
+// descuento real recién pasa cuando el presupuesto se aprueba (guardarPresup).
+function faltantesStockCosteo(despiece,materiales){
+ const necesarios={};
+ despiece.forEach(d=>{if(d.materialId&&d.areaM2>0)necesarios[d.materialId]=(necesarios[d.materialId]||0)+d.areaM2;});
+ materiales.forEach(m=>{if(m.materialId&&m.cantidad>0)necesarios[m.materialId]=(necesarios[m.materialId]||0)+m.cantidad;});
+ const idx=materialesIndice();
+ const faltan=[];
+ Object.entries(necesarios).forEach(([id,necesario])=>{
+  const mat=idx.porId.get(Number(id));
+  if(!mat)return;
+  const stock=mat.stock||0;
+  if(necesario>stock+0.001)faltan.push({nombre:mat.descripcion,necesario,stock,unidad:mat.unidad||'u.'});
+ });
+ return faltan;
+}
 function recalcularCosteoPresup(){
+ document.querySelectorAll('#ct-despiece .tabla-fila').forEach(r=>{
+ const largo=parseFloat(r.querySelector('.ctp-largo')?.value)||0;
+ const ancho=parseFloat(r.querySelector('.ctp-ancho')?.value)||0;
+ const unidad=r.querySelector('.ctp-unidad')?.value||'cm';
+ const cant=parseFloat(r.querySelector('.ctp-cant')?.value)||0;
+ const costo=parseFloat(r.querySelector('.ctp-costo')?.value)||0;
+ const area=areaDespieceM2(largo,ancho,unidad,cant);
+ const span=r.querySelector('.ctp-subtotal');
+ if(span)span.textContent=area>0?fmt(area*costo):'—';
+ });
  document.querySelectorAll('#ct-materiales .tabla-fila').forEach(r=>{
  const c=parseFloat(r.querySelector('.cti-cant')?.value)||0;
  const p=parseFloat(r.querySelector('.cti-costo')?.value)||0;
@@ -3532,8 +3689,10 @@ function recalcularCosteoPresup(){
  const span=r.querySelector('.cti-subtotal');
  if(span)span.textContent=tot>0?fmt(tot):'—';
  });
+ const despiece=leerDespiece();
  const materiales=leerCosteoMateriales();
- const costoMateriales=materiales.reduce((s,m)=>s+m.subtotal,0);
+ const costoDespiece=despiece.reduce((s,d)=>s+d.subtotal,0);
+ const costoMateriales=costoDespiece+materiales.reduce((s,m)=>s+m.subtotal,0);
  const horas=parseFloat(document.getElementById('fp-horas-est')?.value)||0;
  const cfg=getCosteoCfg();
  const costoManoObra=horas*(cfg.costoHoraManoObra||0);
@@ -3543,7 +3702,7 @@ function recalcularCosteoPresup(){
  const precioSugerido=(margenPct>0&&margenPct<100)?costoTotal/(1-margenPct/100):costoTotal;
  const resumen=document.getElementById('ct-resumen');
  if(resumen){
- resumen.innerHTML=`<div class="res-row"><span class="rl">Costo materiales</span><span class="rv">${fmt(costoMateriales)}</span></div>
+ resumen.innerHTML=`<div class="res-row"><span class="rl">Costo materiales (despiece + insumos)</span><span class="rv">${fmt(costoMateriales)}</span></div>
  <div class="res-row"><span class="rl" style="font-size:11px">Materiales con IVA 21% (referencia)</span><span class="rv" style="font-size:12px;font-weight:400">${fmt(costoMateriales*1.21)}</span></div>
  <div class="res-row"><span class="rl">Costo mano de obra (${horas}h × ${fmt(cfg.costoHoraManoObra||0)})</span><span class="rv">${fmt(costoManoObra)}</span></div>
  <div class="res-row"><span class="rl">Costo directo</span><span class="rv">${fmt(costoDirecto)}</span></div>
@@ -3552,10 +3711,16 @@ function recalcularCosteoPresup(){
  <div class="res-row" style="font-weight:700;color:var(--verde2)"><span class="rl">Precio sugerido${margenPct?` (margen ${margenPct}%)`:' (sin margen cargado)'}</span><span class="rv">${fmt(precioSugerido)}</span></div>
  ${!cfg.costoHoraManoObra?'<p style="font-size:11px;color:var(--naranja);margin-top:6px">⚠️ Todavía no configuraste el costo de mano de obra por hora (Finanzas → Rentabilidad).</p>':''}`;
  }
- return{materiales,costoMateriales,horasManoObra:horas,costoManoObra,costoDirecto,tasaFijaAplicada:cfg.tasaFija,costoTotal,margen:margenPct,precioSugerido};
+ const aviso=document.getElementById('ct-stock-aviso');
+ if(aviso){
+  const faltan=faltantesStockCosteo(despiece,materiales);
+  aviso.innerHTML=faltan.length?`<div class="item-card" style="border-left-color:var(--naranja);padding:10px 12px"><div class="item-nombre" style="font-size:12px">⚠️ Puede faltar stock</div>${faltan.map(f=>`<div style="font-size:11px;color:var(--gris);margin-top:3px">${gastoEsc(f.nombre)}: necesitás ${Math.round(f.necesario*100)/100} ${f.unidad}, hay ${Math.round(f.stock*100)/100}</div>`).join('')}</div>`:'';
+ }
+ return{despiece,materiales,costoMateriales,horasManoObra:horas,costoManoObra,costoDirecto,tasaFijaAplicada:cfg.tasaFija,costoTotal,margen:margenPct,precioSugerido};
 }
 function renderCosteoExistente(costeo){
  if(!costeo)return;
+ (costeo.despiece||[]).forEach(d=>agregarFilaDespiece(d));
  (costeo.materiales||[]).forEach(m=>agregarFilaCosteoMaterial(m));
  const inpMargen=document.getElementById('ct-margen');
  if(inpMargen&&costeo.margen)inpMargen.value=costeo.margen;
@@ -3753,6 +3918,24 @@ function hayConflictoYCancelar(tipo,idActual){
  }
  return false;
 }
+// Al aprobar un presupuesto se descuenta del stock lo que pide el despiece (por área) y los insumos (por
+// cantidad). Si algo queda en negativo no se bloquea nada — solo se avisa, para comprarlo antes de arrancar.
+function descontarStockPresupuesto(obj){
+ const necesarios={};
+ (obj.costeo?.despiece||[]).forEach(d=>{if(d.materialId&&d.areaM2>0)necesarios[d.materialId]=(necesarios[d.materialId]||0)+d.areaM2;});
+ (obj.costeo?.materiales||[]).forEach(m=>{if(m.materialId&&m.cantidad>0)necesarios[m.materialId]=(necesarios[m.materialId]||0)+m.cantidad;});
+ const lista=getMateriales();
+ const negativos=[];
+ Object.entries(necesarios).forEach(([id,cant])=>{
+  const m=lista.find(x=>x.id===Number(id));
+  if(!m)return;
+  m.stock=Math.round(((m.stock||0)-cant)*1000)/1000;
+  m.updatedAt=Date.now();
+  if(m.stock<0)negativos.push(`${m.descripcion} (quedó en ${m.stock} ${m.unidad||'u.'})`);
+ });
+ DB.set('materiales',lista);
+ return negativos;
+}
 function guardarPresup(num){
  try{
  guardarPresupInterno(num);
@@ -3787,6 +3970,7 @@ function guardarPresupInterno(num){
  const cuotasCredito=condPago==='credito'?Array.from({length:cuotasNum},(_,i)=>({monto:totalCI/cuotasNum,vencimiento:calcularVencimientoCuota(fechaPresup,i)})):[];
  const obj={id:formId||DB.nuevoId(),num,fecha:document.getElementById('fp-fecha')?.value||hoy(),apellido:ap,nombre:no,desc:de,tel:document.getElementById('fp-tel')?.value||'',cuit:document.getElementById('fp-cuit')?.value||'',domicilio:document.getElementById('fp-domicilio')?.value||'',retiraFabrica:document.getElementById('fp-retira-fabrica')?.checked||false,items,total,estado,prioridad:document.getElementById('fp-prioridad')?.value||'Normal',obs:document.getElementById('fp-obs')?.value||'',horasEstimadas:parseFloat(document.getElementById('fp-horas-est')?.value)||0,dificultad:document.getElementById('fp-dificultad')?.value||'Simple',notasProduccion:document.getElementById('fp-notas-prod')?.value||'',fichaTecnica,costeo,condPago,perfilCredito,cuotasNum,cuotasCredito,nombreArchivo:nomArchivo('presupuestos',num,ap,no,de),updatedAt:Date.now()};
  obj.clienteId=buscarOCrearCliente(ap,no,obj.tel);
+ const yaDescontadoStock=!!(formId&&DB.get('presupuestos').find(i=>i.id===formId)?.stockDescontado);
  const lista=DB.get('presupuestos');
  // MOD 4: Nunca duplicar — si existe formId siempre actualizar el original
  if(formId){
@@ -3815,6 +3999,16 @@ function guardarPresupInterno(num){
  // MOD 1: Sincronizar OT y CC vinculadas si ya existen
  if(formId && obj.otId){
  sincronizarOTdesdePresup(obj);
+ }
+ if(estado==='Aprobado'&&!yaDescontadoStock){
+ try{
+ const negativos=descontarStockPresupuesto(obj);
+ obj.stockDescontado=true;
+ const lista2=DB.get('presupuestos');
+ const idx2=lista2.findIndex(x=>x.id===obj.id);
+ if(idx2>=0){lista2[idx2]=obj;DB.set('presupuestos',lista2);}
+ if(negativos.length)alert('✅ Se descontó el stock de los materiales de este presupuesto.\n\n⚠️ Estos quedaron en negativo — conviene comprarlos antes de arrancar:\n'+negativos.join('\n'));
+ }catch(e){console.warn('No se pudo descontar el stock:',e);}
  }
  if(estado==='Aprobado'&&!obj.otId){
  // MOD 5: creación automática de OT, sin depender de confirm() del navegador (fallaba en modo app instalada)
@@ -6603,7 +6797,7 @@ function setFinTab(tab){finTab=tab;renderFinanzas();}
 function renderFinanzas(){
  const cont=document.getElementById('finanzas-content');
  if(!cont)return;
- const tabs=[{k:'panel',l:'Panel'},{k:'cobrar',l:'Por Cobrar'},{k:'pagar',l:'Por Pagar'},{k:'movs',l:'Movimientos'},{k:'renta',l:'Rentabilidad'},{k:'equilibrio',l:'Equilibrio'},{k:'usd',l:'Ahorro USD'}];
+ const tabs=[{k:'panel',l:'Panel'},{k:'cobrar',l:'Por Cobrar'},{k:'pagar',l:'Por Pagar'},{k:'movs',l:'Movimientos'},{k:'renta',l:'Rentabilidad'},{k:'equilibrio',l:'Equilibrio'},{k:'usd',l:'Ahorro USD'},{k:'sueldo',l:'Mi sueldo'}];
  let html=`<div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
  ${tabs.map(t=>`<button onclick="setFinTab('${t.k}')" style="padding:8px 14px;border-radius:20px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;background:${finTab===t.k?'var(--marron)':'var(--blanco)'};color:${finTab===t.k?'#fff':'var(--gris)'};box-shadow:var(--sombra)">${t.l}</button>`).join('')}
  </div>`;
@@ -6614,6 +6808,7 @@ function renderFinanzas(){
  else if(finTab==='renta')html+=renderFinRenta();
  else if(finTab==='equilibrio')html+=renderFinEquilibrio();
  else if(finTab==='usd')html+=renderFinUsd();
+ else if(finTab==='sueldo')html+=renderFinSueldo();
  cont.innerHTML=html;
 }
 
