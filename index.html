@@ -2942,7 +2942,7 @@ function modalPagoOT(otId){
       <span style="font-size:18px;font-weight:700;color:var(--rojo)">${fmt(saldo)}</span>
     </div>
     <div class="form-row"><label>Fecha</label><input type="date" id="mp-fecha" value="${hoy()}"></div>
-    <div class="form-row"><label>Forma de pago</label><input type="text" id="mp-forma" placeholder="Efectivo / Transferencia..."></div>
+    <div class="form-row"><label>Medio de pago</label><select id="mp-medio">${Object.entries(MEDIOS_PAGO).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
     <div class="form-row"><label>Monto ($)</label><input type="number" id="mp-monto" placeholder="0" value="${saldo}"></div>
     <div class="btn-row" style="margin-top:16px">
       <button class="btn btn-secondary" onclick="document.getElementById('modal-pago-ot').remove()">Cancelar</button>
@@ -2956,7 +2956,8 @@ function modalPagoOT(otId){
 
 function guardarPagoOT(otId){
  const fecha=document.getElementById('mp-fecha')?.value||hoy();
- const forma=document.getElementById('mp-forma')?.value||'';
+ const medio=document.getElementById('mp-medio')?.value||'efectivo';
+ const forma=MEDIOS_PAGO[medio]||medio;
  const monto=parseFloat(document.getElementById('mp-monto')?.value)||0;
  if(monto<=0){alert('Ingresá un monto válido');return;}
  const lista=DB.get('ordenes');
@@ -2972,9 +2973,9 @@ function guardarPagoOT(otId){
  const estructuraPago=estructuraEconomicaPresup(presupOrigenPago);
  const prevPagadoOT=(lista[idx].pagosOT||[]).reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
  // MOD FINANZAS: registrar el cobro en el flujo de caja de Administración
- const movId=registrarMovimiento('ingreso',medioFromTexto(forma),'',monto,`Cobro OT-${String(lista[idx].num).padStart(3,'0')} ${lista[idx].apellido||''} ${lista[idx].nombre||''}`,`OT-${lista[idx].num}`,estructuraPago,prevPagadoOT);
+ const movId=registrarMovimiento('ingreso',medio,'',monto,`Cobro OT-${String(lista[idx].num).padStart(3,'0')} ${lista[idx].apellido||''} ${lista[idx].nombre||''}`,`OT-${lista[idx].num}`,estructuraPago,prevPagadoOT);
  // CORRECCIÓN: cada pago tiene ID propio y queda enlazado al movimiento que generó, para poder rastrear si se editan por separado
- lista[idx].pagosOT.push({id:pagoId,fecha,forma,monto,movimientoId:movId});
+ lista[idx].pagosOT.push({id:pagoId,fecha,forma,medio,monto,movimientoId:movId});
  // verificar si quedó saldado
  const costo=parseFloat(lista[idx].costo)||0;
  const senia=parseFloat(lista[idx].senia)||0;
@@ -6973,6 +6974,18 @@ function guardarCobroCC(ccId){
 
 function renderFinPagar(){
  const lista=getPagosFijos();
+ // Un sueldo vinculado a un empleado se marca Pagado solo cuando sus retiros de ese mes cubren el monto.
+ let cambios=false;
+ lista.forEach(p=>{
+  if(!p.personalId)return;
+  const emp=getPersonalObjs().find(x=>x.id===p.personalId);
+  if(!emp)return;
+  const ymRef=(p.vencimiento||hoy()).slice(0,7);
+  const pagado=(emp.retiros||[]).filter(r=>(r.fecha||'').slice(0,7)===ymRef).reduce((s,r)=>s+(r.monto||0),0);
+  const nuevoEstado=pagado>=(p.monto||0)&&p.monto>0?'Pagado':'Pendiente';
+  if(p.estado!==nuevoEstado){p.estado=nuevoEstado;cambios=true;}
+ });
+ if(cambios)DB.set('pagos_fijos',lista);
  const pendientes=lista.filter(p=>p.estado!=='Pagado');
  const total=pendientes.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
  let html=`<div style="background:var(--amarillo-cl);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
@@ -6996,23 +7009,35 @@ function renderFinPagar(){
  });
  html+=`</div>`;
  }
+ const ymHoy=hoy().slice(0,7);
  Object.entries(CATEGORIAS_PAGO).forEach(([key,cat])=>{
  const items=pendientes.filter(p=>p.categoria===key);
  if(!items.length)return;
  html+=`<div class="cobros-seccion-title">${cat.emoji} ${cat.label} <span class="cs-badge" style="background:var(--crema2);color:var(--marron2)">${items.length}</span></div>`;
+ if(key==='tarjetas'){
+  const todasTarjeta=lista.filter(p=>p.categoria==='tarjetas');
+  const compradoEsteMes=todasTarjeta.filter(p=>(p.vencimiento||'').slice(0,7)===ymHoy).reduce((s,p)=>s+(p.monto||0),0);
+  const saldoTotalCuotas=items.reduce((s,p)=>s+Math.max(0,(p.monto||0)-(p.pagos||[]).reduce((a,x)=>a+(x.monto||0),0)),0);
+  html+=`<div style="background:var(--crema2);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;display:flex;justify-content:space-between"><span>Comprado este mes</span><span style="font-weight:700">${fmt(compradoEsteMes)}</span></div>
+   <div style="background:var(--crema2);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;display:flex;justify-content:space-between"><span>Saldo total en cuotas pendientes</span><span style="font-weight:700;color:var(--rojo)">${fmt(saldoTotalCuotas)}</span></div>`;
+ }
  items.forEach(p=>{
  const sem=semaforoPago(p);
  const semColor={verde:'#22C55E',amarillo:'#F59E0B',rojo:'#EF4444'}[sem];
- const pagadoYa=(p.pagos||[]).reduce((s,x)=>s+(x.monto||0),0);
+ const empleado=p.personalId?getPersonalObjs().find(x=>x.id===p.personalId):null;
+ // Un sueldo vinculado a un empleado toma lo pagado directo de sus retiros en Personal (mismo mes que este
+ // pago fijo), para no llevar dos registros separados de la misma plata.
+ const ymRef=(p.vencimiento||hoy()).slice(0,7);
+ const pagadoYa=empleado?(empleado.retiros||[]).filter(r=>(r.fecha||'').slice(0,7)===ymRef).reduce((s,r)=>s+(r.monto||0),0):(p.pagos||[]).reduce((s,x)=>s+(x.monto||0),0);
  const saldoPend=Math.max(0,(p.monto||0)-pagadoYa);
  const esTarjeta=p.cuotasTotales>0;
  const cuotasPagadas=(p.pagos||[]).length;
  html+=`<div class="cobro-card" style="border-left-color:${semColor}">
- <div class="cobro-top"><span class="cobro-nombre" style="font-size:14px">${p.concepto}</span><span class="item-badge" style="background:${semColor}22;color:${semColor}">${p.vencimiento?fmtF(p.vencimiento):'Sin fecha'}</span></div>
+ <div class="cobro-top"><span class="cobro-nombre" style="font-size:14px">${p.concepto}${empleado?' · '+gastoEsc(empleado.nombre):''}</span><span class="item-badge" style="background:${semColor}22;color:${semColor}">${p.vencimiento?fmtF(p.vencimiento):'Sin fecha'}</span></div>
  ${esTarjeta?`<p style="font-size:11px;color:var(--gris);margin:-4px 0 6px">${TIPOS_COMPRA_TARJETA[p.tipoCompra]?.emoji||''} ${TIPOS_COMPRA_TARJETA[p.tipoCompra]?.label||''} · Cuota ${Math.min(cuotasPagadas+1,p.cuotasTotales)} de ${p.cuotasTotales}</p>`:''}
  <div class="cobro-montos">${pagadoYa>0?`<div class="cobro-monto-item"><div class="cm-label">Pagado</div><div class="cm-val" style="color:var(--verde2)">${fmt(pagadoYa)}</div></div><div class="cobro-monto-item cm-saldo"><div class="cm-label">Saldo</div><div class="cm-val">${fmt(saldoPend)}</div></div>`:`<div class="cobro-monto-item cm-saldo"><div class="cm-label">Monto</div><div class="cm-val">${fmt(p.monto)}</div></div>`}</div>
  <div class="cobro-actions">
- <button class="cobro-btn cobro-btn-pago" onclick="abrirPagoParcial(${p.id})">${esTarjeta?'☑️ Tildar cuota':'💰 '+(pagadoYa>0?'Seguir pagando':'Pagar')}</button>
+ <button class="cobro-btn cobro-btn-pago" onclick="${empleado?`abrirModalRetiroPersonal(${empleado.id})`:`abrirPagoParcial(${p.id})`}">${esTarjeta?'☑️ Tildar cuota':empleado?'💰 Pagar (en Personal)':'💰 '+(pagadoYa>0?'Seguir pagando':'Pagar')}</button>
  <button class="cobro-btn cobro-btn-ver" onclick="abrirFormPagoFijo(${p.id})">✏️ Editar</button>
  <button class="cobro-btn" style="background:var(--rojo-cl);color:var(--rojo)" onclick="eliminarPagoFijo(${p.id})">🗑</button>
  </div>
@@ -7042,6 +7067,8 @@ function abrirFormPagoFijo(id){
  <div class="form-row" id="mpf-row-tipo" style="display:none"><label>Tipo de compra</label><select id="mpf-tipo">${Object.entries(TIPOS_COMPRA_TARJETA).map(([k,t])=>`<option value="${k}"${item?.tipoCompra===k?' selected':''}>${t.emoji} ${t.label}</option>`).join('')}</select></div>
  <div class="form-row"><label>Monto ($)</label><input type="number" id="mpf-monto" value="${item?.monto||''}" placeholder="0"></div>
  <div class="form-row" id="mpf-row-cuotas" style="display:none"><label>Cantidad de cuotas</label><input type="number" id="mpf-cuotas" min="1" step="1" value="${item?.cuotasTotales||1}"></div>
+ <div class="form-row" id="mpf-row-empleado" style="display:none"><label>Empleado (opcional)</label><select id="mpf-empleado"><option value="">— General / varios —</option>${getPersonalObjs().map(p=>`<option value="${p.id}"${item?.personalId===p.id?' selected':''}>${gastoEsc(p.nombre)}</option>`).join('')}</select>
+  <div style="font-size:10px;color:var(--gris);margin-top:3px">Si elegís a alguien, pagado y saldo se toman directo de sus retiros en Personal — no hace falta cargarlo dos veces.</div></div>
  <div class="form-row"><label id="mpf-label-venc">Vencimiento</label><input type="date" id="mpf-venc" value="${item?.vencimiento||''}"></div>
  <div class="form-row"><label>Prioridad</label><select id="mpf-prio">${['Normal','Alta','Urgente'].map(p=>`<option${item?.prioridad===p?' selected':''}>${p}</option>`).join('')}</select></div>
  <div class="btn-row" style="margin-top:16px">
@@ -7056,9 +7083,11 @@ function abrirFormPagoFijo(id){
 // Una compra con tarjeta es un gasto en cuotas: pide producto, tipo (insumo/herramienta/inversión) y cantidad
 // de cuotas, en vez de los campos genéricos de un pago fijo común.
 function mpfToggleTarjeta(){
- const esTarjeta=document.getElementById('mpf-cat')?.value==='tarjetas';
+ const cat=document.getElementById('mpf-cat')?.value;
+ const esTarjeta=cat==='tarjetas';
  document.getElementById('mpf-row-tipo').style.display=esTarjeta?'':'none';
  document.getElementById('mpf-row-cuotas').style.display=esTarjeta?'':'none';
+ document.getElementById('mpf-row-empleado').style.display=cat==='sueldos'?'':'none';
  document.getElementById('mpf-label-concepto').textContent=esTarjeta?'Producto':'Concepto';
  document.getElementById('mpf-label-venc').textContent=esTarjeta?'Fecha de compra':'Vencimiento';
 }
@@ -7080,6 +7109,10 @@ function guardarPagoFijoForm(id){
   obj.tipoCompra=document.getElementById('mpf-tipo')?.value||'insumo';
   obj.cuotasTotales=Math.max(1,parseInt(document.getElementById('mpf-cuotas')?.value)||1);
  }
+ if(categoria==='sueldos'){
+  const empSel=document.getElementById('mpf-empleado')?.value;
+  if(empSel)obj.personalId=parseInt(empSel);else delete obj.personalId;
+ } else delete obj.personalId;
  guardarPagoFijo(obj);
  document.getElementById('modal-pago-fijo')?.remove();
  renderFinanzas();
@@ -7114,11 +7147,49 @@ function abrirPagoParcial(id){
   <div class="form-row"><label>Medio</label><select id="mpp-medio">${Object.entries(MEDIOS_PAGO).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
   <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="registrarPagoParcial(${id})">${esTarjeta?'☑️ Tildar cuota '+(cuotasPagadas+1)+' pagada':'Registrar pago'}</button>`
   :'<p style="font-size:12px;color:var(--verde2);margin-top:10px">✅ Totalmente pagado.</p>'}
+ ${esTarjeta&&saldo>0&&(p.cuotasTotales-cuotasPagadas)>1?`<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--crema3)">
+  <p style="font-size:12px;font-weight:600;color:var(--marron2)">¿Ya veníamos pagando esto antes de cargarlo acá?</p>
+  <p style="font-size:10px;color:var(--gris);margin-bottom:8px">Marcá de una varias cuotas como ya pagadas, una por mes a partir de la fecha que elijas.</p>
+  <div class="form-grid"><div><label style="font-size:10px">Cuántas cuotas</label><input type="number" id="mpp-lote-cant" min="1" max="${p.cuotasTotales-cuotasPagadas}" value="1" step="1"></div>
+   <div><label style="font-size:10px">Fecha de la primera</label><input type="date" id="mpp-lote-fecha" value="${hoy()}"></div></div>
+  <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="registrarLoteCuotas(${id})">Marcar como pagadas</button>
+ </div>`:''}
  ${pagos.length?`<p class="section-title" style="margin-top:14px">${esTarjeta?'Cuotas pagadas':'Pagos realizados'}</p>${pagos.map((x,i)=>`<div class="res-row"><span class="rl">${esTarjeta?'Cuota '+(pagos.length-i)+' · ':''}${fmtF(x.fecha)} · ${gastoMedioLabel(x.medio)}</span><span class="rv">${fmt(x.monto)} <button class="del-btn" onclick="eliminarPagoParcial(${id},${x.id})">🗑</button></span></div>`).join('')}`:''}
  <div class="btn-row" style="margin-top:14px"><button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('modal-pago-parcial').remove()">Cerrar</button></div>
  </div>`;
  document.body.appendChild(overlay);
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+}
+// Carga de una sola vez varias cuotas que ya se venían pagando antes de usar la app (por ejemplo, "esta
+// compra va 5 de 6"): crea un pago por cada una, una por mes a partir de la fecha elegida, con su propio
+// movimiento de caja — así cada una queda fechada en el mes real en que se pagó, no todas hoy.
+function registrarLoteCuotas(id){
+ const cant=parseInt(document.getElementById('mpp-lote-cant')?.value)||0;
+ const fechaIni=document.getElementById('mpp-lote-fecha')?.value||hoy();
+ const medio=document.getElementById('mpp-medio')?.value||'efectivo';
+ if(cant<=0){alert('Ingresá cuántas cuotas marcar.');return;}
+ const lista=getPagosFijos();
+ const p=lista.find(x=>x.id===id);
+ if(!p)return;
+ const partes=fechaIni.split('-').map(Number);
+ for(let i=0;i<cant;i++){
+  const pagadoHasta=(p.pagos||[]).reduce((s,x)=>s+x.monto,0);
+  const saldoHasta=Math.max(0,(p.monto||0)-pagadoHasta);
+  if(saldoHasta<=0)break;
+  const cuotaNro=(p.pagos||[]).length;
+  const valorCuota=Math.round((p.monto||0)/p.cuotasTotales);
+  const monto=(cuotaNro+1>=p.cuotasTotales)?saldoHasta:Math.min(valorCuota,saldoHasta);
+  const d=new Date(partes[0],partes[1]-1+i,partes[2]);
+  const fecha=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const movId=registrarMovimiento('egreso',medio,p.categoria,monto,p.concepto,'pago_fijo',undefined,undefined,fecha);
+  if(!p.pagos)p.pagos=[];
+  p.pagos.push({id:DB.nuevoId(),fecha,monto,medio,movimientoId:movId});
+ }
+ const pagadoTotal=p.pagos.reduce((s,x)=>s+x.monto,0);
+ if(pagadoTotal>=(p.monto||0)){p.estado='Pagado';} else p.estado='Pendiente';
+ DB.set('pagos_fijos',lista);
+ abrirPagoParcial(id);
+ renderFinanzas();
 }
 function registrarPagoParcial(id){
  const fecha=document.getElementById('mpp-fecha')?.value||hoy();
