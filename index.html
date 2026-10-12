@@ -1304,7 +1304,7 @@ function renderVentas(){
   html+=`<p class="section-title">Ventas (${lista.length})</p><div class="lista">${lista.map(v=>`<div class="item-card" style="border-left-color:var(--verde2)" onclick="abrirModalVenta(${v.id})">
     <div class="item-top"><span class="item-codigo">${v.tipo==='reventa'?'🛒 Reventa'+(v.reventa?' · '+gastoEsc(v.reventa):''):'🪑 '+(v.sub?gastoEsc(v.sub):VENTA_TIPOS[v.tipo||''])}</span><span class="item-fecha">${fmtF(v.fecha)}</span></div>
     <div class="item-nombre">${gastoEsc(v.cliente||'(sin cliente)')}</div>
-    <div class="item-desc">${gastoEsc(v.desc)}${v.cant>1?` · ${v.cant} × ${fmt(v.precio)}`:''}</div>
+    <div class="item-desc">${gastoEsc(v.desc)}${v.cant>1?` · ${v.cant} × ${fmt(v.precio)}`:''}${v.areaM2>0?` · 🪵 -${Math.round(v.areaM2*1000)/1000}m² de ${gastoEsc(v.materialNombre||'')}`:''}</div>
     <div class="item-footer"><span class="item-total">${fmt(v.total)}</span><span class="item-badge badge-ok">${v.medio?gastoMedioLabel(v.medio):'—'}</span></div></div>`).join('')}</div>`;
  }
  html+=`<div class="form-card" style="margin-top:16px"><h3>🧰 Herramientas</h3>
@@ -1339,6 +1339,19 @@ function abrirModalVenta(id){
   <div class="form-row"><label>Observaciones</label><input type="text" id="mv-obs" value="${gastoEsc(f.obs)}" placeholder="Opcional"></div>
   <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--gris);margin-top:4px"><input type="checkbox" id="mv-sincaja"${f.sinCaja?' checked':''} style="width:auto"> No sumar a la caja (solo dejarla registrada)</label>
   <p style="font-size:11px;color:var(--gris);margin-top:6px">Si esta venta ya la cobraste por un presupuesto u orden de trabajo, no la cargues acá: ya cuenta en el panel.</p>
+  <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer;background:var(--crema);border-radius:10px;padding:10px 12px;margin-top:10px"><input type="checkbox" id="mv-descstock"${f.materialId?' checked':''} style="width:auto" onchange="mvToggleDescStock()"> Es venta de recorte: descontar del stock de materiales</label>
+  <div id="mv-stock-box" style="display:${f.materialId?'':'none'};margin-top:8px">
+   <div class="form-row"><label>Material</label><input type="text" id="mv-material" placeholder="Buscar placa/tablero..." autocomplete="off" value="${gastoEsc(f.materialNombre||'')}" ${f.materialId?`data-material-id="${f.materialId}"`:''} oninput="mvSugerirMaterial()" onfocus="mvSugerirMaterial()" onblur="setTimeout(cerrarSugerenciasBox,150)"></div>
+   <div class="form-grid">
+    <div class="form-row"><label>Largo</label><input type="number" step="0.1" id="mv-largo" value="${f.largo||''}" oninput="mvCalcArea()"></div>
+    <div class="form-row"><label>Ancho</label><input type="number" step="0.1" id="mv-ancho" value="${f.ancho||''}" oninput="mvCalcArea()"></div>
+   </div>
+   <div class="form-grid">
+    <div class="form-row"><label>Unidad</label><select id="mv-unidad" onchange="mvCalcArea()"><option value="cm"${f.unidad!=='mm'?' selected':''}>cm</option><option value="mm"${f.unidad==='mm'?' selected':''}>mm</option></select></div>
+    <div class="form-row"><label>Cantidad de piezas</label><input type="number" step="1" id="mv-cantpiezas" value="${f.cantidadPiezas||1}" oninput="mvCalcArea()"></div>
+   </div>
+   <div id="mv-area-preview" style="font-size:11px;color:var(--gris)"></div>
+  </div>
   <div class="btn-row" style="margin-top:14px">
    ${v?`<button class="btn btn-danger" onclick="eliminarVenta(${v.id})">🗑</button>`:''}
    <button class="btn btn-secondary" onclick="document.getElementById('modal-venta').remove()">Cancelar</button>
@@ -1348,9 +1361,51 @@ function abrirModalVenta(id){
  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
  ventaCalcTotal();
 }
+// Venta de recortes/retazos: además de cobrarla, descuenta del stock el área real vendida (largo × ancho ×
+// cantidad de piezas), igual que el Despiece de un presupuesto — pero acá el precio lo decidís vos a mano,
+// no sale del costo del material (un recorte casi siempre se vende más barato que la placa entera).
+function mvToggleDescStock(){
+ const on=!!document.getElementById('mv-descstock')?.checked;
+ document.getElementById('mv-stock-box').style.display=on?'':'none';
+ if(!on){const i=document.getElementById('mv-material');if(i){i.value='';delete i.dataset.materialId;}}
+ mvCalcArea();
+}
+function mvSugerirMaterial(){
+ const input=document.getElementById('mv-material');
+ if(!input)return;
+ delete input.dataset.materialId;
+ renderSugerenciasBox(input,mat=>{
+  input.value=mat.descripcion;input.dataset.materialId=mat.id;cerrarSugerenciasBox();mvCalcArea();
+ },esMaterialDeArea);
+}
+function mvCalcArea(){
+ const prev=document.getElementById('mv-area-preview');
+ if(!prev||!document.getElementById('mv-descstock')?.checked)return;
+ const matId=document.getElementById('mv-material')?.dataset.materialId;
+ const largo=parseFloat(document.getElementById('mv-largo')?.value)||0;
+ const ancho=parseFloat(document.getElementById('mv-ancho')?.value)||0;
+ const unidad=document.getElementById('mv-unidad')?.value||'cm';
+ const cant=parseFloat(document.getElementById('mv-cantpiezas')?.value)||0;
+ const area=areaDespieceM2(largo,ancho,unidad,cant);
+ if(!matId){prev.innerHTML=area>0?`Área: <b>${Math.round(area*1000)/1000} m²</b> — elegí un material de la lista para poder descontarlo`:'';return;}
+ const mat=getMateriales().find(m=>m.id===Number(matId));
+ if(!mat){prev.textContent='';return;}
+ prev.innerHTML=area>0?`Se van a descontar <b>${Math.round(area*1000)/1000} m²</b> de ${gastoEsc(mat.descripcion)} (stock actual: ${mat.stock||0} ${mat.unidad||'u.'})`:'Completá largo, ancho y cantidad.';
+}
 function ventaCalcTotal(){
  const c=parseFloat(document.getElementById('mv-cant')?.value)||0,p=parseFloat(document.getElementById('mv-precio')?.value)||0;
  const el=document.getElementById('mv-total');if(el)el.value=fmt(c*p);
+}
+// Deshace SOLO el descuento de stock que había aplicado esta venta (nunca toca la caja: eso lo maneja
+// revertirMovimientoIngreso aparte). Se usa al editar (si cambió el área o el material) y al eliminar.
+function revertirStockVenta(v){
+ if(!v||!v.materialId||!(v.areaM2>0))return;
+ const lista=getMateriales();
+ const m=lista.find(x=>x.id===v.materialId);
+ if(!m)return;
+ m.stock=Math.round(((m.stock||0)+v.areaM2)*1000)/1000;
+ m.updatedAt=Date.now();
+ DB.set('materiales',lista);
 }
 function guardarVenta(id){
  const val=k=>document.getElementById(k)?.value;
@@ -1359,14 +1414,35 @@ function guardarVenta(id){
  const total=Math.round(cant*precio*100)/100;
  const medio=val('mv-medio')||'',tipo=val('mv-tipo')||'';
  const sinCaja=!!document.getElementById('mv-sincaja')?.checked;
+ const descStock=!!document.getElementById('mv-descstock')?.checked;
+ const materialId=descStock?(document.getElementById('mv-material')?.dataset.materialId?Number(document.getElementById('mv-material').dataset.materialId):null):null;
  if(!fecha){alert('Ingresá la fecha');return;}
  if(!(total>0)){alert('Ingresá cantidad y precio: el total tiene que ser mayor a 0');return;}
  if(!medio&&!sinCaja){alert('Elegí el medio de cobro');return;}
+ if(descStock&&!materialId){alert('Elegí un material de la lista para descontar del stock.');return;}
  const lista=getVentas();
  const prev=id?lista.find(x=>x.id===id):null;
  const v=prev?{...prev}:{id:DB.nuevoId(),origen:'app',createdAt:Date.now()};
  Object.assign(v,{fecha,cliente,desc,cant:cant||1,precio,total,medio,tipo,sinCaja,obs,updatedAt:Date.now()});
  if(prev&&prev.movimientoId)revertirMovimientoIngreso(prev.movimientoId);
+ // El stock se recalcula siempre desde cero, igual que la caja: se deshace lo que esta venta había
+ // descontado antes (si había) y se vuelve a aplicar con los datos actuales.
+ if(prev)revertirStockVenta(prev);
+ if(descStock){
+  const largo=parseFloat(val('mv-largo'))||0,ancho=parseFloat(val('mv-ancho'))||0,unidad=val('mv-unidad')||'cm',cantPiezas=parseFloat(val('mv-cantpiezas'))||0;
+  const areaM2=areaDespieceM2(largo,ancho,unidad,cantPiezas);
+  const mat=getMateriales().find(m=>m.id===materialId);
+  Object.assign(v,{materialId,materialNombre:mat?mat.descripcion:'',largo,ancho,unidad,cantidadPiezas:cantPiezas,areaM2});
+  if(areaM2>0&&mat){
+   const listaMat=getMateriales();
+   const m=listaMat.find(x=>x.id===materialId);
+   m.stock=Math.round(((m.stock||0)-areaM2)*1000)/1000;
+   m.updatedAt=Date.now();
+   DB.set('materiales',listaMat);
+  }
+ } else {
+  delete v.materialId;delete v.materialNombre;delete v.largo;delete v.ancho;delete v.unidad;delete v.cantidadPiezas;delete v.areaM2;
+ }
  v.movimientoId=ventaAplicarCaja(v);
  const idx=prev?lista.findIndex(x=>x.id===id):-1;
  if(idx>=0)lista[idx]=v;else lista.push(v);
@@ -1379,7 +1455,10 @@ function eliminarVenta(id){
  const lista=getVentas();
  const v=lista.find(x=>x.id===id);
  if(!v)return;
- if(v.movimientoId){revertirMovimientoIngreso(v.movimientoId);v.movimientoId=null;v.sinCaja=true;DB.set('ventas',lista);}
+ if(v.movimientoId){revertirMovimientoIngreso(v.movimientoId);v.movimientoId=null;v.sinCaja=true;}
+ revertirStockVenta(v);
+ v.materialId=null;v.areaM2=0;
+ DB.set('ventas',lista);
  document.getElementById('modal-venta')?.remove();
  eliminarItem('ventas',id);
 }
